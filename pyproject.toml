@@ -22,7 +22,7 @@ sqlalchemy = { extras = ["asyncio"], version = ">=2.0.31" }
 asyncpg = ">=0.29.0"
 cdispyutils = ">=2.3.0"
 # NOTE:
-# for testing with updated libaries as git repos:
+# for testing with updated libraries as git repos:
 # foobar = {git = "https://github.com/uc-cdis/some-repo", rev = "feat/test"}
 httpx = ">=0.23.3"
 pytest-asyncio = ">=0.23.8"
@@ -38,6 +38,7 @@ pytest-cov = ">=4.1.0"
 isort = ">=5.12.0"
 black = ">=23.10.0"
 pylint = ">=3.0.1"
+rich = ">=14.0.0"
 
 [tool.pytest.ini_options]
 # Better default `pytest` command which adds coverage

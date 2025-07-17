@@ -1,9 +1,11 @@
 from rich import print_json
 from cdiserrors import InternalError, UserError
-
-import json
 import asyncio
 from gen3analysis.gdc.graphqlQuery import GDCGQLClient
+from gen3analysis.samples.cohortComparision.cohortFilters_GDC import (
+    Cohort1_GDC,
+    Cohort2_GDC,
+)
 
 gdc_client = GDCGQLClient("https://portal.gdc.cancer.gov/auth/api/v0/graphql")
 
@@ -61,30 +63,8 @@ GDC_MMRFComparison_GQL_Query = """query CohortComparison(
   """
 
 GDC_MMRFComparison_GQL_Query_Variables = {
-    "cohort1": {
-        "op": "and",
-        "content": [
-            {
-                "op": "in",
-                "content": {
-                    "field": "cases.case_id",
-                    "value": ["set_id:3oHICax9M7e-k8hdqGdzDA"],
-                },
-            }
-        ],
-    },
-    "cohort2": {
-        "op": "and",
-        "content": [
-            {
-                "op": "in",
-                "content": {
-                    "field": "cases.case_id",
-                    "value": ["set_id:HYF-9YpiUHuiFjqARprIaQ"],
-                },
-            }
-        ],
-    },
+    "cohort1": Cohort1_GDC,
+    "cohort2": Cohort2_GDC,
     "facets": [
         "demographic.ethnicity",
         "demographic.gender",
@@ -108,6 +88,5 @@ async def get_facets():
 
 
 if __name__ == "__main__":
-    print("Running in debug mode")
     data = asyncio.run(get_facets())
     print_json(data=data)

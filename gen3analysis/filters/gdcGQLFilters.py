@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Union, Optional, Any, Dict, Literal
+
 from dataclasses_json import dataclass_json, LetterCase
 
 
@@ -278,7 +279,7 @@ def is_gql_missing(operation: Any) -> bool:
 
 
 def is_gql_exists(operation: Any) -> bool:
-    """Check if operation is a GQL exists operation"""
+    """Check if an operation is a GQL exists operation"""
     return isinstance(operation, dict) and operation.get("op") == "not"
 
 

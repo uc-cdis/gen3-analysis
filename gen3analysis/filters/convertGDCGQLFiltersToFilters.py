@@ -1,4 +1,5 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
+
 from .filters import (
     Operation,
     Equals,
@@ -14,23 +15,9 @@ from .filters import (
     UnionOr,
     Exists,
     Missing,
-    NestedFilter,
 )
 from .gdcGQLFilters import (
     GqlOperation,
-    GqlEquals,
-    GqlNotEquals,
-    GqlLessThan,
-    GqlLessThanOrEquals,
-    GqlGreaterThan,
-    GqlGreaterThanOrEquals,
-    GqlIncludes,
-    GqlExcludes,
-    GqlExcludeIfAny,
-    GqlIntersection,
-    GqlUnion,
-    GqlMissing,
-    GqlExists,
     is_gql_missing,
     is_gql_exists,
     is_gql_exclude_if_any,
@@ -164,11 +151,11 @@ def convert_gql_filter_to_filter_set(gql_operation: GqlOperation) -> Dict[str, A
     if isinstance(operation, Intersection):
         mode = "and"
         for i, op in enumerate(operation.operands):
-            root[f"filter{i+1}"] = op
+            root[f"filter{i + 1}"] = op
     elif isinstance(operation, UnionOr):
         mode = "or"
         for i, op in enumerate(operation.operands):
-            root[f"filter{i+1}"] = op
+            root[f"filter{i + 1}"] = op
     else:
         # Single operation, add it directly to the root
         root["filter1"] = operation

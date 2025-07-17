@@ -1,15 +1,16 @@
 from dataclasses import dataclass, field
 from typing import List, Union, Dict, Any, Optional
-from dataclasses_json import dataclass_json, LetterCase
-from filters import FilterSet
+from dataclasses_json import dataclass_json, LetterCase, config
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLEqual:
     """GraphQL Equal filter: {'=': {'field': 'value'}}"""
 
-    equal_op: Dict[str, Union[str, int]] = field(default_factory=dict)
+    equal_op: Dict[str, Union[str, int]] = field(
+        default_factory=dict, metadata=config(field_name="!=")
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         return {"=": self.equal_op}
@@ -19,87 +20,84 @@ class GQLEqual:
         return cls(equal_op=data.get("=", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLNotEqual:
     """GraphQL Not Equal filter: {'!=': {'field': 'value'}}"""
 
-    not_equal_op: Dict[str, Union[str, int]] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"!=": self.not_equal_op}
+    not_equal_op: Dict[str, Union[str, int]] = field(
+        default_factory=dict, metadata=config(field_name="!=")
+    )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLNotEqual":
         return cls(not_equal_op=data.get("!=", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLLessThan:
     """GraphQL Less Than filter: {'<': {'field': 'value'}}"""
 
-    less_than_op: Dict[str, Union[str, int]] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"<": self.less_than_op}
+    less_than_op: Dict[str, Union[str, int]] = field(
+        default_factory=dict, metadata=config(field_name="<")
+    )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLLessThan":
         return cls(less_than_op=data.get("<", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLLessThanOrEquals:
     """GraphQL Less Than Or Equals filter: {'<=': {'field': 'value'}}"""
 
-    less_than_or_equals_op: Dict[str, Union[str, int]] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"<=": self.less_than_or_equals_op}
+    less_than_or_equals_op: Dict[str, Union[str, int]] = field(
+        default_factory=dict, metadata=config(field_name="<=")
+    )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLLessThanOrEquals":
         return cls(less_than_or_equals_op=data.get("<=", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLGreaterThan:
     """GraphQL Greater Than filter: {'>': {'field': 'value'}}"""
 
-    greater_than_op: Dict[str, Union[str, int]] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {">": self.greater_than_op}
+    greater_than_op: Dict[str, Union[str, int]] = field(
+        default_factory=dict, metadata=config(field_name=">")
+    )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLGreaterThan":
         return cls(greater_than_op=data.get(">", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLGreaterThanOrEquals:
     """GraphQL Greater Than Or Equals filter: {'>=': {'field': 'value'}}"""
 
-    greater_than_or_equals_op: Dict[str, Union[str, int]] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {">=": self.greater_than_or_equals_op}
+    greater_than_or_equals_op: Dict[str, Union[str, int]] = field(
+        default_factory=dict, metadata=config(field_name=">=")
+    )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLGreaterThanOrEquals":
         return cls(greater_than_or_equals_op=data.get(">=", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLIncludes:
     """GraphQL Includes filter: {'in': {'field': ['value1', 'value2']}}"""
 
-    in_op: Dict[str, List[Union[str, int]]] = field(default_factory=dict)
+    in_op: Dict[str, List[Union[str, int]]] = field(
+        default_factory=dict, metadata=config(field_name="in")
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         return {"in": self.in_op}
@@ -109,12 +107,14 @@ class GQLIncludes:
         return cls(in_op=data.get("in", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLExcludes:
     """GraphQL Excludes filter: {'exclude': {'field': ['value1', 'value2']}}"""
 
-    exclude_op: Dict[str, List[Union[str, int]]] = field(default_factory=dict)
+    exclude_op: Dict[str, List[Union[str, int]]] = field(
+        default_factory=dict, metadata=config(field_name="exclude")
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         return {"exclude": self.exclude_op}
@@ -124,63 +124,38 @@ class GQLExcludes:
         return cls(exclude_op=data.get("exclude", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLExcludeIfAny:
     """GraphQL Exclude If Any filter: {'excludeifany': {'field': ['value1', 'value2']}}"""
 
-    exclude_if_any_op: Dict[str, List[Union[str, int]]] = field(default_factory=dict)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"excludeifany": self.exclude_if_any_op}
+    exclude_if_any_op: Dict[str, List[Union[str, int]]] = field(
+        default_factory=dict, metadata=config(field_name="excludeifany")
+    )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLExcludeIfAny":
         return cls(exclude_if_any_op=data.get("excludeifany", {}))
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLIntersection:
     """GraphQL Intersection filter: {'and': [filter1, filter2, ...]}"""
 
-    and_op: List["GQLFilter"] = field(default_factory=list)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "and": [
-                (
-                    filter_item.to_dict()
-                    if hasattr(filter_item, "to_dict")
-                    else filter_item
-                )
-                for filter_item in self.and_op
-            ]
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GQLIntersection":
-        return cls(and_op=data.get("and", []))
+    and_op: List["GQLFilter"] = field(
+        default_factory=list, metadata=config(field_name="and")
+    )
 
 
-@dataclass_json
-@dataclass(frozen=True)
+@dataclass_json(letter_case=LetterCase.CAMEL)
+@dataclass
 class GQLUnion:
     """GraphQL Union filter: {'or': [filter1, filter2, ...]}"""
 
-    or_op: List["GQLFilter"] = field(default_factory=list)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "or": [
-                (
-                    filter_item.to_dict()
-                    if hasattr(filter_item, "to_dict")
-                    else filter_item
-                )
-                for filter_item in self.or_op
-            ]
-        }
+    or_op: List["GQLFilter"] = field(
+        default_factory=list, metadata=config(field_name="or")
+    )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLUnion":
@@ -211,21 +186,14 @@ class NestedContents:
         return cls(path=path, filter_content=filter_content)
 
 
-@dataclass_json
+@dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GQLNestedFilter:
     """GraphQL Nested filter: {'nested': {'path': 'field.subfield', ...filter}}"""
 
-    nested_op: NestedContents = field(default_factory=NestedContents)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"nested": self.nested_op.to_dict()}
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GQLNestedFilter":
-        nested_data = data.get("nested", {})
-        nested_contents = NestedContents.from_dict(nested_data)
-        return cls(nested_op=nested_contents)
+    nested_op: NestedContents = field(
+        default_factory=NestedContents, metadata=config(field_name="nested")
+    )
 
 
 # Union type for all GQL filters

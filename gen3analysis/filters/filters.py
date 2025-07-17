@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Union, Dict, Any, Protocol, TypeVar, Literal
+
 from dataclasses_json import dataclass_json, LetterCase
-from dataclasses import dataclass
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
@@ -145,6 +145,8 @@ Operation = Union[
     NestedFilter,
     ExcludeIfAny,
     Excludes,
+    Exists,
+    Missing,
 ]
 
 # Operations that have a field attribute
@@ -162,6 +164,80 @@ OperationWithField = Union[
 
 # Operations that have operands
 OperandsType = Union[Includes, Excludes, ExcludeIfAny, Intersection, UnionOr]
+
+
+def is_union(value: Any) -> bool:
+    """Check if the value is a UnionOr operation."""
+    return value.operator == "or"
+
+
+def is_intersection(value: Any) -> bool:
+    return value.operator == "and"
+
+
+def is_includes(value: Any) -> bool:
+    return value.operator == "in"
+
+
+def is_equals(value: Any) -> bool:
+    return value.operator == "="
+
+
+def is_notequals(value: Any) -> bool:
+    return value.operator == "!="
+
+
+def is_greaterThan(value: Any) -> bool:
+    return value.operator == ">"
+
+
+def is_greaterThanOrEquals(value: Any) -> bool:
+    return (
+        value.operator == ">="
+        and isinstance(value.operand, Union[str, int])
+        and isinstance(value.field, str)
+    )
+
+
+def is_lessThan(value: Any) -> bool:
+    return (
+        value.operator == "<"
+        and isinstance(value.operand, Union[str, int])
+        and isinstance(value.field, str)
+    )
+
+
+def is_lessThanOrEquals(value: Any) -> bool:
+    return (
+        value.operator == "<="
+        and isinstance(value.operand, Union[str, int])
+        and isinstance(value.field, str)
+    )
+
+
+def is_missing(value: Any) -> bool:
+    """Check if the value is a Missing operation."""
+    return value.operator == "missing" and isinstance(value.field, str)
+
+
+def is_exists(value: Any) -> bool:
+    """Check if the value is an Exists operation."""
+    return value.operator == "exists" and isinstance(value.field, str)
+
+
+def is_excludeifany(value: Any) -> bool:
+    """Check if the value is an ExcludeIfAny operation."""
+    return value.operator == "excludeifany"
+
+
+def is_excludes(value: Any) -> bool:
+    """Check if the value is an Excludes operation."""
+    return value.operator == "excludes"
+
+
+def is_nested(value: Any) -> bool:
+    """Check if the value is a NestedFilter operation."""
+    return value.operator == "nested" and isinstance(value.path, str)
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
@@ -220,24 +296,6 @@ def is_filter_set(input_obj: Any) -> bool:
         return False
 
     return True
-
-
-def is_union(value: Any) -> bool:
-    """Check if the value is a UnionOr operation."""
-    return (
-        isinstance(value, dict)
-        and value.get("operator") == "or"
-        and isinstance(value.get("operands"), list)
-    )
-
-
-def is_intersection(value: Any) -> bool:
-    """Check if the value is an Intersection operation."""
-    return (
-        isinstance(value, dict)
-        and value.get("operator") == "and"
-        and isinstance(value.get("operands"), list)
-    )
 
 
 def is_operands_type(operation: Operation) -> bool:

@@ -1,10 +1,11 @@
+from typing import Optional
 from contextlib import asynccontextmanager
 from importlib.metadata import version
+from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 import fastapi
 from cdislogging import get_logger
-from fastapi import FastAPI, HTTPException, APIRouter
-from gen3authz.client.arborist.client import ArboristClient
+from fastapi import FastAPI, APIRouter
 
 from gen3analysis.routes.survival import survival
 
@@ -15,6 +16,8 @@ from gen3analysis.config import logging
 from gen3analysis.routes.basic import basic_router
 
 route_aggregator = APIRouter()
+
+csrf_cache: Optional[CSRFTokenCache] = None
 
 route_definitions = [
     (basic_router, "", ["Basic"]),
@@ -40,6 +43,11 @@ async def lifespan(app: FastAPI):
     """
     # startup
     app_with_setup = app
+    global csrf_cache
+    csrf_cache = CSRFTokenCache(
+        rest_api_url="https://revproxy-service/_status",
+        token_ttl_seconds=3600,  # 1 hour
+    )
     yield
 
     # teardown

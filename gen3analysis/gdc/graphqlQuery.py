@@ -18,6 +18,7 @@ class GDCGQLClient:
                     response = await client.post(
                         self.graphql_url,
                         json={"query": query, "variables": variables or {}},
+                        timeout=None,
                     )
                     if response.status_code != 200:
                         if attempt < retry_count:

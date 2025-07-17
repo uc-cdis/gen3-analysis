@@ -1,48 +1,56 @@
-from typing import List, Dict, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import Response
-from starlette import status
+from typing import Optional, Dict
+from fastapi import APIRouter, Request
 from starlette.responses import JSONResponse
 from pydantic import BaseModel
-from gen3analysis.filters.filters import FilterSet
-import httpx
+
+from cdiserrors import InternalError, UserError
+
 import json
+import asyncio
+from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 
-CASE_BATCH_SIZE = 100000
+gdc_client = GDCGQLClient("https://portal.gdc.cancer.gov/auth/api/v0/graphql")
+
+CASE_BATCH_SIZE = 10
+
+GDCSurvivalQuery = f"""query GDCSurvivalCurve($filters: FiltersArgument) {{
+  explore {{
+    cases {{
+      hits(filters: $filters, first: {CASE_BATCH_SIZE}) {{
+        total
+        edges {{
+          node {{
+            case_id
+            submitter_id
+            project {{
+              project_id
+            }}
+            demographic {{
+              days_to_death
+              vital_status
+            }}
+            diagnoses {{
+              hits(filters: $filters) {{
+                edges {{
+                  node {{
+                    days_to_last_follow_up
+                  }}
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+"""
 
 
-def build_query(filters):
-    query = """  query CohortComparison(
-    $filters: FiltersArgument) {
-    viewer {
-      explore {
-        cases {
-         hits(filters: $filters, first:10000) {
-      total
-      edges {
-        node {
-          case_id
-          submitter_id
-          project {
-            project_id
-          }
-          demographic {
-            days_to_death
-            vital_status
-          }
-          days_to_lost_to_followup
-        }
-      }
-    }
-    }
-  }
-    }
-  }
-    """
-
-
-def get_curve(filters, req_opts):
+async def get_curve(
+    filters,
+    req_opts: Optional[Dict] = None,
+):
     filters = [
         filters,
         {
@@ -75,22 +83,35 @@ def get_curve(filters, req_opts):
             ],
         },
         {"op": "not", "content": {"field": "demographic.vital_status"}},
+        {
+            "op": "in",
+            "content": {
+                "field": "cases.project.project_id",
+                "value": ["MMRF-COMMPASS"],
+            },
+        },
     ]
 
     filters = [f for f in filters if "op" in f and "content" in f]
-
-    data = cases_with_genes.search(
-        {
-            "fields": "diagnoses.days_to_last_follow_up,demographic.days_to_death,demographic.vital_status,case_id,submitter_id,project.project_id",
-            "size": req_opts.get("size", CASE_BATCH_SIZE),
-            "filters": {"op": "and", "content": filters},
-        }
+    data = await gdc_client.execute(
+        query=GDCSurvivalQuery, variables={"filters": {"op": "and", "content": filters}}
     )
+
+    if data.get("error"):
+        raise InternalError(data.get("error"))
+
+    dataRoot = data.get("data", {}).get("explore", {}).get("cases", {}).get("hits", {})
+
+    if dataRoot.get("total", 0) == 0:
+        return []
+
+    print(">>>>>> ", dataRoot)
 
 
 # Define a Pydantic model for the request body
 class PlotRequest(BaseModel):
     filters: Dict
+    req_opts: Dict = {}
 
 
 survival = APIRouter()
@@ -113,45 +134,22 @@ async def create_plot(
     Raises:
         HTTPException: If filters are invalid or GraphQL query fails
     """
-    # check if data.filters is FilterSet
-    if not isinstance(data.filters, FilterSet):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="filters must be a FilterSet",
-        )
-
     try:
-        # Construct GraphQL query
-        variables = {"filter": data.filters}
+        filters = data.get("filters", [{}])
+        if isinstance(filters, str):
+            filters = json.loads(filters)
+    except ValueError:
+        raise UserError("filters must be valid json")
 
-        # Send GraphQL request
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "http://guppy-service/graphql",
-                json={"query": query, "variables": variables},
-            )
-            response.raise_for_status()
+    curves = []
+    non_empty_curves = []
+    for f in filters:
+        curve = get_curve(f, data.get("req_opts", {}))
+        curves.append(curve)
+        if curve:
+            non_empty_curves.append(curve)
 
-        query_data = response.json()
-        if "errors" in query_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"GraphQL query failed: {query_data['errors']}",
-            )
 
-        # Process and return results
-        results = query_data.get("data", {}).get("subject", [])
-        return JSONResponse(
-            status_code=status.HTTP_200_OK, content={"results": results}
-        )
-
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Failed to connect to GraphQL service: {str(e)}",
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}",
-        )
+if __name__ == "__main__":
+    print("Running in debug mode")
+    asyncio.run(get_curve({}))

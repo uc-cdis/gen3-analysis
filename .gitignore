@@ -12,6 +12,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+gen3analysis/survivalpy
+
 # C extensions
 *.so
 

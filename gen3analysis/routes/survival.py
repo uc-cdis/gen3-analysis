@@ -1,7 +1,13 @@
-from typing import Optional, Dict
-from fastapi import APIRouter, Request
+from typing import Optional, Dict, List
+from fastapi import APIRouter, Request, Depends, HTTPException
 from starlette.responses import JSONResponse
+from starlette import status
 from pydantic import BaseModel
+
+from gen3analysis.dependencies.gdc_graphql_client import get_gdc_graphql_client
+from gen3analysis.survivalpy.logrank import LogRankTest
+from gen3analysis.survivalpy.survival import Analyzer, Datum
+from gen3analysis.clients import gdc_graphql_client
 
 from cdiserrors import InternalError, UserError
 
@@ -9,9 +15,8 @@ import json
 import asyncio
 from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 
-gdc_client = GDCGQLClient("https://portal.gdc.cancer.gov/auth/api/v0/graphql")
 
-CASE_BATCH_SIZE = 10
+CASE_BATCH_SIZE = 1000
 
 GDCSurvivalQuery = f"""query GDCSurvivalCurve($filters: FiltersArgument) {{
   explore {{
@@ -47,8 +52,69 @@ GDCSurvivalQuery = f"""query GDCSurvivalCurve($filters: FiltersArgument) {{
 """
 
 
-async def get_curve(
+def make_datum(d, case):
+    demographic = case.get("demographic", {})
+    days_to_death = demographic.get("days_to_death")
+    days = (
+        days_to_death or d.get("days_to_last_follow_up")
+        if d is not None
+        else days_to_death
+    )
+    if days is None:
+        return None
+
+    meta = {"id": case["case_id"]}
+    if "submitter_id" in case:
+        meta["submitter_id"] = case["submitter_id"]
+
+    if case.get("project", {}).get("project_id") is not None:
+        meta["project_id"] = case["project"]["project_id"]
+
+    return Datum(days, demographic.get("vital_status", "").lower() == "alive", meta)
+
+
+def make_data(ds, case):
+    return list(filter(bool, (make_datum(d["node"], case) for d in ds)))
+
+
+def transform(data):
+    r = [
+        # default value is [{}] to ensure that if there is no diagnose but there is days_to_death and vital_status
+        # make_data function still return the not None value
+        make_data(
+            c["node"].get("diagnoses", {}).get("hits", {}).get("edges", {}), c["node"]
+        )
+        for c in data["edges"]
+        if "diagnoses" in c["node"] or "demographic" in c["node"]
+    ]
+    return [item for sublist in r for item in sublist]
+
+
+def prepare_donor(donor, estimate):
+    donor["survivalEstimate"] = estimate
+    donor["id"] = donor["meta"]["id"]
+    donor["submitter_id"] = donor["meta"]["submitter_id"]
+    donor["project_id"] = donor["meta"]["project_id"]
+    donor.pop("meta", None)
+    return donor
+
+
+def prepare_result(result):
+    items = [item.to_json_dict() for item in result]
+
+    return {
+        "meta": {"id": id(result)},
+        "donors": [
+            prepare_donor(donor, interval.get("cumulativeSurvival"))
+            for interval in items
+            for donor in interval["donors"]
+        ],
+    }
+
+
+def get_curve(
     filters,
+    gdc_graphql_client,
     req_opts: Optional[Dict] = None,
 ):
     filters = [
@@ -93,7 +159,7 @@ async def get_curve(
     ]
 
     filters = [f for f in filters if "op" in f and "content" in f]
-    data = await gdc_client.execute(
+    data = gdc_graphql_client.execute(
         query=GDCSurvivalQuery, variables={"filters": {"op": "and", "content": filters}}
     )
 
@@ -105,12 +171,14 @@ async def get_curve(
     if dataRoot.get("total", 0) == 0:
         return []
 
-    print(">>>>>> ", dataRoot)
+    results = Analyzer(transform(dataRoot)).compute()
+
+    return results
 
 
 # Define a Pydantic model for the request body
 class PlotRequest(BaseModel):
-    filters: Dict
+    filters: str
     req_opts: Dict = {}
 
 
@@ -118,9 +186,10 @@ survival = APIRouter()
 
 
 @survival.post("/plot")
-async def create_plot(
+def create_plot(
     request: Request,
     data: PlotRequest,
+    gdc_graphql_client: GDCGQLClient = Depends(get_gdc_graphql_client),
 ) -> JSONResponse:
     """Create a survival plot based on filtered data from Gen3.
 
@@ -134,8 +203,10 @@ async def create_plot(
     Raises:
         HTTPException: If filters are invalid or GraphQL query fails
     """
+
+    # return JSONResponse(status_code=status.HTTP_200_OK, content={"results" : data.filters})
     try:
-        filters = data.get("filters", [{}])
+        filters = data.filters
         if isinstance(filters, str):
             filters = json.loads(filters)
     except ValueError:
@@ -144,10 +215,24 @@ async def create_plot(
     curves = []
     non_empty_curves = []
     for f in filters:
-        curve = get_curve(f, data.get("req_opts", {}))
-        curves.append(curve)
+        curve = get_curve(f, gdc_graphql_client, {})
+        curves.append(
+            curve,
+        )
         if curve:
             non_empty_curves.append(curve)
+
+    stats = {}
+    if len(non_empty_curves) > 1:
+        stats = LogRankTest(survival_results=non_empty_curves).compute()
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "results": [prepare_result(result) for result in curves],
+            "overallStats": stats,
+        },
+    )
 
 
 if __name__ == "__main__":

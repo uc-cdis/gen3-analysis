@@ -2,8 +2,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 import asyncio
+import logging
 import httpx
 from fastapi import HTTPException
+
+logging.basicConfig(level=logging.INFO)
 
 
 @dataclass
@@ -21,6 +24,7 @@ class CSRFTokenCache:
         self.token_ttl = timedelta(seconds=token_ttl_seconds)
         self._cached_token: Optional[CachedToken] = None
         self._lock = asyncio.Lock()
+        print("initialized")
 
     async def get_token(self) -> str:
         async with self._lock:
@@ -29,15 +33,16 @@ class CSRFTokenCache:
             return self._cached_token.token
 
     async def _refresh_token(self):
-        async with httpx.AsyncClient() as session:
-            async with session.get(self.rest_api_url) as response:
-                if response.status != 200:
+        try:
+            async with httpx.AsyncClient() as session:
+                response = await session.get(self.rest_api_url)
+                if response.status_code != 200:
                     raise HTTPException(
                         status_code=500, detail="Failed to fetch CSRF token"
                     )
 
-                data = await response.json()
-                token = data.get("csrf_token")  # get token from response
+                data = response.json()
+                token = data.get("csrf")  # get token from response
 
                 if not token:
                     raise HTTPException(
@@ -47,3 +52,16 @@ class CSRFTokenCache:
                 self._cached_token = CachedToken(
                     token=token, expires_at=datetime.utcnow() + self.token_ttl
                 )
+        except httpx.ConnectError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Connection error while fetching CSRF token: {str(e)}",
+            )
+        except httpx.TimeoutException as e:
+            raise HTTPException(
+                status_code=504, detail=f"Timeout while fetching CSRF token: {str(e)}"
+            )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=500, detail=f"Error fetching CSRF token: {str(e)}"
+            )

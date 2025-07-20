@@ -92,10 +92,11 @@ vars = {
 }
 
 
-async def main():
-    #  result = await gdc_client.execute(query=create_cases_query(), variables=variables)
-    result = await gdc_client.execute(query=query, variables=vars)
-    print(result)
+# async def main():
 
-
-asyncio.run(main())
+#     #  result = await gdc_client.execute(query=create_cases_query(), variables=variables)
+#     result = await gdc_client.execute(query=query, variables=vars)
+#     print(result)
+#
+#
+# asyncio.run(main())

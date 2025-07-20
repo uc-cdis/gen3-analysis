@@ -11,32 +11,37 @@ from gen3analysis.filters.convertGDCGQLFiltersToFilters import (
 
 GDCFilters = [
     {
-        "op": "or",
+        "op": "and",
         "content": [
             {
-                "op": "and",
+                "op": "or",
                 "content": [
                     {
-                        "op": ">",
-                        "content": {
-                            "field": "demographic.days_to_death",
-                            "value": 0,
-                        },
+                        "op": "and",
+                        "content": [
+                            {
+                                "op": ">",
+                                "content": {
+                                    "field": "demographic.days_to_death",
+                                    "value": 0,
+                                },
+                            },
+                        ],
                     },
-                ],
-            },
-            {
-                "op": "and",
-                "content": [
                     {
-                        "op": ">",
-                        "content": {
-                            "field": "diagnoses.days_to_last_follow_up",
-                            "value": 0,
-                        },
+                        "op": "and",
+                        "content": [
+                            {
+                                "op": ">",
+                                "content": {
+                                    "field": "diagnoses.days_to_last_follow_up",
+                                    "value": 0,
+                                },
+                            },
+                        ],
                     },
                 ],
-            },
+            }
         ],
     },
     {"op": "not", "content": {"field": "demographic.vital_status"}},

@@ -3,11 +3,11 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from starlette.responses import JSONResponse
 from starlette import status
 from pydantic import BaseModel
+from glom import glom
 
 from gen3analysis.dependencies.gdc_graphql_client import get_gdc_graphql_client
 from gen3analysis.survivalpy.logrank import LogRankTest
 from gen3analysis.survivalpy.survival import Analyzer, Datum
-from gen3analysis.clients import gdc_graphql_client
 
 from cdiserrors import InternalError, UserError
 
@@ -166,12 +166,11 @@ def get_curve(
     if data.get("error"):
         raise InternalError(data.get("error"))
 
-    dataRoot = data.get("data", {}).get("explore", {}).get("cases", {}).get("hits", {})
-
-    if dataRoot.get("total", 0) == 0:
+    data_root = glom(data, "data.explore.cases.hits", default={})
+    if data_root.get("total", 0) == 0:
         return []
 
-    results = Analyzer(transform(dataRoot)).compute()
+    results = Analyzer(transform(data_root)).compute()
 
     return results
 
@@ -212,6 +211,7 @@ def create_plot(
     except ValueError:
         raise UserError("filters must be valid json")
 
+    # TODO: add try..except
     curves = []
     non_empty_curves = []
     for f in filters:
@@ -237,4 +237,5 @@ def create_plot(
 
 if __name__ == "__main__":
     print("Running in debug mode")
-    asyncio.run(get_curve({}))
+    gdc_client = GDCGQLClient("https://portal.gdc.cancer.gov/auth/api/v0/graphql")
+    get_curve({}, gdc_client)

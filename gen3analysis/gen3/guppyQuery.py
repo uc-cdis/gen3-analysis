@@ -2,13 +2,21 @@ import httpx
 import asyncio
 from fastapi import HTTPException
 from typing import Dict, Any
+
+from gen3analysis.gen3.auth import Gen3AuthToken
 from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 
 class GuppyGQLClient:
-    def __init__(self, graphql_url: str, csrf_cache: CSRFTokenCache):
-        self.graphql_url = "https://guppy-service/graphql"
+    def __init__(
+        self,
+        graphql_url: str,
+        csrf_cache: CSRFTokenCache,
+        gen3_auth_token: Gen3AuthToken,
+    ):
+        self.graphql_url = graphql_url
         self.csrf_cache = csrf_cache
+        self.gen3_auth_token = gen3_auth_token
 
     async def execute(
         self, query: str, variables: Dict[str, Any] = None, retry_count: int = 1
@@ -16,14 +24,13 @@ class GuppyGQLClient:
         for attempt in range(retry_count + 1):
             try:
                 csrf_token = await self.csrf_cache.get_token()
-
+                gen3_auth_token = await self.gen3_auth_token.get_access_token()
                 headers = {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": csrf_token,
+                    "Authorization": f"Bearer {gen3_auth_token}",
                 }
-
                 payload = {"query": query, "variables": variables or {}}
-
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         self.graphql_url, json=payload, headers=headers

@@ -5,7 +5,10 @@ from gen3analysis.clients import CSRFTokenCache, GuppyGQLClient, GDCGQLClient
 import fastapi
 from cdislogging import get_logger
 from fastapi import FastAPI, APIRouter
+
+from gen3analysis.gen3.auth import Gen3AuthToken
 from gen3analysis.routes.survival import survival
+from gen3analysis.routes.survivalGen3 import survivalGen3
 from gen3analysis import config
 from gen3analysis.config import logging
 from gen3analysis.routes.basic import basic_router
@@ -16,6 +19,7 @@ route_aggregator = APIRouter()
 route_definitions = [
     (basic_router, "", ["Basic"]),
     (survival, "/survival", ["Survival"]),
+    (survivalGen3, "/survivalGen3", ["survivalGen3"]),
 ]
 
 for router, prefix, tags in route_definitions:
@@ -37,14 +41,20 @@ async def lifespan(app: FastAPI):
     """
     # startup
     app_with_setup = app
-    global csrf_cache, guppy_client, gdc_graphql_client
+    global csrf_cache, guppy_client, gdc_graphql_client, gen_auth_token
     csrf_cache = CSRFTokenCache(
-        rest_api_url="https://revproxy-service/_status",
+        rest_api_url="https://dev-virtuallab.themmrf.org/_status",
         token_ttl_seconds=3600,  # 1 hour
     )
 
+    gen_auth_token = Gen3AuthToken(
+        endpoint="https://dev-virtuallab.themmrf.org",
+    )
+
     guppy_client = GuppyGQLClient(
-        graphql_url="https://guppy-service/graphql", csrf_cache=csrf_cache
+        graphql_url="https://dev-virtuallab.themmrf.org/guppy/graphql",
+        csrf_cache=csrf_cache,
+        gen3_auth_token=gen_auth_token,
     )
 
     gdc_graphql_client = GDCGQLClient(
@@ -54,6 +64,7 @@ async def lifespan(app: FastAPI):
     app.state.csrf_cache = csrf_cache
     app.state.guppy_client = guppy_client
     app.state.gdc_graphql_client = gdc_graphql_client
+    app.state.gen_auth_token = gen_auth_token
 
     yield
 
@@ -63,6 +74,7 @@ async def lifespan(app: FastAPI):
     app.state.csrf_cache = None
     app.state.guppy_client = None
     app.state.gdc_graphql_client = None
+    app.state.gen_auth_token = None
 
     # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
     # "child_exit" is defined in the gunicorn.conf.py

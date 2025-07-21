@@ -2,11 +2,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 import asyncio
-import logging
 import httpx
 from fastapi import HTTPException
 
-logging.basicConfig(level=logging.INFO)
+from gen3analysis.config import logger
 
 
 @dataclass
@@ -24,7 +23,7 @@ class CSRFTokenCache:
         self.token_ttl = timedelta(seconds=token_ttl_seconds)
         self._cached_token: Optional[CachedToken] = None
         self._lock = asyncio.Lock()
-        print("initialized")
+        logger.info("CSRFTokenCache initialized")
 
     async def get_token(self) -> str:
         async with self._lock:

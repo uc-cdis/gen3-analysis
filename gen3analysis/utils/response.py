@@ -1,11 +1,6 @@
 """Helper functions for creating flask Response objects."""
 
-import datetime
 import json
-import logging
-from markupsafe import Markup
-
-logger = logging.getLogger(__name__)
 
 
 def is_pretty(options):

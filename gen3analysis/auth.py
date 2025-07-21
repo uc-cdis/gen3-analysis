@@ -10,7 +10,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED as HTTP_401_UNAUTHENTICATED
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 
 from gen3analysis import config
-from gen3analysis.config import logging
+from gen3analysis.config import logger
 
 get_bearer_token = HTTPBearer(auto_error=False)
 arborist = ArboristClient()
@@ -46,7 +46,7 @@ async def authorize_request(
         and no token is provided, the check is also bypassed.
     """
     if config.DEBUG_SKIP_AUTH and not token:
-        logging.warning(
+        logger.warning(
             "DEBUG_SKIP_AUTH mode is on and no token was provided, BYPASSING authorization check"
         )
         return
@@ -61,9 +61,7 @@ async def authorize_request(
     try:
         user_id = await get_user_id(token, request)
     except HTTPException as exc:
-        logging.info(
-            f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}"
-        )
+        logger.info(f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}")
         user_id = "Unknown"
     is_authorized = await arborist.auth_request(
         token.credentials,
@@ -76,12 +74,12 @@ async def authorize_request(
         try:
             # Create the policy (in case it didn't exist for the auth_request), then retry
             username = await get_username(token, request)
-            logging.debug(f"Attempting to create policy for user {user_id}...")
+            logger.debug(f"Attempting to create policy for user {user_id}...")
             await create_user_policy(
                 user_id=user_id, username=username, arborist_client=arborist
             )
 
-            logging.debug("Retrying authz request...")
+            logger.debug("Retrying authz request...")
 
             is_authorized = await arborist.auth_request(
                 token.credentials,
@@ -90,13 +88,13 @@ async def authorize_request(
                 resources=authz_resources,
             )
             if not is_authorized:
-                logging.info(
+                logger.info(
                     f"user `{user_id}` does not have `{authz_access_method}` access "
                     f"on `{authz_resources}`"
                 )
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN)
         except ArboristError as exc:
-            logging.error(f"arborist request failed, exc: {exc}")
+            logger.error(f"arborist request failed, exc: {exc}")
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
 
@@ -121,7 +119,7 @@ async def get_user_id(
         If `DEBUG_SKIP_AUTH` is enabled and no token is provided, user_id is set to "0".
     """
     if config.DEBUG_SKIP_AUTH and not token:
-        logging.warning(
+        logger.warning(
             "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING user_id = 0"
         )
         return "0"
@@ -154,7 +152,7 @@ async def get_username(
         If `DEBUG_SKIP_AUTH` is enabled and no token is provided, username is set to "librarian".
     """
     if config.DEBUG_SKIP_AUTH and not token:
-        logging.warning(
+        logger.warning(
             "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING username = 'librarian'"
         )
         return "0"
@@ -196,7 +194,7 @@ async def _get_token_claims(
     if request:
         audience = f"https://{request.base_url.netloc}/user"
     else:
-        logging.warning(
+        logger.warning(
             "Unable to determine expected audience b/c request context was not provided... setting audience to `None`."
         )
         audience = None
@@ -204,13 +202,13 @@ async def _get_token_claims(
     try:
         # NOTE: token can be None if no Authorization header was provided, we expect
         #       this to cause a downstream exception since it is invalid
-        logging.debug(
+        logger.debug(
             f"checking access token for scopes: `user` and `openid` and audience: `{audience}`"
         )
         g = access_token("user", "openid", audience=audience, purpose="access")
         token_claims = await g(token)
     except Exception as exc:
-        logging.error(exc.detail if hasattr(exc, "detail") else exc, exc_info=True)
+        logger.error(exc.detail if hasattr(exc, "detail") else exc, exc_info=True)
         raise HTTPException(
             HTTP_401_UNAUTHENTICATED,
             "Could not verify, parse, and/or validate scope from provided access token.",
@@ -253,13 +251,13 @@ async def create_user_policy(
     is_resource_assigned_to_user = False
     try:
         resources = await arborist_client.list_resources_for_user(username)
-        logging.info(
+        logger.info(
             f"Found user's data-library assigned to user in arborist, skipping policy generation"
         )
         is_resource_assigned_to_user = resource in set(resources)
     except ArboristError as e:
         if e.code == 404:
-            logging.info(
+            logger.info(
                 f"Unable to find {username} in arborist, creating and setting up data-library policy"
             )
         else:
@@ -269,10 +267,10 @@ async def create_user_policy(
         return
 
     await arborist_client.create_user_if_not_exist(username)
-    logging.info(f"Policy does not exist for user_id {user_id}")
+    logger.info(f"Policy does not exist for user_id {user_id}")
     role_ids = ["library_owner"]
 
-    logging.info("Attempting to create arborist resource: {}".format(resource))
+    logger.info("Attempting to create arborist resource: {}".format(resource))
     await arborist_client.update_resource(
         path="/",
         resource_json={
@@ -290,13 +288,13 @@ async def create_user_policy(
         "resource_paths": [resource],
     }
 
-    logging.info(f"Policy {user_id} does not exist, attempting to create....")
+    logger.info(f"Policy {user_id} does not exist, attempting to create....")
 
     await arborist_client.update_policy(
         policy_id=user_id, policy_json=policy_json, create_if_not_exist=True
     )
 
-    logging.info(
+    logger.info(
         f"Granting resource {resource} to {username} with policy_id {user_id}...."
     )
 

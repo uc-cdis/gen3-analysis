@@ -1,7 +1,7 @@
 import os
 from json import JSONDecodeError, load
 
-import cdislogging
+from cdislogging import get_logger
 from starlette.config import Config
 from starlette.datastructures import Secret
 
@@ -14,7 +14,7 @@ else:
 config = Config(PATH)
 DEBUG = config("DEBUG", cast=bool, default=False)
 
-logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
+logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "info")
 
 # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
 GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)
@@ -100,6 +100,3 @@ URL_PREFIX = config("URL_PREFIX", default=None)
 
 PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
 # ENDPOINTS_WITHOUT_METRICS = {"/metrics", "/metrics/"} | PUBLIC_ROUTES
-
-
-logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")

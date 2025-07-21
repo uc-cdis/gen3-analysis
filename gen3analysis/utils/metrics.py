@@ -1,8 +1,9 @@
-import logging
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+
+from gen3analysis.config import logger
 
 
 class MetricModel(BaseModel):
@@ -104,7 +105,7 @@ def get_from_cfg_metadata(
         configured_value = type_(metadata.get(field, default))
     except (TypeError, ValueError):
         configured_value = default
-        logging.error(
+        logger.error(
             f"invalid configuration: "
             f"{metadata.get(field)}. Cannot convert to {type_}. "
             f"Defaulting to {default} and continuing..."

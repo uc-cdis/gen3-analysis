@@ -1,16 +1,16 @@
+import asyncio
 from typing import Optional
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 from gen3analysis.clients import CSRFTokenCache, GuppyGQLClient, GDCGQLClient
 import fastapi
-from cdislogging import get_logger
 from fastapi import FastAPI, APIRouter
 
 from gen3analysis.gen3.auth import Gen3AuthToken
 from gen3analysis.routes.survival import survival
 from gen3analysis.routes.survivalGen3 import survivalGen3
 from gen3analysis import config
-from gen3analysis.config import logging
+from gen3analysis.config import logger
 from gen3analysis.routes.basic import basic_router
 
 route_aggregator = APIRouter()
@@ -87,13 +87,13 @@ async def lifespan(app: FastAPI):
 #         app_with_setup (FastAPI): the fastapi app with arborist client
 #
 #     """
-#     logging.debug("Startup policy engine (Arborist) connection test initiating...")
+#     logger.debug("Startup policy engine (Arborist) connection test initiating...")
 #     arborist_client = app_with_setup.state.arborist_client
 #     if not arborist_client.healthy():
-#         logging.exception(
+#         logger.exception(
 #             "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
 #         )
-#         logging.debug("Arborist is unhealthy")
+#         logger.debug("Arborist is unhealthy")
 #         raise Exception("Arborist unhealthy, aborting...")
 
 
@@ -127,8 +127,45 @@ def get_app() -> fastapi.FastAPI:
         lifespan=lifespan,
     )
     fastapi_app.include_router(route_aggregator)
+    fastapi_app.add_middleware(ClientDisconnectMiddleware)
 
     return fastapi_app
+
+
+class ClientDisconnectMiddleware:
+    def __init__(self, app):
+        self._app = app
+
+    async def __call__(self, scope, receive, send):
+        loop = asyncio.get_running_loop()
+        rv = loop.create_task(self._app(scope, receive, send))
+        waiter = None
+        cancelled = False
+        if scope["type"] == "http":
+
+            def add_close_watcher():
+                nonlocal waiter
+
+                async def wait_closed():
+                    nonlocal cancelled
+                    while True:
+                        message = await receive()
+                        if message["type"] == "http.disconnect":
+                            if not rv.done():
+                                cancelled = True
+                                rv.cancel()
+                            break
+
+                waiter = loop.create_task(wait_closed())
+
+            scope["add_close_watcher"] = add_close_watcher
+        try:
+            await rv
+        except asyncio.CancelledError:
+            if not cancelled:
+                raise
+        if waiter and not waiter.done():
+            waiter.cancel()
 
 
 app_instance = get_app()

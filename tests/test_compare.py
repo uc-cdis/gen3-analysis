@@ -1,27 +1,44 @@
+import json
+
 import pytest
 from unittest.mock import MagicMock
 
 
-def mock_guppy_data(app):
+cohort1 = {
+    "AND": [
+        {
+            "=": {
+                "project_id": "MMRF-COMMPASS",
+            },
+        },
+        # {
+        #     "=": {
+        #         "vital_status": "alive",
+        #     },
+        # },
+    ],
+}
+
+cohort2 = {
+    "AND": [
+        {
+            "=": {
+                "project_id": "MMRF-COMMPASS",
+            },
+        },
+        # {
+        #     "=": {
+        #         "ethnicity": "not hispanic or latino",
+        #     },
+        # },
+    ],
+}
+
+
+def mock_guppy_data(app, data):
+    # bk = app.state.guppy_client
+
     async def mocked_guppy_data():
-        data = {
-            "data": {
-                "cohort1": {
-                    "case": {
-                        "project_id": {
-                            "histogram": [{"key": "MMRF-COMMPASS", "count": 995}]
-                        }
-                    }
-                },
-                "cohort2": {
-                    "case": {
-                        "project_id": {
-                            "histogram": [{"key": "MMRF-COMMPASS", "count": 995}]
-                        }
-                    }
-                },
-            }
-        }
         return data
 
     mocked_guppy_client = MagicMock()
@@ -30,54 +47,89 @@ def mock_guppy_data(app):
     ).__anext__()
     app.state.guppy_client = mocked_guppy_client
 
+    # yield # TODO doesn't work
+    # app.state.guppy_client = bk
+
 
 @pytest.mark.asyncio
-async def test_compare_endpoint(app, client):
-    cohort1 = {
-        "AND": [
-            {
-                "=": {
-                    "project_id": "MMRF-COMMPASS",
-                },
+async def test_compare_facets_endpoint(app, client):
+    mocked_guppy_data = {
+        "data": {
+            "cohort1": {
+                "case": {
+                    "demographic": {
+                    "ethnicity": {
+                        "histogram": [
+                            {"key": "hispanic or latino", "count": 99},
+                            {"key": "not hispanic or latino", "count": 45},
+                        ]
+                    }},
+                    "abc": {
+                    "def": {
+                    "ghi": {
+                        "histogram": [
+                            {"key": "key1", "count": 4},
+                            {"key": "key2", "count": 7},
+                        ]
+                    }}},
+                }
             },
-            # {
-            #     "=": {
-            #         "gender": "male",
-            #     },
-            # },
-        ],
-    }
-    cohort2 = {
-        "AND": [
-            {
-                "=": {
-                    "project_id": "MMRF-COMMPASS",
-                },
+            "cohort2": {
+                "case": {
+                    "demographic": {
+                    "ethnicity": {
+                        "histogram": [
+                            {"key": "hispanic or latino", "count": 0},
+                            {"key": "not hispanic or latino", "count": 30},
+                        ]
+                    }},
+                    "abc": {
+                    "def": {
+                    "ghi": {
+                        "histogram": [
+                            {"key": "key1", "count": 66},
+                            {"key": "key2", "count": 21},
+                        ]
+                    }}},
+                }
             },
-            # {
-            #     "=": {
-            #         "ethnicity": "not hispanic or latino",
-            #     },
-            # },
-        ],
+        }
     }
+    mock_guppy_data(app, mocked_guppy_data)
+
     body = {
+        "doc_type": "case",
         "cohort1": cohort1,
         "cohort2": cohort2,
         "facets": [
-            # "ethnicity",
-            # "gender",
-            # "race",
-            # "vital_status",
-            "project_id",  # TODO remove
+            "demographic.ethnicity",
+            "abc.def.ghi",
             # "age_at_diagnosis",
         ],
         "interval": 3652.5,
     }
-
-    mock_guppy_data(app)
-
-    res = await client.post("/compare/facet", json=body)
+    res = await client.post("/compare/facets", json=body)
     assert res.status_code == 200, res.json()
-
-    import json; print(json.dumps(res.json(), indent=2))
+    print("Result:", json.dumps(res.json(), indent=2))
+    assert res.json() == {
+        "cohort1": {
+            "facets": {
+                "demographic.ethnicity": {
+                    "buckets": mocked_guppy_data["data"]["cohort1"]["case"]["demographic"]["ethnicity"]["histogram"]
+                },
+                "abc.def.ghi": {
+                    "buckets": mocked_guppy_data["data"]["cohort1"]["case"]["abc"]["def"]["ghi"]["histogram"]
+                }
+            }
+        },
+        "cohort2": {
+            "facets": {
+                "demographic.ethnicity": {
+                    "buckets": mocked_guppy_data["data"]["cohort2"]["case"]["demographic"]["ethnicity"]["histogram"]
+                },
+                "abc.def.ghi": {
+                    "buckets": mocked_guppy_data["data"]["cohort2"]["case"]["abc"]["def"]["ghi"]["histogram"]
+                }
+            }
+        },
+    }

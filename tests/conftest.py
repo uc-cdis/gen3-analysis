@@ -13,8 +13,6 @@ def app():
 
 @pytest_asyncio.fixture(scope="function")
 async def client(app):
-    # app = get_app()
-
     async with LifespanManager(app):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"

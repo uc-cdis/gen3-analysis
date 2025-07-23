@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock
 
 
-project_id = "MMRF-COMMPASS"  # TODO change this before merging
+project_id = "test-project-id"
 cohort1 = {
     "AND": [
         {"=": {"project_id": project_id}},
@@ -36,7 +36,7 @@ def mock_guppy_data(app, data):
     ).__anext__()
     app.state.guppy_client = mocked_guppy_client
 
-    # yield # TODO doesn't work
+    # yield # TODO this doesn't work. Need to reset between tests
     # app.state.guppy_client = bk
 
 

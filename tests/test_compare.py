@@ -17,7 +17,7 @@ cohort2 = {
         {
             "nested": {
                 "path": "demographic",
-                "=": {"ethnicity": "not hispanic or latino"},
+                "=": {"ethnicity": "hispanic or latino"},
             }
         },
     ]
@@ -42,42 +42,6 @@ def mock_guppy_data(app, data):
 
 @pytest.mark.asyncio
 async def test_compare_facets_endpoint(app, client):
-
-    {
-        "data": {
-            "cohort1": {
-                "case": {
-                    "project_id": {
-                        "histogram": [{"key": "MMRF-COMMPASS", "count": 804}]
-                    },
-                    "demographic": {
-                        "ethnicity": {
-                            "histogram": [
-                                {"key": "not hispanic or latino", "count": 560},
-                                {"key": "not reported", "count": 191},
-                                {"key": "hispanic or latino", "count": 53},
-                            ]
-                        }
-                    },
-                }
-            },
-            "cohort2": {
-                "case": {
-                    "project_id": {
-                        "histogram": [{"key": "MMRF-COMMPASS", "count": 729}]
-                    },
-                    "demographic": {
-                        "ethnicity": {
-                            "histogram": [
-                                {"key": "not hispanic or latino", "count": 729}
-                            ]
-                        }
-                    },
-                }
-            },
-        }
-    }
-
     mocked_guppy_data = {
         "data": {
             "cohort1": {

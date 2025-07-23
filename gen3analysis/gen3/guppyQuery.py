@@ -1,8 +1,10 @@
 import httpx
 import asyncio
 from fastapi import HTTPException
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 from typing import Dict, Any
 
+from gen3analysis.config import logger
 from gen3analysis.gen3.auth import Gen3AuthToken
 from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
@@ -51,6 +53,14 @@ class GuppyGQLClient:
                         if attempt < retry_count:
                             await self.csrf_cache._refresh_token()  # Force refresh
                             continue
+
+                    if result.get("errors"):
+                        err_msg = f"GuppyGQLClient error: {result['errors']}"
+                        logger.error(err_msg)
+                        raise HTTPException(
+                            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=err_msg,
+                        )
 
                     return result
 

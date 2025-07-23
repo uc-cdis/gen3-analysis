@@ -5,33 +5,13 @@ from unittest.mock import MagicMock
 
 
 cohort1 = {
-    "AND": [
-        {
-            "=": {
-                "project_id": "MMRF-COMMPASS",
-            },
-        },
-        # {
-        #     "=": {
-        #         "vital_status": "alive",
-        #     },
-        # },
-    ],
+    "AND": [{"=": {"project_id": "MMRF-COMMPASS"}}, {"=": {"vital_status": "alive"}}]
 }
-
 cohort2 = {
     "AND": [
-        {
-            "=": {
-                "project_id": "MMRF-COMMPASS",
-            },
-        },
-        # {
-        #     "=": {
-        #         "ethnicity": "not hispanic or latino",
-        #     },
-        # },
-    ],
+        {"=": {"project_id": "MMRF-COMMPASS"}},
+        {"=": {"ethnicity": "not hispanic or latino"}},
+    ]
 }
 
 
@@ -58,39 +38,45 @@ async def test_compare_facets_endpoint(app, client):
             "cohort1": {
                 "case": {
                     "demographic": {
-                    "ethnicity": {
-                        "histogram": [
-                            {"key": "hispanic or latino", "count": 99},
-                            {"key": "not hispanic or latino", "count": 45},
-                        ]
-                    }},
+                        "ethnicity": {
+                            "histogram": [
+                                {"key": "hispanic or latino", "count": 99},
+                                {"key": "not hispanic or latino", "count": 45},
+                            ]
+                        }
+                    },
                     "abc": {
-                    "def": {
-                    "ghi": {
-                        "histogram": [
-                            {"key": "key1", "count": 4},
-                            {"key": "key2", "count": 7},
-                        ]
-                    }}},
+                        "def": {
+                            "ghi": {
+                                "histogram": [
+                                    {"key": "key1", "count": 4},
+                                    {"key": "key2", "count": 7},
+                                ]
+                            }
+                        }
+                    },
                 }
             },
             "cohort2": {
                 "case": {
                     "demographic": {
-                    "ethnicity": {
-                        "histogram": [
-                            {"key": "hispanic or latino", "count": 0},
-                            {"key": "not hispanic or latino", "count": 30},
-                        ]
-                    }},
+                        "ethnicity": {
+                            "histogram": [
+                                {"key": "hispanic or latino", "count": 0},
+                                {"key": "not hispanic or latino", "count": 30},
+                            ]
+                        }
+                    },
                     "abc": {
-                    "def": {
-                    "ghi": {
-                        "histogram": [
-                            {"key": "key1", "count": 66},
-                            {"key": "key2", "count": 21},
-                        ]
-                    }}},
+                        "def": {
+                            "ghi": {
+                                "histogram": [
+                                    {"key": "key1", "count": 66},
+                                    {"key": "key2", "count": 21},
+                                ]
+                            }
+                        }
+                    },
                 }
             },
         }
@@ -115,21 +101,51 @@ async def test_compare_facets_endpoint(app, client):
         "cohort1": {
             "facets": {
                 "demographic.ethnicity": {
-                    "buckets": mocked_guppy_data["data"]["cohort1"]["case"]["demographic"]["ethnicity"]["histogram"]
+                    "buckets": mocked_guppy_data["data"]["cohort1"]["case"][
+                        "demographic"
+                    ]["ethnicity"]["histogram"]
                 },
                 "abc.def.ghi": {
-                    "buckets": mocked_guppy_data["data"]["cohort1"]["case"]["abc"]["def"]["ghi"]["histogram"]
-                }
+                    "buckets": mocked_guppy_data["data"]["cohort1"]["case"]["abc"][
+                        "def"
+                    ]["ghi"]["histogram"]
+                },
             }
         },
         "cohort2": {
             "facets": {
                 "demographic.ethnicity": {
-                    "buckets": mocked_guppy_data["data"]["cohort2"]["case"]["demographic"]["ethnicity"]["histogram"]
+                    "buckets": mocked_guppy_data["data"]["cohort2"]["case"][
+                        "demographic"
+                    ]["ethnicity"]["histogram"]
                 },
                 "abc.def.ghi": {
-                    "buckets": mocked_guppy_data["data"]["cohort2"]["case"]["abc"]["def"]["ghi"]["histogram"]
-                }
+                    "buckets": mocked_guppy_data["data"]["cohort2"]["case"]["abc"][
+                        "def"
+                    ]["ghi"]["histogram"]
+                },
             }
         },
     }
+
+
+@pytest.mark.asyncio
+async def test_compare_intersection_endpoint(app, client):
+    mocked_guppy_data = {
+        "data": {
+            "cohort1": {"case": {"_case_id": {"_cardinalityCount": 35}}},
+            "cohort2": {"case": {"_case_id": {"_cardinalityCount": 44}}},
+            "intersection": {"case": {"_case_id": {"_cardinalityCount": 9}}},
+        }
+    }
+    mock_guppy_data(app, mocked_guppy_data)
+
+    body = {
+        "doc_type": "case",
+        "cohort1": cohort1,
+        "cohort2": cohort2,
+    }
+    res = await client.post("/compare/intersection", json=body)
+    assert res.status_code == 200, res.json()
+    print("Result:", json.dumps(res.json(), indent=2))
+    assert res.json() == {"cohort1": 35, "cohort2": 44, "intersection": 9}

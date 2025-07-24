@@ -179,14 +179,10 @@ paths:
         \ to compare\n    cohort2: filter corresponding to the second cohort to compare\n\
         \    precision_threshold (default: 3000): option to trade memory for accuracy\
         \ when querying cardinality in ES\n\nReturns:\n    dict - example:\n\n   \
-        \     {\n            \"cohort1\": {\n                \"facets\": {\n     \
-        \               \"my_field\": {\n                        {\"key\": \"value1\"\
-        , \"count\": 99},\n                        {\"key\": \"value2\", \"count\"\
-        : 45},\n                    },\n                }\n            },\n      \
-        \      \"cohort2\": {\n                \"facets\": {\n                   \
-        \ \"my_field\": {\n                        {\"key\": \"value1\", \"count\"\
-        : 100},\n                        {\"key\": \"value2\", \"count\": 44},\n \
-        \                   },\n                }\n            },\n        }"
+        \     {\n            \"cohort1\": <number of documents that are in cohort1\
+        \ and not in cohort2>,\n            \"cohort2\": <number of documents that\
+        \ are in cohort2 and not in cohort1>,\n            \"intersection\": <number\
+        \ of documents that are in both cohorts>,\n        }"
       operationId: get_cohort_intersection_compare_intersection_post
       requestBody:
         content:

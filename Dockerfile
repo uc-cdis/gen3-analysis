@@ -3,33 +3,37 @@ FROM quay.io/cdis/python-nginx-al:${AZLINUX_BASE_VERSION} AS base
 
 ENV appname=gen3analysis
 
-COPY --chown=gen3:gen3 /${appname} /${appname}
-
 WORKDIR /${appname}
+
+RUN chown -R gen3:gen3 /${appname}
 
 # Builder stage
 FROM base AS builder
 
 USER gen3
 
+# copy ONLY poetry artifact, install the dependencies but not the app;
+# this will make sure that the dependencies are cached
 COPY poetry.lock pyproject.toml /${appname}/
-
-# RUN python3 -m venv /env && . /env/bin/activate &&
-RUN poetry install -vv --no-interaction --without dev
+RUN poetry install -vv --no-root --only main --no-interaction
 
 COPY --chown=gen3:gen3 . /${appname}
 
-RUN poetry install -vv --no-interaction --without dev
-
-ENV  PATH="$(poetry env info --path)/bin:$PATH"
+# install the app
+RUN poetry install --without dev --no-interaction
 
 # Final stage
 FROM base
 
 COPY --from=builder /${appname} /${appname}
 
-# Switch to non-root user 'gen3' for the serving process
+RUN dnf -y install vim
 
+# Switch to non-root user 'gen3' for the serving process
 USER gen3
 
-CMD ["/bin/bash", "-c", "/${appname}/dockerrun.bash"]
+WORKDIR /${appname}
+
+RUN chmod 755 bin/run.sh
+
+CMD ["bash", "bin/run.sh"]

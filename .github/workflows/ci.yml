@@ -15,7 +15,7 @@ jobs:
     secrets: inherit
 
   UnitTest:
-    name: Python Unit Test with Postgres
+    name: Python Unit Tests
     uses: uc-cdis/.github/.github/workflows/python_unit_test.yaml@master
     with:
        test-script: 'bin/test.sh'

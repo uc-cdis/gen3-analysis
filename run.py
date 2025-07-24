@@ -1,4 +1,16 @@
 """
+This is a single Python entry-point for a simple run, intended to be used
+for debugging.
+
+In general, you should prefer the `run.sh` and `test.sh` scripts in this
+directory for running the service and testing. But if you need to debug
+the running service (from PyCharm, for example), this is a good
+script to use (if you properly setup everything else external to this).
+
+Specifically, this assumes you have properly migrated the database and have the needed
+environment variables for prometheus (and any other setup done by the
+bash scripts in this same directory).
+
 Usage:
 - Run app: python run.py
 - Generate openapi docs: python run.py openapi

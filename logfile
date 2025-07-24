@@ -1,2 +1,0 @@
-2025-03-10 12:16:21.913 EDT [90055] FATAL:  database files are incompatible with server
-2025-03-10 12:16:21.913 EDT [90055] DETAIL:  The data directory was initialized by PostgreSQL version 17, which is not compatible with this version 12.22.

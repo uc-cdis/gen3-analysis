@@ -8,8 +8,9 @@ from fastapi import FastAPI, APIRouter
 
 from gen3analysis.gen3.auth import Gen3AuthToken
 from gen3analysis.routes.compare import compare
-from gen3analysis.routes.survival import survival
-from gen3analysis.routes.survivalGen3 import survivalGen3
+
+# from gen3analysis.routes.survival import survival
+# from gen3analysis.routes.survivalGen3 import survivalGen3
 from gen3analysis import config
 from gen3analysis.config import logger
 from gen3analysis.routes.basic import basic_router
@@ -20,8 +21,8 @@ route_aggregator = APIRouter()
 route_definitions = [
     (basic_router, "", ["Basic"]),
     (compare, "/compare", ["Compare"]),
-    (survival, "/survival", ["Survival"]),
-    (survivalGen3, "/survivalGen3", ["survivalGen3"]),
+    # (survival, "/survival", ["Survival"]),
+    # (survivalGen3, "/survivalGen3", ["survivalGen3"]),
 ]
 
 for router, prefix, tags in route_definitions:

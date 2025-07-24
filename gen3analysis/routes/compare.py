@@ -27,7 +27,7 @@ def facet_name_to_props(facet_name):
 
 
 @compare.post("/facets", status_code=HTTP_200_OK)
-async def compare_facet(
+async def compare_facets(
     body: FacetComparisonRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ) -> dict:
@@ -43,6 +43,7 @@ async def compare_facet(
 
     Returns:
         dict - example:
+
             {
                 "cohort1": {
                     "facets": {
@@ -131,6 +132,7 @@ async def get_cohort_intersection(
 
     Returns:
         dict - example:
+
             {
                 "cohort1": {
                     "facets": {

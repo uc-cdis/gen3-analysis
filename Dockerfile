@@ -1,7 +1,7 @@
 ARG AZLINUX_BASE_VERSION=master
 FROM quay.io/cdis/python-nginx-al:${AZLINUX_BASE_VERSION} AS base
 
-ENV appname=gen3userdatalibrary
+ENV appname=gen3analysis
 
 COPY --chown=gen3:gen3 /${appname} /${appname}
 

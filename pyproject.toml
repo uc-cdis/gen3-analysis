@@ -48,17 +48,6 @@ rich = ">=14.0.0"
 
 # Fixes PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
 asyncio_default_fixture_loop_scope = "function"
-# see .coveragerc for what the coverage omits
-addopts = [
-    "--import-mode=importlib",
-    "-vv",
-    "--cov-config=.coveragerc",
-    "--cov=gen3analysis",
-    "--cov-report=term-missing:skip-covered",
-    "--cov-fail-under=40",  # TODO increase this once we have more tests
-    "--cov-report=html:_coverage"
-]
-
 
 [tool.isort]
 known_first_party = ["gen3analysis"]

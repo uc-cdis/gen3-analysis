@@ -1,5 +1,7 @@
 # Gen3 Analysis API
 
+![version](https://img.shields.io/github/release/uc-cdis/gen3-analysis.svg) [![Apache license](http://img.shields.io/badge/license-Apache-blue.svg?style=flat)](LICENSE) [![Coverage Status](https://coveralls.io/repos/github/uc-cdis/gen3-analysis/badge.svg?branch=master)](https://coveralls.io/github/uc-cdis/gen3-analysis?branch=master)
+
 ## Overview
 
 The Gen3 Analysis service allows analysis queries

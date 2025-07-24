@@ -25,19 +25,17 @@ cohort2 = {
 
 
 def mock_guppy_data(app, data):
-    # bk = app.state.guppy_client
-
     async def mocked_guppy_data():
         return data
 
     mocked_guppy_client = MagicMock()
-    mocked_guppy_client.execute = lambda *args, **kwargs: (
-        await mocked_guppy_data() for _ in "_"
-    ).__anext__()
+    mocked_execute_function = MagicMock(
+        side_effect=lambda *args, **kwargs: (
+            await mocked_guppy_data() for _ in "_"
+        ).__anext__()
+    )
+    mocked_guppy_client.execute = mocked_execute_function
     app.state.guppy_client = mocked_guppy_client
-
-    # yield # TODO this doesn't work. Need to reset between tests
-    # app.state.guppy_client = bk
 
 
 @pytest.mark.asyncio
@@ -108,6 +106,12 @@ async def test_compare_facets_endpoint(app, client):
     }
     res = await client.post("/compare/facets", json=body)
     assert res.status_code == 200, res.json()
+
+    app.state.guppy_client.execute.assert_called_once_with(
+        query="query ($cohort1: JSON, $cohort2: JSON){\n        cohort1: _aggregation {\n            case (filter: $cohort1) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } }  }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } }  }\n        }\n    }",
+        variables={"cohort1": cohort1, "cohort2": cohort2},
+    )
+
     print("Result:", json.dumps(res.json(), indent=2))
     assert res.json() == {
         "cohort1": {
@@ -172,6 +176,16 @@ async def test_compare_intersection_endpoint(app, client):
     }
     res = await client.post("/compare/intersection", json=body)
     assert res.status_code == 200, res.json()
+
+    app.state.guppy_client.execute.assert_called_once_with(
+        query="query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {\n        cohort1: _aggregation {\n            case (filter: $cohort1) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n        intersection: _aggregation {\n            case (filter: $intersection) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n    }",
+        variables={
+            "cohort1": cohort1,
+            "cohort2": cohort2,
+            "intersection": {"AND": [cohort1, cohort2]},
+        },
+    )
+
     print("Result:", json.dumps(res.json(), indent=2))
     assert res.json() == {
         "cohort1": n_c1_ids - n_both_ids,

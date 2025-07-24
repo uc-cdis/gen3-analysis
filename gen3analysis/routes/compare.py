@@ -134,22 +134,9 @@ async def get_cohort_intersection(
         dict - example:
 
             {
-                "cohort1": {
-                    "facets": {
-                        "my_field": {
-                            {"key": "value1", "count": 99},
-                            {"key": "value2", "count": 45},
-                        },
-                    }
-                },
-                "cohort2": {
-                    "facets": {
-                        "my_field": {
-                            {"key": "value1", "count": 100},
-                            {"key": "value2", "count": 44},
-                        },
-                    }
-                },
+                "cohort1": <number of documents that are in cohort1 and not in cohort2>,
+                "cohort2": <number of documents that are in cohort2 and not in cohort1>,
+                "intersection": <number of documents that are in both cohorts>,
             }
     """
     # Note: this query assumes that there is field named `_<doc_type>_id`, which should be the
@@ -188,12 +175,17 @@ async def get_cohort_intersection(
     )
 
     try:
+        n_intersection = data["data"]["intersection"][body.doc_type][
+            f"_{body.doc_type}_id"
+        ]["_cardinalityCount"]
         res = {
             cohort: data["data"][cohort][body.doc_type][f"_{body.doc_type}_id"][
                 "_cardinalityCount"
             ]
-            for cohort in ["cohort1", "cohort2", "intersection"]
+            - n_intersection
+            for cohort in ["cohort1", "cohort2"]
         }
+        res["intersection"] = n_intersection
     except KeyError as e:
         err_msg = f"Unable to parse GraphQL output: KeyError {e}"
         logger.error(f"{err_msg}. Output: {json.dumps(data)}")

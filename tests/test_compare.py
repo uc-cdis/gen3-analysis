@@ -153,11 +153,14 @@ async def test_compare_facets_endpoint(app, client):
 
 @pytest.mark.asyncio
 async def test_compare_intersection_endpoint(app, client):
+    n_c1_ids = 35
+    n_c2_ids = 44
+    n_both_ids = 9
     mocked_guppy_data = {
         "data": {
-            "cohort1": {"case": {"_case_id": {"_cardinalityCount": 35}}},
-            "cohort2": {"case": {"_case_id": {"_cardinalityCount": 44}}},
-            "intersection": {"case": {"_case_id": {"_cardinalityCount": 9}}},
+            "cohort1": {"case": {"_case_id": {"_cardinalityCount": n_c1_ids}}},
+            "cohort2": {"case": {"_case_id": {"_cardinalityCount": n_c2_ids}}},
+            "intersection": {"case": {"_case_id": {"_cardinalityCount": n_both_ids}}},
         }
     }
     mock_guppy_data(app, mocked_guppy_data)
@@ -170,4 +173,8 @@ async def test_compare_intersection_endpoint(app, client):
     res = await client.post("/compare/intersection", json=body)
     assert res.status_code == 200, res.json()
     print("Result:", json.dumps(res.json(), indent=2))
-    assert res.json() == {"cohort1": 35, "cohort2": 44, "intersection": 9}
+    assert res.json() == {
+        "cohort1": n_c1_ids - n_both_ids,
+        "cohort2": n_c2_ids - n_both_ids,
+        "intersection": n_both_ids,
+    }

@@ -5,6 +5,7 @@ from cdislogging import get_logger
 from starlette.config import Config
 from starlette.datastructures import Secret
 
+
 ENV = os.getenv("ENV", "production")
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 if ENV == "test":
@@ -12,24 +13,35 @@ if ENV == "test":
 else:
     PATH = os.path.abspath(f"{CURRENT_DIR}/../.env")
 config = Config(PATH)
+
 DEBUG = config("DEBUG", cast=bool, default=False)
 
 logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "info")
 
+HOSTNAME = config("HOSTNAME", default="")
+
 # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
 GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)
 
-# will skip authorization when a token is not provided. note that if a token is provided, then
-# auth will still occur
-# DEBUG_SKIP_AUTH = config("DEBUG_SKIP_AUTH", cast=bool, default=False)
-#
-# if DEBUG:
-#     logging.info(f"DEBUG is {DEBUG}")
-# if DEBUG_SKIP_AUTH:
-#     logging.warning(
-#         f"DEBUG_SKIP_AUTH is {DEBUG_SKIP_AUTH}. Authorization will be SKIPPED if no token is provided. "
-#         "FOR NON-PRODUCTION USE ONLY!! USE WITH CAUTION!!"
-#     )
+# Location of the policy engine service, Arborist
+# Defaults to the default service name in k8s magic DNS setup
+ARBORIST_URL = os.environ.get(
+    "ARBORIST_URL", config("ARBORIST_URL", default="http://arborist-service")
+)
+# `AUTH_TYPE` must be "prod" or "dev".
+# - prod: the API expects JWT bearer tokens in the `Authorization` header and checks
+#   authorization through Gen3 Arborist.
+# - dev: the Gen3 SDK Auth module expects to be pre-configured with credentials at
+#  `~/.gen3/credentials.json`. The API does not expects JWT bearer tokens in the
+#   `Authorization` header but still checks authorization through Gen3 Arborist.
+AUTH_TYPE = config("AUTH_TYPE", cast=str, default="prod")
+if AUTH_TYPE not in ["prod", "dev"]:
+    raise Exception('"AUTH_TYPE" must be must be "prod" or "dev"')
+# `PUBLIC_ENDPOINTS` must be True or False. If True, all Gen3 Analysis API endpoints
+# are publicly accessible (however, users must still have the appropriate access to
+# get data from other APIs, e.g. Gen3 Guppy).
+PUBLIC_ENDPOINTS = config("PUBLIC_ENDPOINTS", cast=bool, default=False)
+
 #
 # DB_DRIVER = config("DB_DRIVER", default="postgresql+asyncpg")
 # DB_USER = config("DB_USER", default="postgres")
@@ -62,9 +74,6 @@ URL_PREFIX = config("URL_PREFIX", default=None)
 # # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
 # GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)
 #
-# # Location of the policy engine service, Arborist
-# # Defaults to the default service name in k8s magic DNS setup
-# ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")
 #
 # logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
 #

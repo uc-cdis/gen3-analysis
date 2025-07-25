@@ -1,11 +1,11 @@
-import httpx
 import asyncio
-from fastapi import HTTPException
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 from typing import Dict, Any
 
+from fastapi import Depends, HTTPException
+import httpx
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+
 from gen3analysis.config import logger
-from gen3analysis.gen3.auth import Gen3AuthToken
 from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 
@@ -14,24 +14,26 @@ class GuppyGQLClient:
         self,
         graphql_url: str,
         csrf_cache: CSRFTokenCache,
-        gen3_auth_token: Gen3AuthToken,
     ):
         self.graphql_url = graphql_url
         self.csrf_cache = csrf_cache
-        self.gen3_auth_token = gen3_auth_token
 
     async def execute(
-        self, query: str, variables: Dict[str, Any] = None, retry_count: int = 1
+        self,
+        query: str,
+        variables: Dict[str, Any] = None,
+        retry_count: int = 1,
+        access_token: str = None,
     ) -> Dict[str, Any]:
         for attempt in range(retry_count + 1):
             try:
                 csrf_token = await self.csrf_cache.get_token()
-                gen3_auth_token = await self.gen3_auth_token.get_access_token()
                 headers = {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": csrf_token,
-                    "Authorization": f"Bearer {gen3_auth_token}",
                 }
+                if access_token:
+                    headers["Authorization"] = f"Bearer {access_token}"
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:
                     response = await client.post(

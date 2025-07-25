@@ -1,12 +1,15 @@
 import asyncio
-from typing import Optional
 from contextlib import asynccontextmanager
 from importlib.metadata import version
-from gen3analysis.clients import CSRFTokenCache, GuppyGQLClient, GDCGQLClient
+import os
+
+from cdislogging import get_logger
+from gen3authz.client.arborist.async_client import ArboristClient
 import fastapi
 from fastapi import FastAPI, APIRouter
 
-from gen3analysis.gen3.auth import Gen3AuthToken
+from gen3analysis.clients import CSRFTokenCache, GuppyGQLClient, GDCGQLClient
+from gen3analysis.auth import Gen3AuthToken
 from gen3analysis.routes.compare import compare
 
 # from gen3analysis.routes.survival import survival
@@ -43,21 +46,23 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    app_with_setup = app
     global csrf_cache, guppy_client, gdc_graphql_client, gen_auth_token
     csrf_cache = CSRFTokenCache(
-        rest_api_url="https://dev-virtuallab.themmrf.org/_status",
+        rest_api_url=f"{config.HOSTNAME}/_status",
         token_ttl_seconds=3600,  # 1 hour
     )
 
-    gen_auth_token = Gen3AuthToken(
-        endpoint="https://dev-virtuallab.themmrf.org",
-    )
+    auth_type = config.AUTH_TYPE
+    if auth_type == "prod":
+        guppy_url = "http://guppy-service"
+        gen_auth_token = None
+    else:
+        guppy_url = f"{config.HOSTNAME}/guppy"
+        gen_auth_token = Gen3AuthToken(endpoint=config.HOSTNAME)
 
     guppy_client = GuppyGQLClient(
-        graphql_url="https://dev-virtuallab.themmrf.org/guppy/graphql",
+        graphql_url=f"{guppy_url}/graphql",
         csrf_cache=csrf_cache,
-        gen3_auth_token=gen_auth_token,
     )
 
     gdc_graphql_client = GDCGQLClient(
@@ -69,6 +74,17 @@ async def lifespan(app: FastAPI):
     app.state.gdc_graphql_client = gdc_graphql_client
     app.state.gen_auth_token = gen_auth_token
 
+    # if config.MOCK_AUTH:
+    #     logger.warning(
+    #         "Mock authentication and authorization are enabled! 'MOCK_AUTH' should NOT be enabled in production!"
+    #     )
+    app.state.arborist_client = ArboristClient(
+        arborist_base_url=config.ARBORIST_URL,
+        logger=get_logger(
+            "gen3analysis.gen3authz", log_level="debug" if config.DEBUG else "info"
+        ),
+    )
+
     yield
 
     # teardown
@@ -78,40 +94,10 @@ async def lifespan(app: FastAPI):
     app.state.guppy_client = None
     app.state.gdc_graphql_client = None
     app.state.gen_auth_token = None
+    app.state.arborist_client = None
 
     # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
     # "child_exit" is defined in the gunicorn.conf.py
-
-
-# async def check_arborist_is_healthy(app_with_setup):
-#     """
-#     Checks that we can talk to arborist
-#     Args:
-#         app_with_setup (FastAPI): the fastapi app with arborist client
-#
-#     """
-#     logger.debug("Startup policy engine (Arborist) connection test initiating...")
-#     arborist_client = app_with_setup.state.arborist_client
-#     if not arborist_client.healthy():
-#         logger.exception(
-#             "Startup policy engine (Arborist) connection test FAILED. Unable to connect to the policy engine."
-#         )
-#         logger.debug("Arborist is unhealthy")
-#         raise Exception("Arborist unhealthy, aborting...")
-
-
-# async def add_arborist_client(app):
-#     """
-#     Helper function to add arborist client
-#     Args:
-#         app (FastAPI): the initial instance of the fast api app
-#     """
-#     app.state.arborist_client = ArboristClient(
-#         arborist_base_url=config.ARBORIST_URL,
-#         logger=get_logger("user_syncer.arborist_client"),
-#         authz_provider="user-sync",
-#     )
-#     return app
 
 
 def get_app() -> fastapi.FastAPI:

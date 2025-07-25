@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from starlette import status
 from starlette.responses import JSONResponse
 
+from gen3analysis.auth import Auth
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.survivalpy.logrank import LogRankTest
@@ -100,7 +101,9 @@ def prepare_result(result):
     }
 
 
-async def get_curve(filters, gen3_graphql_client, req_opts: Optional[Dict] = None):
+async def get_curve(
+    filters, gen3_graphql_client, access_token=None, req_opts: Optional[Dict] = None
+):
     queryFilter = {
         "and": [
             filters,
@@ -128,7 +131,9 @@ async def get_curve(filters, gen3_graphql_client, req_opts: Optional[Dict] = Non
     }
 
     data = await gen3_graphql_client.execute(
-        query=Gen3GraphQLQuery, variables={"filter": queryFilter}
+        access_token=access_token,
+        query=Gen3GraphQLQuery,
+        variables={"filter": queryFilter},
     )
 
     if data.get("error"):
@@ -173,6 +178,7 @@ class PlotRequest(BaseModel):
 async def plot(
     request: PlotRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    auth: Auth = Depends(Auth),
 ) -> JSONResponse:
     """
     Handles the plot request for survival analysis.
@@ -200,8 +206,9 @@ async def plot(
     try:
         curves = []
         non_empty_curves = []
+        access_token = await auth.get_access_token()
         for f in filters:
-            curve = await get_curve(f, gen3_graphql_client, {})
+            curve = await get_curve(f, gen3_graphql_client, access_token, {})
             curves.append(
                 curve,
             )

@@ -20,10 +20,10 @@ class GuppyGQLClient:
 
     async def execute(
         self,
+        access_token: str,
         query: str,
         variables: Dict[str, Any] = None,
         retry_count: int = 1,
-        access_token: str = None,
     ) -> Dict[str, Any]:
         for attempt in range(retry_count + 1):
             try:

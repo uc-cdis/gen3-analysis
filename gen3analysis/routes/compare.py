@@ -87,9 +87,9 @@ async def compare_facets(
     # or binCount
 
     data = await gen3_graphql_client.execute(
+        access_token=(await auth.get_access_token()),
         query=query,
         variables={"cohort1": body.cohort1, "cohort2": body.cohort2},
-        access_token=(await auth.get_access_token()),
     )
 
     try:
@@ -171,13 +171,13 @@ async def get_cohort_intersection(
     }}"""
 
     data = await gen3_graphql_client.execute(
+        access_token=(await auth.get_access_token()),
         query=query,
         variables={
             "cohort1": body.cohort1,
             "cohort2": body.cohort2,
             "intersection": {"AND": [body.cohort1, body.cohort2]},
         },
-        access_token=(await auth.get_access_token()),
     )
 
     try:

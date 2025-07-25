@@ -29,6 +29,8 @@ def mock_guppy_data(app, data):
         return data
 
     mocked_guppy_client = MagicMock()
+    # making this function a MagicMock allows us to use methods like
+    # `assert_called_once_with` in the tests
     mocked_execute_function = MagicMock(
         side_effect=lambda *args, **kwargs: (
             await mocked_guppy_data() for _ in "_"

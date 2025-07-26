@@ -1,6 +1,9 @@
 [project]
 name = "gen3analysis"
 version = "1.0.0"
+dependencies = [
+    "lifelines>=0.30.0",
+]
 
 [tool.poetry]
 name = "gen3analysis"

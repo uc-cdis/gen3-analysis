@@ -1,241 +1,239 @@
-from typing import Optional, Dict, List
-from fastapi import APIRouter, Request, Depends, HTTPException
+from lifelines import KaplanMeierFitter
+from lifelines.statistics import logrank_test
+from glom import glom
+import pandas as pd
+from typing import List, Dict, Optional
+from fastapi import APIRouter, Depends, Request, HTTPException
 from starlette.responses import JSONResponse
 from starlette import status
+from gen3analysis.dependencies.guppy_client import get_guppy_client
+from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from pydantic import BaseModel
-from glom import glom
 
-from gen3analysis.dependencies.gdc_graphql_client import get_gdc_graphql_client
-from gen3analysis.survivalpy.logrank import LogRankTest
-from gen3analysis.survivalpy.survival import Analyzer, Datum
+MAX_CASES = 10000
 
-from cdiserrors import InternalError, UserError
+survival = APIRouter()
 
-import json
-import asyncio
-from gen3analysis.gdc.graphqlQuery import GDCGQLClient
-
-
-CASE_BATCH_SIZE = 1000
-
-GDCSurvivalQuery = f"""query GDCSurvivalCurve($filters: FiltersArgument) {{
-  explore {{
-    cases {{
-      hits(filters: $filters, first: {CASE_BATCH_SIZE}) {{
-        total
-        edges {{
-          node {{
-            case_id
-            submitter_id
-            project {{
-              project_id
-            }}
-            demographic {{
-              days_to_death
-              vital_status
-            }}
-            diagnoses {{
-              hits(filters: $filters) {{
-                edges {{
-                  node {{
-                    days_to_last_follow_up
-                  }}
-                }}
-              }}
-            }}
-          }}
+Gen3GraphQLQuery = f"""query ($filter: JSON) {{
+    case(accessibility: accessible, offset: 0, first: {MAX_CASES}, filter: $filter) {{
+        submitter_id
+        _case_id
+        project_id
+        demographic {{
+            days_to_death
+            vital_status
         }}
-      }}
+        diagnoses {{
+            days_to_last_follow_up
+        }}
     }}
-  }}
+    _aggregation {{
+        case(filter: $filter, accessibility: accessible) {{
+            _totalCount
+        }}
+    }}
 }}
 """
 
 
-def make_datum(d, case):
-    demographic = case.get("demographic", {})
-    days_to_death = demographic.get("days_to_death")
-    days = (
-        days_to_death or d.get("days_to_last_follow_up")
-        if d is not None
-        else days_to_death
+def transform(data) -> pd.DataFrame:
+    """Transform the Gen3 data into a pandas DataFrame suitable for lifelines."""
+    records = []
+
+    for case in data:
+        demographic = case.get("demographic", [])
+        if not demographic:
+            continue
+
+        demo = demographic[0]
+        days_to_death = demo.get("days_to_death")
+        diagnoses = case.get("diagnoses", [{}])[0]
+        days_to_follow_up = diagnoses.get("days_to_last_follow_up")
+
+        # Use days_to_death if available, otherwise use days_to_follow_up
+        duration = days_to_death if days_to_death is not None else days_to_follow_up
+
+        if duration is not None:
+            records.append(
+                {
+                    "duration": duration,
+                    "event": int(
+                        demo.get("vital_status", "").lower() != "alive"
+                    ),  # 1 if dead, 0 if alive
+                    "case_id": case.get("_case_id"),
+                    "submitter_id": case.get("submitter_id"),
+                    "project_id": case.get("project_id"),
+                }
+            )
+
+    return pd.DataFrame(records)
+
+
+async def get_curve(filters, gen3_graphql_client, req_opts: Optional[Dict] = None):
+    queryFilter = {
+        "and": [
+            filters,
+            {
+                "and": [
+                    {
+                        "or": [
+                            {
+                                "nested": {
+                                    ">": {"days_to_death": 0},
+                                    "path": "demographic",
+                                }
+                            },
+                            {
+                                "nested": {
+                                    ">": {"days_to_last_follow_up": 0},
+                                    "path": "diagnoses",
+                                }
+                            },
+                        ]
+                    }
+                ]
+            },
+        ]
+    }
+    data = await gen3_graphql_client.execute(
+        query=Gen3GraphQLQuery, variables={"filter": queryFilter}
     )
-    if days is None:
+    if data.get("error"):
+        raise ValueError(data.get("error"))
+    if glom(data, "data._aggregation.case._totalCount", default=0) == 0:
+        return None
+    data_root = glom(data, "data.case", default={})
+    df = transform(data_root)
+    if df.empty:
         return None
 
-    meta = {"id": case["case_id"]}
-    if "submitter_id" in case:
-        meta["submitter_id"] = case["submitter_id"]
+    # Ensure duration and event columns are numeric
+    df["duration"] = pd.to_numeric(df["duration"], errors="coerce")
+    df["event"] = pd.to_numeric(df["event"], errors="coerce").astype(int)
 
-    if case.get("project", {}).get("project_id") is not None:
-        meta["project_id"] = case["project"]["project_id"]
+    # Remove rows with NaN values
+    df = df.dropna(subset=["duration", "event"])
 
-    return Datum(days, demographic.get("vital_status", "").lower() == "alive", meta)
+    if df.empty:
+        return None
 
-
-def make_data(ds, case):
-    return list(filter(bool, (make_datum(d["node"], case) for d in ds)))
-
-
-def transform(data):
-    r = [
-        # default value is [{}] to ensure that if there is no diagnose but there is days_to_death and vital_status
-        # make_data function still return the not None value
-        make_data(
-            c["node"].get("diagnoses", {}).get("hits", {}).get("edges", {}), c["node"]
-        )
-        for c in data["edges"]
-        if "diagnoses" in c["node"] or "demographic" in c["node"]
-    ]
-    return [item for sublist in r for item in sublist]
-
-
-def prepare_donor(donor, estimate):
-    donor["survivalEstimate"] = estimate
-    donor["id"] = donor["meta"]["id"]
-    donor["submitter_id"] = donor["meta"]["submitter_id"]
-    donor["project_id"] = donor["meta"]["project_id"]
-    donor.pop("meta", None)
-    return donor
-
-
-def prepare_result(result):
-    items = [item.to_json_dict() for item in result]
-
-    return {
-        "meta": {"id": id(result)},
-        "donors": [
-            prepare_donor(donor, interval.get("cumulativeSurvival"))
-            for interval in items
-            for donor in interval["donors"]
-        ],
-    }
-
-
-def get_curve(
-    filters,
-    gdc_graphql_client,
-    req_opts: Optional[Dict] = None,
-):
-    filters = [
-        filters,
-        {
-            "op": "or",
-            "content": [
-                {
-                    "op": "and",
-                    "content": [
-                        {
-                            "op": ">",
-                            "content": {
-                                "field": "demographic.days_to_death",
-                                "value": 0,
-                            },
-                        },
-                    ],
-                },
-                {
-                    "op": "and",
-                    "content": [
-                        {
-                            "op": ">",
-                            "content": {
-                                "field": "diagnoses.days_to_last_follow_up",
-                                "value": 0,
-                            },
-                        },
-                    ],
-                },
-            ],
-        },
-        {"op": "not", "content": {"field": "demographic.vital_status"}},
-        {
-            "op": "in",
-            "content": {
-                "field": "cases.project.project_id",
-                "value": ["MMRF-COMMPASS"],
-            },
-        },
-    ]
-
-    filters = [f for f in filters if "op" in f and "content" in f]
-    data = gdc_graphql_client.execute(
-        query=GDCSurvivalQuery, variables={"filters": {"op": "and", "content": filters}}
+    # Create KaplanMeierFitter object
+    kmf = KaplanMeierFitter()
+    kmf.fit(
+        durations=df["duration"], event_observed=df["event"], label="Survival Curve"
     )
 
-    if data.get("error"):
-        raise InternalError(data.get("error"))
+    # Group donors by their exact duration time
+    donors_by_time = (
+        df.groupby("duration")
+        .apply(
+            lambda group: [
+                {
+                    "id": row["case_id"],
+                    "submitter_id": row["submitter_id"],
+                    "project_id": row["project_id"],
+                    "event_type": "death" if row["event"] == 1 else "censored",
+                }
+                for _, row in group.iterrows()
+            ]
+        )
+        .to_dict()
+    )
 
-    data_root = glom(data, "data.explore.cases.hits", default={})
-    if data_root.get("total", 0) == 0:
-        return []
+    # Format results
+    results = []
+    survival_df = kmf.survival_function_
+    confidence_df = kmf.confidence_interval_
+    all_donors = []
+    for time_point in kmf.timeline:
+        survival_prob = survival_df.loc[time_point].iloc[0]
+        ci_lower = confidence_df.loc[time_point].iloc[0]
+        ci_upper = confidence_df.loc[time_point].iloc[1]
 
-    results = Analyzer(transform(data_root)).compute()
+        # Only include donors who have events at this exact time point
+        donors = []
+        if time_point in donors_by_time:
+            for donor in donors_by_time[time_point]:
+                results.append(
+                    {
+                        "time": int(time_point),
+                        "id": donor["id"],
+                        "submitter_id": donor["submitter_id"],
+                        "project_id": donor["project_id"],
+                        "survivalEstimate": float(survival_prob),
+                        "censored": (
+                            True if donor["event_type"] == "censored" else False
+                        ),
+                    }
+                )
 
-    return results
+    return {
+        "meta": {"id": id(results)},
+        "donors": results,
+    }
 
 
 # Define a Pydantic model for the request body
 class PlotRequest(BaseModel):
-    filters: str
+    filters: List[Dict] = []
     req_opts: Dict = {}
 
 
-survival = APIRouter()
-
-
-@survival.post("/plot")
-def create_plot(
-    request: Request,
-    data: PlotRequest,
-    gdc_graphql_client: GDCGQLClient = Depends(get_gdc_graphql_client),
-) -> JSONResponse:
-    """Create a survival plot based on filtered data from Gen3.
-
-    Args:
-        request: The incoming request object
-        data: The plot request containing filters
-
-    Returns:
-        JSONResponse containing the plot data
-
-    Raises:
-        HTTPException: If filters are invalid or GraphQL query fails
-    """
-
-    # return JSONResponse(status_code=status.HTTP_200_OK, content={"results" : data.filters})
-    try:
-        filters = data.filters
-        if isinstance(filters, str):
-            filters = json.loads(filters)
-    except ValueError:
-        raise UserError("filters must be valid json")
-
-    # TODO: add try..except
-    curves = []
-    non_empty_curves = []
-    for f in filters:
-        curve = get_curve(f, gdc_graphql_client, {})
-        curves.append(
-            curve,
-        )
-        if curve:
-            non_empty_curves.append(curve)
-
-    stats = {}
-    if len(non_empty_curves) > 1:
-        stats = LogRankTest(survival_results=non_empty_curves).compute()
-
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={
-            "results": [prepare_result(result) for result in curves],
-            "overallStats": stats,
+@survival.post(
+    path="/",
+    dependencies=[Depends(get_guppy_client)],
+    status_code=status.HTTP_200_OK,
+    description="Retrieves the survival plot(s) for the given filters.",
+    summary="Survival plots for filters",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully got plot"},
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
         },
-    )
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
+@survival.post("/", include_in_schema=False, dependencies=[Depends(get_guppy_client)])
+async def plot(
+    request: PlotRequest,
+    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+) -> JSONResponse:
+    filters = request.filters
 
+    try:
+        curves = []
+        non_empty_curves = []
+        for f in filters:
+            curve = await get_curve(f, gen3_graphql_client, {})
+            curves.append(curve)
+            if curve:
+                non_empty_curves.append(curve)
 
-if __name__ == "__main__":
-    print("Running in debug mode")
-    gdc_client = GDCGQLClient("https://portal.gdc.cancer.gov/auth/api/v0/graphql")
-    get_curve({}, gdc_client)
+        stats = {}
+        if len(non_empty_curves) > 1:
+            # Perform logrank test using lifelines [[1]](https://lifelines.readthedocs.io/en/latest/Survival%20analysis%20with%20lifelines.html)
+            durations = [curve[0]["time"] for curve in non_empty_curves]
+            events = [
+                1 if curve[0]["estimate"] < 1 else 0 for curve in non_empty_curves
+            ]
+            results = logrank_test(durations[0], durations[1], events[0], events[1])
+
+            stats = {"pValue": results.p_value, "testStatistic": results.test_statistic}
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "results": curves,
+                "overallStats": stats,
+            },
+        )
+
+    except ValueError:
+        raise HTTPException(status_code=500, detail="Issue with data response")
+    except Exception as e:
+        raise HTTPException(status_code=500)

@@ -46,10 +46,6 @@ class Auth:
         self.arborist_client = self.app.state.arborist_client
         self.bearer_token = bearer_token
 
-        if config.DEPLOYMENT_TYPE == "dev":
-            # TODO do not initialize at each request
-            self.gen3_sdk_auth = Gen3SdkAuth(endpoint=config.HOSTNAME)
-
         # if config.MOCK_AUTH:
         #     logger.warning(
         #         "Mock authentication and authorization are enabled! 'MOCK_AUTH' should NOT be enabled in production!"

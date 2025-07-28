@@ -5,18 +5,18 @@ from fastapi import Depends, HTTPException
 import httpx
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
+from gen3analysis import config
 from gen3analysis.config import logger
 from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 
 class GuppyGQLClient:
-    def __init__(
-        self,
-        graphql_url: str,
-        csrf_cache: CSRFTokenCache,
-    ):
+    def __init__(self, graphql_url: str):
         self.graphql_url = graphql_url
-        self.csrf_cache = csrf_cache
+        self.csrf_cache = CSRFTokenCache(
+            rest_api_url=f"{config.HOSTNAME}/_status",
+            token_ttl_seconds=3600,  # 1 hour
+        )
 
     async def execute(
         self,

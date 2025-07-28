@@ -8,7 +8,9 @@ from gen3authz.client.arborist.async_client import ArboristClient
 import fastapi
 from fastapi import FastAPI, APIRouter
 
-from gen3analysis.clients import CSRFTokenCache, GuppyGQLClient, GDCGQLClient
+from gen3analysis.auth import Gen3SdkAuth
+from gen3analysis.gen3.guppyQuery import GuppyGQLClient
+from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.routes.compare import compare
 
 # from gen3analysis.routes.survival import survival
@@ -45,29 +47,22 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    global csrf_cache, guppy_client, gdc_graphql_client
-    csrf_cache = CSRFTokenCache(  # TODO move to GuppyGQLClient class
-        rest_api_url=f"{config.HOSTNAME}/_status",
-        token_ttl_seconds=3600,  # 1 hour
-    )
-
     if config.DEPLOYMENT_TYPE == "prod":
         guppy_url = "http://guppy-service"
     else:
         guppy_url = f"{config.HOSTNAME}/guppy"
 
-    guppy_client = GuppyGQLClient(
-        graphql_url=f"{guppy_url}/graphql",
-        csrf_cache=csrf_cache,
-    )
+    guppy_client = GuppyGQLClient(graphql_url=f"{guppy_url}/graphql")
 
     gdc_graphql_client = GDCGQLClient(
         graphql_url="https://portal.gdc.cancer.gov/auth/api/v0/graphql",
     )
 
-    app.state.csrf_cache = csrf_cache
     app.state.guppy_client = guppy_client
     app.state.gdc_graphql_client = gdc_graphql_client
+    app.state.gen3_sdk_auth = None
+    if config.DEPLOYMENT_TYPE == "dev":
+        app.state.gen3_sdk_auth = Gen3SdkAuth(endpoint=config.HOSTNAME)
 
     app.state.arborist_client = ArboristClient(
         arborist_base_url=config.ARBORIST_URL,
@@ -79,15 +74,13 @@ async def lifespan(app: FastAPI):
     yield
 
     # teardown
-
-    # teardown
-    app.state.csrf_cache = None
     app.state.guppy_client = None
     app.state.gdc_graphql_client = None
+    app.state.gen3_sdk_auth = None
     app.state.arborist_client = None
 
-    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #
-    # "child_exit" is defined in the gunicorn.conf.py
+    # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each
+    # worker. "child_exit" is defined in the gunicorn.conf.py
 
 
 def get_app() -> fastapi.FastAPI:

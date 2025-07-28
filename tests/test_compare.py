@@ -3,6 +3,8 @@ import json
 import pytest
 from unittest.mock import MagicMock
 
+from conftest import TEST_ACCESS_TOKEN
+
 
 project_id = "test-project-id"
 cohort1 = {
@@ -106,10 +108,15 @@ async def test_compare_facets_endpoint(app, client):
         ],
         "interval": 3652.5,
     }
-    res = await client.post("/compare/facets", json=body)
+    res = await client.post(
+        "/compare/facets",
+        json=body,
+        headers={"Authorization": f"bearer {TEST_ACCESS_TOKEN}"},
+    )
     assert res.status_code == 200, res.json()
 
     app.state.guppy_client.execute.assert_called_once_with(
+        access_token=TEST_ACCESS_TOKEN,
         query="query ($cohort1: JSON, $cohort2: JSON){\n        cohort1: _aggregation {\n            case (filter: $cohort1) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } }  }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } }  }\n        }\n    }",
         variables={"cohort1": cohort1, "cohort2": cohort2},
     )
@@ -176,10 +183,15 @@ async def test_compare_intersection_endpoint(app, client):
         "cohort1": cohort1,
         "cohort2": cohort2,
     }
-    res = await client.post("/compare/intersection", json=body)
+    res = await client.post(
+        "/compare/intersection",
+        json=body,
+        headers={"Authorization": f"bearer {TEST_ACCESS_TOKEN}"},
+    )
     assert res.status_code == 200, res.json()
 
     app.state.guppy_client.execute.assert_called_once_with(
+        access_token=TEST_ACCESS_TOKEN,
         query="query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {\n        cohort1: _aggregation {\n            case (filter: $cohort1) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n        intersection: _aggregation {\n            case (filter: $intersection) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n    }",
         variables={
             "cohort1": cohort1,

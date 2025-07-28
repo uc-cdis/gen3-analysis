@@ -3,6 +3,7 @@ set -e
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+export ENV="test"
 source "${CURRENT_DIR}/_common_setup.sh"
 
 echo "running tests with 'pytest'..."

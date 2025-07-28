@@ -1,17 +1,14 @@
-from typing import Any, Optional, Union
+from typing import Union
 
 from authutils.token.fastapi import access_token
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from gen3.auth import Gen3Auth
-from gen3authz.client.arborist.async_client import ArboristClient
 from gen3authz.client.arborist.errors import ArboristError
 from starlette.requests import Request
-from starlette.status import HTTP_401_UNAUTHORIZED as HTTP_401_UNAUTHENTICATED
 from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 import traceback
 
@@ -24,9 +21,8 @@ from gen3analysis.config import logger
 bearer = HTTPBearer(auto_error=False)
 
 
-class Gen3AuthToken:
+class Gen3SdkAuth:
     def __init__(self, endpoint: str):
-        self.endpoint = endpoint
         try:
             self.auth = Gen3Auth(endpoint=endpoint)
         except:
@@ -50,6 +46,15 @@ class Auth:
         self.arborist_client = self.app.state.arborist_client
         self.bearer_token = bearer_token
 
+        if config.DEPLOYMENT_TYPE == "dev":
+            # TODO do not initialize at each request
+            self.gen3_sdk_auth = Gen3SdkAuth(endpoint=config.HOSTNAME)
+
+        # if config.MOCK_AUTH:
+        #     logger.warning(
+        #         "Mock authentication and authorization are enabled! 'MOCK_AUTH' should NOT be enabled in production!"
+        #     )
+
     async def get_access_token(self) -> str:
         # if config.MOCK_AUTH:
         #     return "123"
@@ -59,8 +64,9 @@ class Auth:
             if self.bearer_token and hasattr(self.bearer_token, "credentials")
             else None
         )
-        if not token and self.app.state.gen_auth_token:
-            token = await self.app.state.gen_auth_token.get_access_token()
+        if not token and config.DEPLOYMENT_TYPE == "dev":
+            token = await self.gen3_sdk_auth.get_access_token()
+
         return token
 
     async def get_token_claims(self) -> dict:
@@ -89,13 +95,6 @@ class Auth:
 
         return token_claims
 
-    async def get_user_id(self) -> Union[str, None]:
-        try:
-            token_claims = await self.get_token_claims()
-        except Exception:
-            return None
-        return token_claims.get("sub")
-
     async def authorize(
         self,
         method: str,
@@ -108,7 +107,7 @@ class Auth:
         token = self.get_access_token()
         try:
             authorized = await self.arborist_client.auth_request(
-                token, "gen3-workflow", method, resources
+                token, "gen3-analysis", method, resources
             )
         except ArboristError as e:
             logger.error(f"Error while talking to arborist: {e}")
@@ -119,7 +118,7 @@ class Auth:
             user_id = token_claims.get("sub")
             client_id = token_claims.get("azp")
             logger.error(
-                f"Authorization error for user '{user_id}' / client '{client_id}': token must have '{method}' access on {resources} for service 'gen3-workflow'."
+                f"Authorization error for user '{user_id}' / client '{client_id}': token must have '{method}' access on {resources} for service 'gen3-analysis'."
             )
             if throw:
                 raise HTTPException(

@@ -9,7 +9,6 @@ import fastapi
 from fastapi import FastAPI, APIRouter
 
 from gen3analysis.clients import CSRFTokenCache, GuppyGQLClient, GDCGQLClient
-from gen3analysis.auth import Gen3AuthToken
 from gen3analysis.routes.compare import compare
 
 # from gen3analysis.routes.survival import survival
@@ -46,19 +45,16 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    global csrf_cache, guppy_client, gdc_graphql_client, gen_auth_token
-    csrf_cache = CSRFTokenCache(
+    global csrf_cache, guppy_client, gdc_graphql_client
+    csrf_cache = CSRFTokenCache(  # TODO move to GuppyGQLClient class
         rest_api_url=f"{config.HOSTNAME}/_status",
         token_ttl_seconds=3600,  # 1 hour
     )
 
-    auth_type = config.AUTH_TYPE
-    if auth_type == "prod":
+    if config.DEPLOYMENT_TYPE == "prod":
         guppy_url = "http://guppy-service"
-        gen_auth_token = None
     else:
         guppy_url = f"{config.HOSTNAME}/guppy"
-        gen_auth_token = Gen3AuthToken(endpoint=config.HOSTNAME)
 
     guppy_client = GuppyGQLClient(
         graphql_url=f"{guppy_url}/graphql",
@@ -72,12 +68,7 @@ async def lifespan(app: FastAPI):
     app.state.csrf_cache = csrf_cache
     app.state.guppy_client = guppy_client
     app.state.gdc_graphql_client = gdc_graphql_client
-    app.state.gen_auth_token = gen_auth_token
 
-    # if config.MOCK_AUTH:
-    #     logger.warning(
-    #         "Mock authentication and authorization are enabled! 'MOCK_AUTH' should NOT be enabled in production!"
-    #     )
     app.state.arborist_client = ArboristClient(
         arborist_base_url=config.ARBORIST_URL,
         logger=get_logger(
@@ -93,7 +84,6 @@ async def lifespan(app: FastAPI):
     app.state.csrf_cache = None
     app.state.guppy_client = None
     app.state.gdc_graphql_client = None
-    app.state.gen_auth_token = None
     app.state.arborist_client = None
 
     # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each worker  #

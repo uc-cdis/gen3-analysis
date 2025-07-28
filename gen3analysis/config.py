@@ -28,19 +28,25 @@ GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)
 ARBORIST_URL = os.environ.get(
     "ARBORIST_URL", config("ARBORIST_URL", default="http://arborist-service")
 )
-# `AUTH_TYPE` must be "prod" or "dev".
-# - prod: the API expects JWT bearer tokens in the `Authorization` header and checks
-#   authorization through Gen3 Arborist.
-# - dev: the Gen3 SDK Auth module expects to be pre-configured with credentials at
-#  `~/.gen3/credentials.json`. The API does not expects JWT bearer tokens in the
-#   `Authorization` header but still checks authorization through Gen3 Arborist.
-AUTH_TYPE = config("AUTH_TYPE", cast=str, default="prod")
-if AUTH_TYPE not in ["prod", "dev"]:
-    raise Exception('"AUTH_TYPE" must be must be "prod" or "dev"')
+
+# `DEPLOYMENT_TYPE` must be "prod" or "dev".
+# - prod: the API reaches other Gen3 services through internal endpoints
+#   (e.g., `http://guppy-service`). The API expects JWT bearer tokens in the
+#   `Authorization` header.
+# - dev: the API reaches other Gen3 services through external endpoints
+#   (e.g., `https://<hostname>/guppy`). The API expects either JWT bearer tokens in the
+#   `Authorization` header, or the Gen3 SDK to be pre-configured with credentials at
+#  `~/.gen3/credentials.json`.
+DEPLOYMENT_TYPE = config("DEPLOYMENT_TYPE", cast=str, default="prod")
+if DEPLOYMENT_TYPE not in ["prod", "dev"]:
+    raise Exception('"DEPLOYMENT_TYPE" must be must be "prod" or "dev"')
 # `PUBLIC_ENDPOINTS` must be True or False. If True, all Gen3 Analysis API endpoints
 # are publicly accessible (however, users must still have the appropriate access to
 # get data from other APIs, e.g. Gen3 Guppy).
 PUBLIC_ENDPOINTS = config("PUBLIC_ENDPOINTS", cast=bool, default=False)
+
+# /!\ only use for development! Allows running the service locally without Arborist interaction
+# MOCK_AUTH = config("MOCK_AUTH", cast=bool, default=False)
 
 #
 # DB_DRIVER = config("DB_DRIVER", default="postgresql+asyncpg")
@@ -107,5 +113,5 @@ URL_PREFIX = config("URL_PREFIX", default=None)
 # if "None" in ITEM_SCHEMAS:
 #     ITEM_SCHEMAS[None] = ITEM_SCHEMAS["None"]
 
-PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
+# PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
 # ENDPOINTS_WITHOUT_METRICS = {"/metrics", "/metrics/"} | PUBLIC_ROUTES

@@ -40,10 +40,11 @@ ARBORIST_URL = os.environ.get(
 DEPLOYMENT_TYPE = config("DEPLOYMENT_TYPE", cast=str, default="prod")
 if DEPLOYMENT_TYPE not in ["prod", "dev"]:
     raise Exception('"DEPLOYMENT_TYPE" must be must be "prod" or "dev"')
+
 # `PUBLIC_ENDPOINTS` must be True or False. If True, all Gen3 Analysis API endpoints
 # are publicly accessible (however, users must still have the appropriate access to
 # get data from other APIs, e.g. Gen3 Guppy).
-PUBLIC_ENDPOINTS = config("PUBLIC_ENDPOINTS", cast=bool, default=False)
+# PUBLIC_ENDPOINTS = config("PUBLIC_ENDPOINTS", cast=bool, default=False)
 
 # /!\ only use for development! Allows running the service locally without Arborist interaction
 # MOCK_AUTH = config("MOCK_AUTH", cast=bool, default=False)

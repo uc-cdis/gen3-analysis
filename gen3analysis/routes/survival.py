@@ -183,10 +183,10 @@ class PlotRequest(BaseModel):
     path="/",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
-    description="Retrieves the survival plot(s) for the given filters.",
-    summary="Survival plots for filters",
+    description="Retrieves the survival plot(s) for the given filters. An array of filters is provided and will return an array of survival plot data",
+    summary="Survival plots for cohort represented as filters",
     responses={
-        status.HTTP_200_OK: {"description": "Successfully got plot"},
+        status.HTTP_200_OK: {"description": "Successfully processed the survival plot"},
         status.HTTP_401_UNAUTHORIZED: {
             "description": "User unauthorized when accessing endpoint"
         },

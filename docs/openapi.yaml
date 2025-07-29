@@ -261,6 +261,8 @@ paths:
           description: Validation Error
         '500':
           description: Something went wrong internally when processing the request
+      security:
+      - HTTPBearer: []
       summary: Survival plots for cohort represented as filters
       tags:
       - Survival

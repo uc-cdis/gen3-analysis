@@ -1,5 +1,6 @@
 import json
 from pydantic import BaseModel
+from typing import Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
@@ -18,10 +19,20 @@ class FacetComparisonRequest(BaseModel):
     cohort1: dict
     cohort2: dict
     facets: list
-    interval: float = 0
+    interval: Dict[str, int] = {}
 
 
-def facet_name_to_props(facet_name):
+def facet_name_to_props(facet_name) -> list:
+    """
+    Split a nested facet name into a list of properties.
+    Example: input "abc.efg" => output ["abc", "efg"]
+
+    Args:
+        facet_name (str)
+
+    Returns:
+        list
+    """
     # For now, just split by `.` - we may need to support property names with `.` later,
     # maybe by escaping them: `\.`
     return facet_name.split(".")
@@ -37,11 +48,18 @@ async def compare_facets(
     Compare facets between two cohorts.
 
     Args:
+
         doc_type: the cohorts' ES document type
+
         cohort1: filter corresponding to the first cohort to compare
+
         cohort2: filter corresponding to the second cohort to compare
+
         facets: fields to compare
-        interval: TODO
+
+        interval: dictionary of intervals for numerical facets.
+
+          Example: `facets=["numeric_field"]` and `interval={"numeric_field": 10}`
 
     Returns:
         dict - example:
@@ -49,29 +67,44 @@ async def compare_facets(
             {
                 "cohort1": {
                     "facets": {
-                        "my_field": {
-                            {"key": "value1", "count": 99},
-                            {"key": "value2", "count": 45},
+                        "text_field": {
+                            "buckets": [
+                                {"key": "value1", "count": 99},
+                                {"key": "value2", "count": 45},
+                            ],
+                        },
+                        "numeric_field": {
+                            "buckets": [
+                                {"key": [20, 30], "count": 100},
+                                {"key": [30, 40], "count": 44},
+                            ],
                         },
                     }
                 },
                 "cohort2": {
-                    "facets": {
-                        "my_field": {
-                            {"key": "value1", "count": 100},
-                            {"key": "value2", "count": 44},
-                        },
-                    }
+                    "facets": { [...] }
                 },
             }
     """
+    # build the GraphQL query: query a histogram of values for each requested facet
     facets_query = ""
     for facet in body.facets:
         props = facet_name_to_props(facet)
+
+        # query the fields
         facets_query += " ".join(f"{prop} {{" for prop in props) + " "
-        facets_query += "histogram { key count } "
+
+        # for numeric fields, add `rangeStep` parameter as specified in `interval` input
+        params = (
+            f"(rangeStep: {body.interval[facet]})" if facet in body.interval else ""
+        )
+
+        # query the histogram for this field
+        facets_query += f"histogram{params} {{ key count }} "
+
         facets_query += " ".join("}" for _ in props) + " "
 
+    # apply this query to each of the 2 cohorts
     query = f"""query ($cohort1: JSON, $cohort2: JSON){{
         cohort1: _aggregation {{
             {body.doc_type} (filter: $cohort1) {{ {facets_query} }}
@@ -81,17 +114,13 @@ async def compare_facets(
         }}
     }}"""
 
-    # TODO age_at_diagnosis query - blocked by error: `x_content_parse_exception:
-    # [x_content_parse_exception] Reason: [1:450] [bool] failed to parse field [must]`
-    # when querying an histogram for a numeric field with either rangeStart/rangeEnd/rangeStep
-    # or binCount
-
     data = await gen3_graphql_client.execute(
         access_token=(await auth.get_access_token()),
         query=query,
         variables={"cohort1": body.cohort1, "cohort2": body.cohort2},
     )
 
+    # parse and transform the output
     try:
         res = {}
         for cohort in ["cohort1", "cohort2"]:
@@ -130,9 +159,13 @@ async def get_cohort_intersection(
     of documents that only belong to either one of the cohorts. Useful to generate Venn diagrams.
 
     Args:
+
         doc_type: the cohorts' ES document type
+
         cohort1: filter corresponding to the first cohort to compare
+
         cohort2: filter corresponding to the second cohort to compare
+
         precision_threshold (default: 3000): option to trade memory for accuracy when querying cardinality in ES
 
     Returns:
@@ -144,8 +177,10 @@ async def get_cohort_intersection(
                 "intersection": <number of documents that are in both cohorts>,
             }
     """
+    # Build the GraphQL query: query the cardinality count (number of unique values) of IDs. In
+    # other words, query the number of documents in each cohort and in their intersection.
     # Note: this query assumes that there is a field named `_<doc_type>_id`, which should be the
-    # case for data generated by the Gen3 Tube ETL
+    # case for data generated by the Gen3 Tube ETL.
     query = f"""query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {{
         cohort1: _aggregation {{
             {body.doc_type} (filter: $cohort1) {{
@@ -180,6 +215,7 @@ async def get_cohort_intersection(
         },
     )
 
+    # parse and transform the output
     try:
         n_intersection = data["data"]["intersection"][body.doc_type][
             f"_{body.doc_type}_id"

@@ -28,7 +28,7 @@ class Gen3SdkAuth:
         except:
             traceback.print_exc()
             logger.warning(
-                "Unable to initialize Gen3Auth instance. Authorization checks will not work. Proceeding anyway..."
+                f"Unable to initialize Gen3Auth instance. Authorization checks will not work. Endpoint was: '{endpoint}'. Proceeding anyway..."
             )
             self.auth = None
 

@@ -18,9 +18,11 @@ components:
           title: Facets
           type: array
         interval:
-          default: 0
+          additionalProperties:
+            type: integer
+          default: {}
           title: Interval
-          type: number
+          type: object
       required:
       - doc_type
       - cohort1
@@ -152,19 +154,22 @@ paths:
       - Basic
   /compare/facets:
     post:
-      description: "Compare facets between two cohorts.\n\nArgs:\n    doc_type: the\
-        \ cohorts' ES document type\n    cohort1: filter corresponding to the first\
-        \ cohort to compare\n    cohort2: filter corresponding to the second cohort\
-        \ to compare\n    facets: fields to compare\n    interval: TODO\n\nReturns:\n\
-        \    dict - example:\n\n        {\n            \"cohort1\": {\n          \
-        \      \"facets\": {\n                    \"my_field\": {\n              \
-        \          {\"key\": \"value1\", \"count\": 99},\n                       \
-        \ {\"key\": \"value2\", \"count\": 45},\n                    },\n        \
-        \        }\n            },\n            \"cohort2\": {\n                \"\
-        facets\": {\n                    \"my_field\": {\n                       \
-        \ {\"key\": \"value1\", \"count\": 100},\n                        {\"key\"\
-        : \"value2\", \"count\": 44},\n                    },\n                }\n\
-        \            },\n        }"
+      description: "Compare facets between two cohorts.\n\nArgs:\n\n    doc_type:\
+        \ the cohorts' ES document type\n\n    cohort1: filter corresponding to the\
+        \ first cohort to compare\n\n    cohort2: filter corresponding to the second\
+        \ cohort to compare\n\n    facets: fields to compare\n\n    interval: dictionary\
+        \ of intervals for numerical facets.\n\n      Example: `facets=[\"numeric_field\"\
+        ]` and `interval={\"numeric_field\": 10}`\n\nReturns:\n    dict - example:\n\
+        \n        {\n            \"cohort1\": {\n                \"facets\": {\n \
+        \                   \"text_field\": {\n                        \"buckets\"\
+        : [\n                            {\"key\": \"value1\", \"count\": 99},\n \
+        \                           {\"key\": \"value2\", \"count\": 45},\n      \
+        \                  ],\n                    },\n                    \"numeric_field\"\
+        : {\n                        \"buckets\": [\n                            {\"\
+        key\": [20, 30], \"count\": 100},\n                            {\"key\": [30,\
+        \ 40], \"count\": 44},\n                        ],\n                    },\n\
+        \                }\n            },\n            \"cohort2\": {\n         \
+        \       \"facets\": { [...] }\n            },\n        }"
       operationId: compare_facets_compare_facets_post
       requestBody:
         content:
@@ -196,12 +201,12 @@ paths:
     post:
       description: "Get the number of documents at the intersection between two cohorts,\
         \ as well as the number\nof documents that only belong to either one of the\
-        \ cohorts. Useful to generate Venn diagrams.\n\nArgs:\n    doc_type: the cohorts'\
-        \ ES document type\n    cohort1: filter corresponding to the first cohort\
-        \ to compare\n    cohort2: filter corresponding to the second cohort to compare\n\
-        \    precision_threshold (default: 3000): option to trade memory for accuracy\
-        \ when querying cardinality in ES\n\nReturns:\n    dict - example:\n\n   \
-        \     {\n            \"cohort1\": <number of documents that are in cohort1\
+        \ cohorts. Useful to generate Venn diagrams.\n\nArgs:\n\n    doc_type: the\
+        \ cohorts' ES document type\n\n    cohort1: filter corresponding to the first\
+        \ cohort to compare\n\n    cohort2: filter corresponding to the second cohort\
+        \ to compare\n\n    precision_threshold (default: 3000): option to trade memory\
+        \ for accuracy when querying cardinality in ES\n\nReturns:\n    dict - example:\n\
+        \n        {\n            \"cohort1\": <number of documents that are in cohort1\
         \ and not in cohort2>,\n            \"cohort2\": <number of documents that\
         \ are in cohort2 and not in cohort1>,\n            \"intersection\": <number\
         \ of documents that are in both cohorts>,\n        }"

@@ -67,11 +67,25 @@ async def test_compare_facets_endpoint(app, client):
                             }
                         }
                     },
+                    "diagnoses": {
+                        "age_at_diagnosis": {
+                            "histogram": [
+                                {
+                                    "key": [7300, 10950],
+                                    "count": 50,
+                                },
+                                {
+                                    "key": [10950, 14600],
+                                    "count": 94,
+                                },
+                            ]
+                        }
+                    },
                 }
             },
             "cohort2": {
                 "case": {
-                    "project_id": {"histogram": [{"key": project_id, "count": 144}]},
+                    "project_id": {"histogram": [{"key": project_id, "count": 30}]},
                     "demographic": {
                         "ethnicity": {
                             "histogram": [
@@ -90,6 +104,16 @@ async def test_compare_facets_endpoint(app, client):
                             }
                         }
                     },
+                    "diagnoses": {
+                        "age_at_diagnosis": {
+                            "histogram": [
+                                {
+                                    "key": [7320, 8950],
+                                    "count": 30,
+                                },
+                            ]
+                        }
+                    },
                 }
             },
         }
@@ -104,9 +128,9 @@ async def test_compare_facets_endpoint(app, client):
             "project_id",  # not nested
             "demographic.ethnicity",  # nested
             "abc.def.ghi",  # doubly nested
-            # "age_at_diagnosis",  # TODO numeric histogram
+            "diagnoses.age_at_diagnosis",  # numeric histogram
         ],
-        "interval": 3652.5,
+        "interval": {"diagnoses.age_at_diagnosis": 3652},
     }
     res = await client.post(
         "/compare/facets",
@@ -117,7 +141,7 @@ async def test_compare_facets_endpoint(app, client):
 
     app.state.guppy_client.execute.assert_called_once_with(
         access_token=TEST_ACCESS_TOKEN,
-        query="query ($cohort1: JSON, $cohort2: JSON){\n        cohort1: _aggregation {\n            case (filter: $cohort1) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } }  }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } }  }\n        }\n    }",
+        query="query ($cohort1: JSON, $cohort2: JSON){\n        cohort1: _aggregation {\n            case (filter: $cohort1) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n    }",
         variables={"cohort1": cohort1, "cohort2": cohort2},
     )
 
@@ -140,6 +164,11 @@ async def test_compare_facets_endpoint(app, client):
                         "def"
                     ]["ghi"]["histogram"]
                 },
+                "diagnoses.age_at_diagnosis": {
+                    "buckets": mocked_guppy_data["data"]["cohort1"]["case"][
+                        "diagnoses"
+                    ]["age_at_diagnosis"]["histogram"]
+                },
             }
         },
         "cohort2": {
@@ -158,6 +187,11 @@ async def test_compare_facets_endpoint(app, client):
                     "buckets": mocked_guppy_data["data"]["cohort2"]["case"]["abc"][
                         "def"
                     ]["ghi"]["histogram"]
+                },
+                "diagnoses.age_at_diagnosis": {
+                    "buckets": mocked_guppy_data["data"]["cohort2"]["case"][
+                        "diagnoses"
+                    ]["age_at_diagnosis"]["histogram"]
                 },
             }
         },

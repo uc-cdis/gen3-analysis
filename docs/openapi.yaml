@@ -81,6 +81,10 @@ components:
       - type
       title: ValidationError
       type: object
+  securitySchemes:
+    HTTPBearer:
+      scheme: bearer
+      type: http
 info:
   title: Gen3 Analysis Service
   version: 1.0.0
@@ -167,6 +171,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
+      security:
+      - HTTPBearer: []
       summary: Compare Facets
       tags:
       - Compare
@@ -205,6 +211,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
+      security:
+      - HTTPBearer: []
       summary: Get Cohort Intersection
       tags:
       - Compare

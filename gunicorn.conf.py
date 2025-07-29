@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 import cdislogging
 import gunicorn.glogging
@@ -12,7 +13,11 @@ def child_exit(server, worker):
     Required for Prometheus multiprocess setup
     See: https://prometheus.github.io/client_python/multiprocess/
     """
-    multiprocess.mark_process_dead(worker.pid)
+    try:
+        multiprocess.mark_process_dead(worker.pid)
+    except:
+        traceback.print_exc()
+        print("Continuing...")
 
 
 class CustomLogger(gunicorn.glogging.Logger):

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
+from gen3analysis.auth import Auth
 from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
@@ -30,6 +31,7 @@ def facet_name_to_props(facet_name):
 async def compare_facets(
     body: FacetComparisonRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    auth: Auth = Depends(Auth),
 ) -> dict:
     """
     Compare facets between two cohorts.
@@ -85,7 +87,9 @@ async def compare_facets(
     # or binCount
 
     data = await gen3_graphql_client.execute(
-        query=query, variables={"cohort1": body.cohort1, "cohort2": body.cohort2}
+        access_token=(await auth.get_access_token()),
+        query=query,
+        variables={"cohort1": body.cohort1, "cohort2": body.cohort2},
     )
 
     try:
@@ -119,6 +123,7 @@ class IntersectionRequest(BaseModel):
 async def get_cohort_intersection(
     body: IntersectionRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    auth: Auth = Depends(Auth),
 ) -> dict:
     """
     Get the number of documents at the intersection between two cohorts, as well as the number
@@ -166,6 +171,7 @@ async def get_cohort_intersection(
     }}"""
 
     data = await gen3_graphql_client.execute(
+        access_token=(await auth.get_access_token()),
         query=query,
         variables={
             "cohort1": body.cohort1,

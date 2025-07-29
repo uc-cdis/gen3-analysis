@@ -6,6 +6,9 @@ import pytest_asyncio
 from gen3analysis.main import get_app
 
 
+TEST_ACCESS_TOKEN = "123"
+
+
 @pytest.fixture(scope="session")
 def app():
     return get_app()

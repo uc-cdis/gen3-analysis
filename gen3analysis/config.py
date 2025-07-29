@@ -5,6 +5,7 @@ from cdislogging import get_logger
 from starlette.config import Config
 from starlette.datastructures import Secret
 
+
 ENV = os.getenv("ENV", "production")
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 if ENV == "test":
@@ -12,24 +13,42 @@ if ENV == "test":
 else:
     PATH = os.path.abspath(f"{CURRENT_DIR}/../.env")
 config = Config(PATH)
+
 DEBUG = config("DEBUG", cast=bool, default=False)
 
 logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "info")
 
+HOSTNAME = config("HOSTNAME", default="")
+
 # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
 GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)
 
-# will skip authorization when a token is not provided. note that if a token is provided, then
-# auth will still occur
-# DEBUG_SKIP_AUTH = config("DEBUG_SKIP_AUTH", cast=bool, default=False)
-#
-# if DEBUG:
-#     logging.info(f"DEBUG is {DEBUG}")
-# if DEBUG_SKIP_AUTH:
-#     logging.warning(
-#         f"DEBUG_SKIP_AUTH is {DEBUG_SKIP_AUTH}. Authorization will be SKIPPED if no token is provided. "
-#         "FOR NON-PRODUCTION USE ONLY!! USE WITH CAUTION!!"
-#     )
+# Location of the policy engine service, Arborist
+# Defaults to the default service name in k8s magic DNS setup
+ARBORIST_URL = os.environ.get(
+    "ARBORIST_URL", config("ARBORIST_URL", default="http://arborist-service")
+)
+
+# `DEPLOYMENT_TYPE` must be "prod" or "dev".
+# - prod: the API reaches other Gen3 services through internal endpoints
+#   (e.g., `http://guppy-service`). The API expects JWT bearer tokens in the
+#   `Authorization` header.
+# - dev: the API reaches other Gen3 services through external endpoints
+#   (e.g., `https://<hostname>/guppy`). The API expects either JWT bearer tokens in the
+#   `Authorization` header, or the Gen3 SDK to be pre-configured with credentials at
+#  `~/.gen3/credentials.json`.
+DEPLOYMENT_TYPE = config("DEPLOYMENT_TYPE", cast=str, default="prod")
+if DEPLOYMENT_TYPE not in ["prod", "dev"]:
+    raise Exception('"DEPLOYMENT_TYPE" must be "prod" or "dev"')
+
+# `PUBLIC_ENDPOINTS` must be True or False. If True, all Gen3 Analysis API endpoints
+# are publicly accessible (however, users must still have the appropriate access to
+# get data from other APIs, e.g. Gen3 Guppy).
+# PUBLIC_ENDPOINTS = config("PUBLIC_ENDPOINTS", cast=bool, default=False)
+
+# /!\ only use for development! Allows running the service locally without Arborist interaction
+# MOCK_AUTH = config("MOCK_AUTH", cast=bool, default=False)
+
 #
 # DB_DRIVER = config("DB_DRIVER", default="postgresql+asyncpg")
 # DB_USER = config("DB_USER", default="postgres")
@@ -62,9 +81,6 @@ URL_PREFIX = config("URL_PREFIX", default=None)
 # # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
 # GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)
 #
-# # Location of the policy engine service, Arborist
-# # Defaults to the default service name in k8s magic DNS setup
-# ARBORIST_URL = config("ARBORIST_URL", default="http://arborist-service")
 #
 # logging = cdislogging.get_logger(__name__, log_level="debug" if DEBUG else "info")
 #
@@ -98,5 +114,5 @@ URL_PREFIX = config("URL_PREFIX", default=None)
 # if "None" in ITEM_SCHEMAS:
 #     ITEM_SCHEMAS[None] = ITEM_SCHEMAS["None"]
 
-PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
+# PUBLIC_ROUTES = {"/", "/_status", "/_status/", "/_version", "/_version/"}
 # ENDPOINTS_WITHOUT_METRICS = {"/metrics", "/metrics/"} | PUBLIC_ROUTES

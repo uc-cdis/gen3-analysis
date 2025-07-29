@@ -41,7 +41,9 @@ MOCK_AUTH = config("MOCK_AUTH", cast=bool, default=False)
 #  `~/.gen3/credentials.json`.
 DEPLOYMENT_TYPE = config("DEPLOYMENT_TYPE", cast=str, default="prod")
 if DEPLOYMENT_TYPE not in ["prod", "dev"]:
-    raise Exception('"DEPLOYMENT_TYPE" must be "prod" or "dev"')
+    raise Exception(
+        f'"DEPLOYMENT_TYPE" must be "prod" or "dev", got: {DEPLOYMENT_TYPE}'
+    )
 
 # `PUBLIC_ENDPOINTS` must be True or False. If True, all Gen3 Analysis API endpoints
 # are publicly accessible (however, users must still have the appropriate access to

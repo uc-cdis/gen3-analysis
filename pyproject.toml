@@ -28,6 +28,7 @@ packages = [{ include = "gen3analysis" }]
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
 asgi-lifespan = "^2.1.0,<3"
+authutils = "<8"
 fastapi = ">=0.115.8,<1"
 cdislogging = ">=1.1.1,<2"
 gunicorn = ">=20.1.0,<24"

@@ -8,7 +8,6 @@ set -e
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export ENV="dev"
-source "${CURRENT_DIR}/../.env"
 source "${CURRENT_DIR}/_common_setup.sh"
 
 poetry run gunicorn \

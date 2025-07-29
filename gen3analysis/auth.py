@@ -1,301 +1,125 @@
-from typing import Any, Optional, Union
+from typing import Union
 
 from authutils.token.fastapi import access_token
-from fastapi import HTTPException
+from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from gen3authz.client.arborist.async_client import ArboristClient
+from gen3.auth import Gen3Auth
 from gen3authz.client.arborist.errors import ArboristError
 from starlette.requests import Request
-from starlette.status import HTTP_401_UNAUTHORIZED as HTTP_401_UNAUTHENTICATED
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import (
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+)
+import traceback
 
 from gen3analysis import config
 from gen3analysis.config import logger
 
-get_bearer_token = HTTPBearer(auto_error=False)
-arborist = ArboristClient()
-
-get_user_data_library_endpoint = lambda user_id: f"/users/{user_id}/user-data-library"
-get_lists_endpoint = lambda user_id: f"/users/{user_id}/user-data-library/lists"
-get_list_by_id_endpoint = (
-    lambda user_id, list_id: f"/users/{user_id}/user-data-library/lists/{list_id}"
-)
+# auto_error=False prevents FastAPI from raising a 403 when the request
+# is missing an Authorization header. Instead, we want to return a 401
+# to signify that we did not receive valid credentials
+bearer = HTTPBearer(auto_error=False)
 
 
-async def authorize_request(
-    authz_access_method: str = "access",
-    authz_resources: list[str] = None,
-    token: HTTPAuthorizationCredentials = None,
-    request: Request = None,
-):
-    """
-    Authorizes the incoming request based on the provided token and Arborist access policies.
-
-    Args:
-        authz_access_method (str): The Arborist access method to check (default is "access").
-        authz_resources (list[str]): The list of resources to check against
-        token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
-            and this can be parsed from there). this has priority over any token from request.
-        request (Request): The incoming HTTP request. Used to parse tokens from header.
-
-    Raises:
-        HTTPException: Raised if authorization fails.
-
-    Note:
-        If `DEBUG_SKIP_AUTH` is enabled
-        and no token is provided, the check is also bypassed.
-    """
-    if config.DEBUG_SKIP_AUTH and not token:
-        logger.warning(
-            "DEBUG_SKIP_AUTH mode is on and no token was provided, BYPASSING authorization check"
-        )
-        return
-
-    token = await _get_token(token, request)
-
-    # either this was provided or we've tried to get it from the Bearer header
-    if not token:
-        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
-
-    # try to get the ID so the debug log has more information
-    try:
-        user_id = await get_user_id(token, request)
-    except HTTPException as exc:
-        logger.info(f"Unable to determine user_id. Defaulting to `Unknown`. Exc: {exc}")
-        user_id = "Unknown"
-    is_authorized = await arborist.auth_request(
-        token.credentials,
-        service="gen3-user-data-library",
-        methods=authz_access_method,
-        resources=authz_resources,
-    )
-
-    if not is_authorized:
+class Gen3SdkAuth:
+    def __init__(self, endpoint: str):
         try:
-            # Create the policy (in case it didn't exist for the auth_request), then retry
-            username = await get_username(token, request)
-            logger.debug(f"Attempting to create policy for user {user_id}...")
-            await create_user_policy(
-                user_id=user_id, username=username, arborist_client=arborist
+            self.auth = Gen3Auth(endpoint=endpoint)
+        except:
+            traceback.print_exc()
+            logger.warning(
+                "Unable to initialize Gen3Auth instance. Authorization checks will not work. Proceeding anyway..."
+            )
+            self.auth = None
+
+    async def get_access_token(self) -> str:
+        return self.auth.get_access_token()
+
+
+class Auth:
+    def __init__(
+        self,
+        api_request: Request,
+        bearer_token: HTTPAuthorizationCredentials = Security(bearer),
+    ) -> None:
+        self.app = api_request.app
+        self.arborist_client = self.app.state.arborist_client
+        self.bearer_token = bearer_token
+
+        # if config.MOCK_AUTH:
+        #     logger.warning(
+        #         "Mock authentication and authorization are enabled! 'MOCK_AUTH' should NOT be enabled in production!"
+        #     )
+
+    async def get_access_token(self) -> str:
+        # if config.MOCK_AUTH:
+        #     return "123"
+
+        token = (
+            self.bearer_token.credentials
+            if self.bearer_token and hasattr(self.bearer_token, "credentials")
+            else None
+        )
+        if not token and config.DEPLOYMENT_TYPE == "dev":
+            token = await self.gen3_sdk_auth.get_access_token()
+
+        return token
+
+    async def get_token_claims(self) -> dict:
+        # if config.MOCK_AUTH:
+        #     return {"sub": 64, "context": {"user": {"name": "mocked-user"}}}
+
+        if not self.bearer_token:
+            err_msg = "Must provide an access token"
+            logger.error(err_msg)
+            raise HTTPException(
+                HTTP_401_UNAUTHORIZED,
+                err_msg,
             )
 
-            logger.debug("Retrying authz request...")
-
-            is_authorized = await arborist.auth_request(
-                token.credentials,
-                service="gen3-user-data-library",
-                methods=authz_access_method,
-                resources=authz_resources,
+        try:
+            token_claims = await access_token(
+                "user", "openid", audience="openid", purpose="access"
+            )(self.bearer_token)
+        except Exception as e:
+            err_msg = "Could not verify, parse, and/or validate provided access token"
+            logger.error(
+                f"{err_msg}:\n{e.detail if hasattr(e, 'detail') else e}",
+                exc_info=True,
             )
-            if not is_authorized:
-                logger.info(
-                    f"user `{user_id}` does not have `{authz_access_method}` access "
-                    f"on `{authz_resources}`"
+            raise HTTPException(HTTP_401_UNAUTHORIZED, err_msg)
+
+        return token_claims
+
+    async def authorize(
+        self,
+        method: str,
+        resources: list,
+        throw: bool = True,
+    ) -> bool:
+        # if config.MOCK_AUTH:
+        #     return True
+
+        token = self.get_access_token()
+        try:
+            authorized = await self.arborist_client.auth_request(
+                token, "gen3-analysis", method, resources
+            )
+        except ArboristError as e:
+            logger.error(f"Error while talking to arborist: {e}")
+            authorized = False
+
+        if not authorized:
+            token_claims = await self.get_token_claims() if token else {}
+            user_id = token_claims.get("sub")
+            client_id = token_claims.get("azp")
+            logger.error(
+                f"Authorization error for user '{user_id}' / client '{client_id}': token must have '{method}' access on {resources} for service 'gen3-analysis'."
+            )
+            if throw:
+                raise HTTPException(
+                    HTTP_403_FORBIDDEN,
+                    "Permission denied",
                 )
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN)
-        except ArboristError as exc:
-            logger.error(f"arborist request failed, exc: {exc}")
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from exc
 
-
-async def get_user_id(
-    token: HTTPAuthorizationCredentials = None, request: Request = None
-) -> Union[int, Any]:
-    """
-    Retrieves the user ID from the provided token/request
-
-    Args:
-        token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
-            and this can be parsed from there). this has priority over any token from request.
-        request (Request): The incoming HTTP request. Used to parse tokens from header.
-
-    Returns:
-        str: The user's ID.
-
-    Raises:
-        HTTPException: Raised if the token is missing or invalid.
-
-    Note:
-        If `DEBUG_SKIP_AUTH` is enabled and no token is provided, user_id is set to "0".
-    """
-    if config.DEBUG_SKIP_AUTH and not token:
-        logger.warning(
-            "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING user_id = 0"
-        )
-        return "0"
-
-    token_claims = await _get_token_claims(token, request)
-    if "sub" not in token_claims:
-        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
-
-    return token_claims["sub"]
-
-
-async def get_username(
-    token: HTTPAuthorizationCredentials = None, request: Request = None
-) -> Union[int, Any]:
-    """
-    Retrieves the username from the provided token/request
-
-    Args:
-        token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
-            and this can be parsed from there). this has priority over any token from request.
-        request (Request): The incoming HTTP request. Used to parse tokens from header.
-
-    Returns:
-        str: The user's username.
-
-    Raises:
-        HTTPException: Raised if the token is missing or invalid.
-
-    Note:
-        If `DEBUG_SKIP_AUTH` is enabled and no token is provided, username is set to "librarian".
-    """
-    if config.DEBUG_SKIP_AUTH and not token:
-        logger.warning(
-            "DEBUG_SKIP_AUTH mode is on and no token was provided, RETURNING username = 'librarian'"
-        )
-        return "0"
-
-    token_claims = await _get_token_claims(token, request)
-    if "user" not in token_claims.get("context", {}):
-        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
-
-    username = token_claims["context"]["user"]["name"]
-    return username
-
-
-async def _get_token_claims(
-    token: HTTPAuthorizationCredentials = None,
-    request: Request = None,
-) -> dict:
-    """
-    Retrieves and validates token claims from the provided token.
-
-    handler for proccessing token
-
-    Args:
-        token (HTTPAuthorizationCredentials): an authorization token (optional, you can also provide request
-            and this can be parsed from there). this has priority over any token from request.
-        request (Request): The incoming HTTP request. Used to parse tokens from header.
-
-    Returns:
-        dict: The token claims.
-
-    Raises:
-        HTTPException: Raised if the token is missing or invalid.
-    """
-    token = await _get_token(token, request)
-    # either this was provided or we've tried to get it from the Bearer header
-    if not token:
-        raise HTTPException(status_code=HTTP_401_UNAUTHENTICATED)
-
-    # This is what the Gen3 AuthN/Z service adds as the audience to represent Gen3 services
-    if request:
-        audience = f"https://{request.base_url.netloc}/user"
-    else:
-        logger.warning(
-            "Unable to determine expected audience b/c request context was not provided... setting audience to `None`."
-        )
-        audience = None
-
-    try:
-        # NOTE: token can be None if no Authorization header was provided, we expect
-        #       this to cause a downstream exception since it is invalid
-        logger.debug(
-            f"checking access token for scopes: `user` and `openid` and audience: `{audience}`"
-        )
-        g = access_token("user", "openid", audience=audience, purpose="access")
-        token_claims = await g(token)
-    except Exception as exc:
-        logger.error(exc.detail if hasattr(exc, "detail") else exc, exc_info=True)
-        raise HTTPException(
-            HTTP_401_UNAUTHENTICATED,
-            "Could not verify, parse, and/or validate scope from provided access token.",
-        ) from exc
-
-    return token_claims
-
-
-async def _get_token(
-    token: Union[HTTPAuthorizationCredentials, str], request: Optional[Request]
-):
-    """
-    Retrieves the token from the request's Bearer header or if there's no request, returns token
-
-    Args:
-        token (HTTPAuthorizationCredentials): The provided token, if available.
-        request (Request): The incoming HTTP request.
-
-    Returns:
-        The obtained token.
-    """
-    if not token:
-        # we need a request in order to get a bearer token
-        if request:
-            token = await get_bearer_token(request)
-    return token
-
-
-async def create_user_policy(
-    user_id: str, username: str, arborist_client: ArboristClient
-):
-    """
-    Creates the user policy necessary for a user to maintain lists in their data library.
-    Args:
-        user_id (str): id of the user
-        username (str): username of the user
-        arborist_client (ArboristClient): client for sending requests to arborist.
-    """
-    resource = get_lists_endpoint(user_id)
-    is_resource_assigned_to_user = False
-    try:
-        resources = await arborist_client.list_resources_for_user(username)
-        logger.info(
-            f"Found user's data-library assigned to user in arborist, skipping policy generation"
-        )
-        is_resource_assigned_to_user = resource in set(resources)
-    except ArboristError as e:
-        if e.code == 404:
-            logger.info(
-                f"Unable to find {username} in arborist, creating and setting up data-library policy"
-            )
-        else:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR) from e
-
-    if is_resource_assigned_to_user:
-        return
-
-    await arborist_client.create_user_if_not_exist(username)
-    logger.info(f"Policy does not exist for user_id {user_id}")
-    role_ids = ["library_owner"]
-
-    logger.info("Attempting to create arborist resource: {}".format(resource))
-    await arborist_client.update_resource(
-        path="/",
-        resource_json={
-            "name": resource,
-            "description": f"Library for user_id {user_id}",
-        },
-        merge=True,
-        create_parents=True,
-    )
-
-    policy_json = {
-        "id": user_id,
-        "description": "policy created by gen3-user-data-library",
-        "role_ids": role_ids,
-        "resource_paths": [resource],
-    }
-
-    logger.info(f"Policy {user_id} does not exist, attempting to create....")
-
-    await arborist_client.update_policy(
-        policy_id=user_id, policy_json=policy_json, create_if_not_exist=True
-    )
-
-    logger.info(
-        f"Granting resource {resource} to {username} with policy_id {user_id}...."
-    )
-
-    await arborist_client.grant_user_policy(username=username, policy_id=user_id)
+        return authorized

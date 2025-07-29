@@ -1,5 +1,5 @@
 from lifelines import KaplanMeierFitter
-from lifelines.statistics import logrank_test
+from lifelines.statistics import multivariate_logrank_test
 from glom import glom
 import pandas as pd
 from typing import List, Dict, Optional
@@ -124,9 +124,11 @@ async def get_curve(
 
     # Create KaplanMeierFitter object
     kmf = KaplanMeierFitter()
-    kmf.fit(
-        durations=df["duration"], event_observed=df["event"], label="Survival Curve"
-    )
+
+    # return these to make stats calculation easier
+    durations = df["duration"]
+    events = df["event"]
+    kmf.fit(durations=durations, event_observed=events, label="Survival Curve")
 
     # Group donors by their exact duration time
     donors_by_time = (
@@ -175,6 +177,8 @@ async def get_curve(
     return {
         "meta": {"id": id(results)},
         "donors": results,
+        "durations": durations,
+        "events": events,
     }
 
 
@@ -222,19 +226,29 @@ async def plot(
 
         stats = {}
         if len(non_empty_curves) > 1:
-            # Perform logrank test using lifelines [[1]](https://lifelines.readthedocs.io/en/latest/Survival%20analysis%20with%20lifelines.html)
-            durations = [curve[0]["time"] for curve in non_empty_curves]
-            events = [
-                1 if curve[0]["estimate"] < 1 else 0 for curve in non_empty_curves
-            ]
-            results = logrank_test(durations[0], durations[1], events[0], events[1])
+            durations = pd.concat([curve["durations"] for curve in non_empty_curves])
+            events = [curve["events"] for curve in non_empty_curves]
+            groups = []
+            for idx in range(0, len(non_empty_curves)):
+                groups.append([idx] * len(non_empty_curves[idx]["donors"]))
 
-            stats = {"pValue": results.p_value, "testStatistic": results.test_statistic}
+            groupIds = pd.Series([j for i in groups for j in i])
+
+            log_rank_results = multivariate_logrank_test(durations, events, groupIds)
+            stats = {
+                "pValue": log_rank_results.p_value,
+                "degreesFreedom": len(non_empty_curves) - 1,
+            }
+
+        results = [
+            {"meta": curve["meta"], "donors": curve["donors"]}
+            for curve in non_empty_curves
+        ]
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
-                "results": curves,
+                "results": results,
                 "overallStats": stats,
             },
         )

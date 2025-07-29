@@ -13,10 +13,9 @@ from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.routes.compare import compare
 
-# from gen3analysis.routes.survival import survival
 from gen3analysis.routes.survival import survival
 from gen3analysis import config
-from gen3analysis.config import logger
+
 from gen3analysis.routes.basic import basic_router
 
 route_aggregator = APIRouter()

@@ -28,7 +28,7 @@ class Gen3SdkAuth:
         except:
             traceback.print_exc()
             logger.warning(
-                "Unable to initialize Gen3Auth instance. Authorization checks will not work. Proceeding anyway..."
+                f"Unable to initialize Gen3Auth instance. Authorization checks will not work. Endpoint was: '{endpoint}'. Proceeding anyway..."
             )
             self.auth = None
 
@@ -61,7 +61,7 @@ class Auth:
             else None
         )
         if not token and config.DEPLOYMENT_TYPE == "dev":
-            token = await self.gen3_sdk_auth.get_access_token()
+            token = await self.app.state.gen3_sdk_auth.get_access_token()
 
         return token
 

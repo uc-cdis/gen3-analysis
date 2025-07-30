@@ -29,8 +29,6 @@ ARBORIST_URL = os.environ.get(
     "ARBORIST_URL", config("ARBORIST_URL", default="http://arborist-service")
 )
 
-MOCK_AUTH = config("MOCK_AUTH", cast=bool, default=False)
-
 # `DEPLOYMENT_TYPE` must be "prod" or "dev".
 # - prod: the API reaches other Gen3 services through internal endpoints
 #   (e.g., `http://guppy-service`). The API expects JWT bearer tokens in the

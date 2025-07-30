@@ -207,7 +207,6 @@ class PlotRequest(BaseModel):
         },
     },
 )
-@survival.post("/", include_in_schema=False, dependencies=[Depends(get_guppy_client)])
 async def plot(
     request: PlotRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),

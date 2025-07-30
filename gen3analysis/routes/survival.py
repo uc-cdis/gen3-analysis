@@ -77,23 +77,19 @@ async def get_curve(
         "and": [
             filters,
             {
-                "and": [
+                "or": [
                     {
-                        "or": [
-                            {
-                                "nested": {
-                                    ">": {"days_to_death": 0},
-                                    "path": "demographic",
-                                }
-                            },
-                            {
-                                "nested": {
-                                    ">": {"days_to_last_follow_up": 0},
-                                    "path": "diagnoses",
-                                }
-                            },
-                        ]
-                    }
+                        "nested": {
+                            ">": {"days_to_death": 0},
+                            "path": "demographic",
+                        }
+                    },
+                    {
+                        "nested": {
+                            ">": {"days_to_last_follow_up": 0},
+                            "path": "diagnoses",
+                        }
+                    },
                 ]
             },
         ]
@@ -103,8 +99,7 @@ async def get_curve(
         query=Gen3GraphQLQuery,
         variables={"filter": queryFilter},
     )
-    if data.get("error"):
-        raise ValueError(data.get("error"))
+
     if glom(data, "data._aggregation.case._totalCount", default=0) == 0:
         return None
     data_root = glom(data, "data.case", default={})
@@ -215,11 +210,9 @@ async def plot(
     filters = request.filters
 
     try:
-        curves = []
         non_empty_curves = []
         for f in filters:
-            curve = await get_curve(f, gen3_graphql_client, auth, {})
-            curves.append(curve)
+            curve = await get_curve(f, gen3_graphql_client, auth, request.req_opts)
             if curve:
                 non_empty_curves.append(curve)
 
@@ -253,6 +246,6 @@ async def plot(
         )
 
     except ValueError:
-        raise HTTPException(status_code=500, detail="Issue with data response")
+        raise HTTPException(status_code=500, detail="Error with survival calculation")
     except Exception as e:
         raise HTTPException(status_code=500)

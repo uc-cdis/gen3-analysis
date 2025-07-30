@@ -22,6 +22,7 @@ gen3 = ">=4.27.4,<5"
 gen3authz = ">=2.1.0,<3"
 uvicorn = ">=0.27.0,<1"
 glom = ">=24.11.0,<25"
+pandas = ">=2.3.1"
 sqlalchemy = { extras = ["asyncio"], version = ">=2.0.31,<3" }
 asyncpg = ">=0.29.0,<1"
 httpx = ">=0.23.3,<1"

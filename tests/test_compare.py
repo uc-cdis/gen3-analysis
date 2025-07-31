@@ -2,19 +2,18 @@ import json
 
 import pytest
 
-from conftest import TEST_ACCESS_TOKEN
+from conftest import TEST_ACCESS_TOKEN, TEST_PROJECT_ID
 from tests.utils import mock_guppy_data
 
-project_id = "test-project-id"
 cohort1 = {
     "AND": [
-        {"=": {"project_id": project_id}},
+        {"=": {"project_id": TEST_PROJECT_ID}},
         {"nested": {"path": "demographic", "=": {"vital_status": "Alive"}}},
     ]
 }
 cohort2 = {
     "AND": [
-        {"=": {"project_id": project_id}},
+        {"=": {"project_id": TEST_PROJECT_ID}},
         {
             "nested": {
                 "path": "demographic",
@@ -31,7 +30,9 @@ async def test_compare_facets_endpoint(app, client):
         "data": {
             "cohort1": {
                 "case": {
-                    "project_id": {"histogram": [{"key": project_id, "count": 144}]},
+                    "project_id": {
+                        "histogram": [{"key": TEST_PROJECT_ID, "count": 144}]
+                    },
                     "demographic": {
                         "ethnicity": {
                             "histogram": [
@@ -68,7 +69,9 @@ async def test_compare_facets_endpoint(app, client):
             },
             "cohort2": {
                 "case": {
-                    "project_id": {"histogram": [{"key": project_id, "count": 30}]},
+                    "project_id": {
+                        "histogram": [{"key": TEST_PROJECT_ID, "count": 30}]
+                    },
                     "demographic": {
                         "ethnicity": {
                             "histogram": [

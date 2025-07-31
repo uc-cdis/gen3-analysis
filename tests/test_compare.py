@@ -191,9 +191,9 @@ async def test_compare_intersection_endpoint(app, client):
     n_both_ids = 9
     mocked_guppy_data = {
         "data": {
-            "cohort1": {"case": {"_case_id": {"_cardinalityCount": n_c1_ids}}},
-            "cohort2": {"case": {"_case_id": {"_cardinalityCount": n_c2_ids}}},
-            "intersection": {"case": {"_case_id": {"_cardinalityCount": n_both_ids}}},
+            "cohort1": {"case": {"_totalCount": n_c1_ids}},
+            "cohort2": {"case": {"_totalCount": n_c2_ids}},
+            "intersection": {"case": {"_totalCount": n_both_ids}},
         }
     }
     mock_guppy_data(app, [mocked_guppy_data])
@@ -212,7 +212,7 @@ async def test_compare_intersection_endpoint(app, client):
 
     app.state.guppy_client.execute.assert_called_once_with(
         access_token=TEST_ACCESS_TOKEN,
-        query="query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {\n        cohort1: _aggregation {\n            case (filter: $cohort1, accessibility: accessible) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2, accessibility: accessible) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n        intersection: _aggregation {\n            case (filter: $intersection, accessibility: accessible) {\n                _case_id {\n                    _cardinalityCount(precision_threshold: 3000)\n                }\n            }\n        }\n    }",
+        query="query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {\n        cohort1: _aggregation {\n            case (filter: $cohort1, accessibility: accessible) {\n                _totalCount\n            }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2, accessibility: accessible) {\n                _totalCount\n            }\n        }\n        intersection: _aggregation {\n            case (filter: $intersection, accessibility: accessible) {\n                _totalCount\n            }\n        }\n    }",
         variables={
             "cohort1": cohort1,
             "cohort2": cohort2,

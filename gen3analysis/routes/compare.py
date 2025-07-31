@@ -47,19 +47,12 @@ async def compare_facets(
     """
     Compare facets between two cohorts.
 
-    Args:
-
-        doc_type: the cohorts' ES document type
-
-        cohort1: filter corresponding to the first cohort to compare
-
-        cohort2: filter corresponding to the second cohort to compare
-
-        facets: fields to compare
-
-        interval: dictionary of intervals for numerical facets.
-
-          Example: `facets=["numeric_field"]` and `interval={"numeric_field": 10}`
+    Body:
+    - **doc_type**: the cohorts' ES document type
+    - **cohort1**: filter corresponding to the first cohort to compare
+    - **cohort2**: filter corresponding to the second cohort to compare
+    - **facets**: fields to compare
+    - **interval**: dictionary of intervals for numerical facets. Example: `facets=["numeric_field"]` and `interval={"numeric_field": 10}`
 
     Returns:
         dict - example:
@@ -158,15 +151,11 @@ async def get_cohort_intersection(
     Get the number of documents at the intersection between two cohorts, as well as the number
     of documents that only belong to either one of the cohorts. Useful to generate Venn diagrams.
 
-    Args:
-
-        doc_type: the cohorts' ES document type
-
-        cohort1: filter corresponding to the first cohort to compare
-
-        cohort2: filter corresponding to the second cohort to compare
-
-        precision_threshold (default: 3000): option to trade memory for accuracy when querying cardinality in ES
+    Body:
+    - **doc_type**: the cohorts' ES document type
+    - **cohort1**: filter corresponding to the first cohort to compare
+    - **cohort2**: filter corresponding to the second cohort to compare
+    - **precision_threshold** (default: 3000): option to trade memory for accuracy when querying cardinality in ES
 
     Returns:
         dict - example:

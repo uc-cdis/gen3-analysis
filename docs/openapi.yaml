@@ -154,12 +154,12 @@ paths:
       - Basic
   /compare/facets:
     post:
-      description: "Compare facets between two cohorts.\n\nArgs:\n\n    doc_type:\
-        \ the cohorts' ES document type\n\n    cohort1: filter corresponding to the\
-        \ first cohort to compare\n\n    cohort2: filter corresponding to the second\
-        \ cohort to compare\n\n    facets: fields to compare\n\n    interval: dictionary\
-        \ of intervals for numerical facets.\n\n      Example: `facets=[\"numeric_field\"\
-        ]` and `interval={\"numeric_field\": 10}`\n\nReturns:\n    dict - example:\n\
+      description: "Compare facets between two cohorts.\n\nBody:\n- **doc_type**:\
+        \ the cohorts' ES document type\n- **cohort1**: filter corresponding to the\
+        \ first cohort to compare\n- **cohort2**: filter corresponding to the second\
+        \ cohort to compare\n- **facets**: fields to compare\n- **interval**: dictionary\
+        \ of intervals for numerical facets. Example: `facets=[\"numeric_field\"]`\
+        \ and `interval={\"numeric_field\": 10}`\n\nReturns:\n    dict - example:\n\
         \n        {\n            \"cohort1\": {\n                \"facets\": {\n \
         \                   \"text_field\": {\n                        \"buckets\"\
         : [\n                            {\"key\": \"value1\", \"count\": 99},\n \
@@ -201,10 +201,10 @@ paths:
     post:
       description: "Get the number of documents at the intersection between two cohorts,\
         \ as well as the number\nof documents that only belong to either one of the\
-        \ cohorts. Useful to generate Venn diagrams.\n\nArgs:\n\n    doc_type: the\
-        \ cohorts' ES document type\n\n    cohort1: filter corresponding to the first\
-        \ cohort to compare\n\n    cohort2: filter corresponding to the second cohort\
-        \ to compare\n\n    precision_threshold (default: 3000): option to trade memory\
+        \ cohorts. Useful to generate Venn diagrams.\n\nBody:\n- **doc_type**: the\
+        \ cohorts' ES document type\n- **cohort1**: filter corresponding to the first\
+        \ cohort to compare\n- **cohort2**: filter corresponding to the second cohort\
+        \ to compare\n- **precision_threshold** (default: 3000): option to trade memory\
         \ for accuracy when querying cardinality in ES\n\nReturns:\n    dict - example:\n\
         \n        {\n            \"cohort1\": <number of documents that are in cohort1\
         \ and not in cohort2>,\n            \"cohort2\": <number of documents that\

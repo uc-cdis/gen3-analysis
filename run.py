@@ -40,6 +40,6 @@ if __name__ == "__main__":
         print(f"Saved docs at {path}")
     else:
         host = "0.0.0.0"
-        port = 8080
+        port = 8000
         print(f"gen3analysis.main:app_instance running at {host}:{port}")
         uvicorn.run("gen3analysis.main:app_instance", host=host, port=port, reload=True)

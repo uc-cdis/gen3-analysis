@@ -1,15 +1,17 @@
+from typing import List, Dict, Optional
+
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException
+from glom import glom
 from lifelines import KaplanMeierFitter
 from lifelines.statistics import multivariate_logrank_test
-from glom import glom
-import pandas as pd
-from typing import List, Dict, Optional
-from fastapi import APIRouter, Depends, Request, HTTPException
-from starlette.responses import JSONResponse
+from pydantic import BaseModel
 from starlette import status
+from starlette.responses import JSONResponse
+
 from gen3analysis.auth import Auth
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from pydantic import BaseModel
 
 MAX_CASES = 10000
 
@@ -73,7 +75,7 @@ def transform(data) -> pd.DataFrame:
 async def get_curve(
     filters, gen3_graphql_client, auth, req_opts: Optional[Dict] = None
 ):
-    queryFilter = {
+    query_filter = {
         "and": [
             filters,
             {
@@ -97,7 +99,7 @@ async def get_curve(
     data = await gen3_graphql_client.execute(
         access_token=(await auth.get_access_token()),
         query=Gen3GraphQLQuery,
-        variables={"filter": queryFilter},
+        variables={"filter": query_filter},
     )
 
     if glom(data, "data._aggregation.case._totalCount", default=0) == 0:
@@ -120,7 +122,7 @@ async def get_curve(
     # Create KaplanMeierFitter object
     kmf = KaplanMeierFitter()
 
-    # return these to make stats calculation easier
+    # return these for use in the statistics calculation
     durations = df["duration"]
     events = df["event"]
     kmf.fit(durations=durations, event_observed=events, label="Survival Curve")
@@ -145,24 +147,38 @@ async def get_curve(
     # Format results
     results = []
     survival_df = kmf.survival_function_
-    confidence_df = kmf.confidence_interval_
-    all_donors = []
-    for time_point in kmf.timeline:
+
+    # Create a sorted list of time points
+    timeline_sorted = sorted(kmf.timeline)
+
+    for i, time_point in enumerate(timeline_sorted):
         survival_prob = survival_df.loc[time_point].iloc[0]
-        ci_lower = confidence_df.loc[time_point].iloc[0]
-        ci_upper = confidence_df.loc[time_point].iloc[1]
 
         # Only include donors who have events at this exact time point
-        donors = []
         if time_point in donors_by_time:
             for donor in donors_by_time[time_point]:
+                # For donors with events at this time point, use the survival probability
+                # from BEFORE the event (i.e., the previous time point or current if censored)
+
+                if donor["event_type"] == "death":
+                    # For death events, use survival probability from the previous time point
+                    if i > 0:
+                        prev_time_point = timeline_sorted[i - 1]
+                        donor_survival_prob = survival_df.loc[prev_time_point].iloc[0]
+                    else:
+                        # If this is the first time point, use 1.0
+                        donor_survival_prob = 1.0
+                else:
+                    # For censored events, use the current survival probability
+                    donor_survival_prob = survival_prob
+
                 results.append(
                     {
                         "time": int(time_point),
                         "id": donor["id"],
                         "submitter_id": donor["submitter_id"],
                         "project_id": donor["project_id"],
-                        "survivalEstimate": float(survival_prob),
+                        "survivalEstimate": float(donor_survival_prob),
                         "censored": (
                             True if donor["event_type"] == "censored" else False
                         ),
@@ -175,6 +191,37 @@ async def get_curve(
         "durations": durations,
         "events": events,
     }
+
+
+def calculate_survival_statistics(non_empty_curves: List[Dict]) -> Dict:
+    """
+    Calculate survival statistics for multiple curves using a log-rank test.
+
+    Args:
+        non_empty_curves: List of curve dictionaries containing durations, events, and donors
+
+    Returns:
+        Dictionary containing pValue and degreesFreedom, or empty dict if < 2 curves
+    """
+    statistics = {}
+    if len(non_empty_curves) > 1:
+        all_durations = []
+        all_events = []
+        for curve in non_empty_curves:
+            all_durations.extend(curve["durations"])
+            all_events.extend(curve["events"])
+
+        groups = []
+        for curve_index in range(len(non_empty_curves)):
+            groups.extend([curve_index] * len(non_empty_curves[curve_index]["donors"]))
+
+        log_rank_results = multivariate_logrank_test(all_durations, groups, all_events)
+        statistics = {
+            "pValue": log_rank_results.p_value,
+            "degreesFreedom": len(non_empty_curves) - 1,
+        }
+
+    return statistics
 
 
 # Define a Pydantic model for the request body
@@ -216,21 +263,7 @@ async def plot(
             if curve:
                 non_empty_curves.append(curve)
 
-        stats = {}
-        if len(non_empty_curves) > 1:
-            durations = pd.concat([curve["durations"] for curve in non_empty_curves])
-            events = [curve["events"] for curve in non_empty_curves]
-            groups = []
-            for idx in range(0, len(non_empty_curves)):
-                groups.append([idx] * len(non_empty_curves[idx]["donors"]))
-
-            groupIds = pd.Series([j for i in groups for j in i])
-
-            log_rank_results = multivariate_logrank_test(durations, events, groupIds)
-            stats = {
-                "pValue": log_rank_results.p_value,
-                "degreesFreedom": len(non_empty_curves) - 1,
-            }
+        statistics = calculate_survival_statistics(non_empty_curves)
 
         results = [
             {"meta": curve["meta"], "donors": curve["donors"]}
@@ -241,11 +274,11 @@ async def plot(
             status_code=status.HTTP_200_OK,
             content={
                 "results": results,
-                "overallStats": stats,
+                "overallStats": statistics,
             },
         )
 
     except ValueError:
         raise HTTPException(status_code=500, detail="Error with survival calculation")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500)

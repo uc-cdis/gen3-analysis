@@ -101,7 +101,7 @@ async def test_compare_facets_endpoint(app, client):
             },
         }
     }
-    mock_guppy_data(app, mocked_guppy_data)
+    mock_guppy_data(app, [mocked_guppy_data])
 
     body = {
         "doc_type": "case",
@@ -193,7 +193,7 @@ async def test_compare_intersection_endpoint(app, client):
             "intersection": {"case": {"_case_id": {"_cardinalityCount": n_both_ids}}},
         }
     }
-    mock_guppy_data(app, mocked_guppy_data)
+    mock_guppy_data(app, [mocked_guppy_data])
 
     body = {
         "doc_type": "case",

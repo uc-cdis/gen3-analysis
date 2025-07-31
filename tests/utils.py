@@ -1,17 +1,13 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 
-def mock_guppy_data(app, data):
-    async def mocked_guppy_data():
-        return data
-
+def mock_guppy_data(app, data_list):
+    """
+    data_list: A list of data objects to return on successive calls
+    """
     mocked_guppy_client = MagicMock()
-    # making this function a MagicMock allows us to use methods like
-    # `assert_called_once_with` in the tests
-    mocked_execute_function = MagicMock(
-        side_effect=lambda *args, **kwargs: (
-            await mocked_guppy_data() for _ in "_"
-        ).__anext__()
-    )
+
+    # AsyncMock is specifically designed for async functions
+    mocked_execute_function = AsyncMock(side_effect=data_list)
     mocked_guppy_client.execute = mocked_execute_function
     app.state.guppy_client = mocked_guppy_client

@@ -12,7 +12,9 @@ from gen3analysis.auth import Gen3SdkAuth
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.routes.compare import compare
+from gen3analysis.routes.slicing import slicing
 
+# from gen3analysis.bamrest.blueprint import blueprint as slicing
 from gen3analysis.routes.survival import survival
 from gen3analysis import config
 
@@ -24,6 +26,7 @@ route_aggregator = APIRouter()
 route_definitions = [
     (basic_router, "", ["Basic"]),
     (compare, "/compare", ["Compare"]),
+    (slicing, "/slicing", ["Slicing"]),
     (survival, "/survival", ["Survival"]),
 ]
 

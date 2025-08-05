@@ -8,6 +8,7 @@ from gen3analysis.main import get_app
 
 TEST_ACCESS_TOKEN = "123"
 TEST_PROJECT_ID = "test-project-id"
+# TEST_PROJECT_ID = "MMRF-COMMPASS"  # TODO change this before merging
 
 
 @pytest.fixture(scope="session")

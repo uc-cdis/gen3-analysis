@@ -7,6 +7,7 @@ from gen3analysis.main import get_app
 
 
 TEST_ACCESS_TOKEN = "123"
+TEST_PROJECT_ID = "test-project-id"
 
 
 @pytest.fixture(scope="session")

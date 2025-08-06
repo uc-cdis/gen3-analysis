@@ -9,7 +9,6 @@ components:
           title: Field
           type: string
         filters:
-          default: []
           items:
             additionalProperties: true
             type: object
@@ -20,6 +19,7 @@ components:
           title: Limit
           type: integer
       required:
+      - filters
       - doc_type
       - field
       title: CompareSurvivalRequest

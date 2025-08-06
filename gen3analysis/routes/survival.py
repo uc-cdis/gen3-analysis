@@ -225,7 +225,7 @@ def calculate_survival_statistics(non_empty_curves: List[Dict]) -> Dict:
 
 # Define a Pydantic model for the request body
 class PlotRequest(BaseModel):
-    filters: List[Dict] = []
+    filters: List[Dict]
 
 
 @survival.post(

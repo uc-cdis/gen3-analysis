@@ -289,7 +289,7 @@ async def plot(
 
 
 # Define a Pydantic model for the request body
-class ExcludeSurvivalRequest(BaseModel):
+class CompareSurvivalRequest(BaseModel):
     filters: List[Dict] = []
     doc_type: str
     field: str
@@ -319,7 +319,7 @@ class ExcludeSurvivalRequest(BaseModel):
     },
 )
 async def compare(
-    request: ExcludeSurvivalRequest,
+    request: CompareSurvivalRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:

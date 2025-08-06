@@ -1,5 +1,29 @@
 components:
   schemas:
+    CompareSurvivalRequest:
+      properties:
+        doc_type:
+          title: Doc Type
+          type: string
+        field:
+          title: Field
+          type: string
+        filters:
+          default: []
+          items:
+            additionalProperties: true
+            type: object
+          title: Filters
+          type: array
+        limit:
+          default: 10000
+          title: Limit
+          type: integer
+      required:
+      - doc_type
+      - field
+      title: CompareSurvivalRequest
+      type: object
     FacetComparisonRequest:
       properties:
         cohort1:
@@ -71,11 +95,6 @@ components:
             type: object
           title: Filters
           type: array
-        req_opts:
-          additionalProperties: true
-          default: {}
-          title: Req Opts
-          type: object
       title: PlotRequest
       type: object
     ValidationError:
@@ -254,6 +273,9 @@ paths:
             application/json:
               schema: {}
           description: Successfully processed the survival plot
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
         '401':
           description: User unauthorized when accessing endpoint
         '403':
@@ -269,5 +291,42 @@ paths:
       security:
       - HTTPBearer: []
       summary: Survival plots for cohort represented as filters
+      tags:
+      - Survival
+  /survival/compare:
+    post:
+      description: Retrieves the comparison survival plot(s) for the given pair of
+        filters.
+      operationId: compare_survival_compare_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompareSurvivalRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the survival plot
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      security:
+      - HTTPBearer: []
+      summary: Survival plot comparing two cohorts
       tags:
       - Survival

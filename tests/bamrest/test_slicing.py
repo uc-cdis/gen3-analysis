@@ -59,7 +59,12 @@ def test_slicing1(request, regions, unmapped, expected):
         (BAM_PATH, [("chr1", None, None)], False, EXPECTED_OUTPUT_CHR1),
         # 10	65	chr1	10001
         # (BAM_PATH, [("chr1", 10001, 10011)], False, EXPECTED_OUTPUT_CHR1),  # TODO add a test for region not None
-        # (GDC_BAM_PATH, [("chr7", 158192358, 158192478)], False, EXPECTED_OUTPUT_GDC_BAM_PATH1),
+        (
+            GDC_BAM_PATH,
+            [("chr7", 158192358, 158192478)],
+            False,
+            EXPECTED_OUTPUT_GDC_BAM_PATH1,
+        ),
         (
             GDC_BAM_PATH,
             [("chr7", 73769179, 125673677)],

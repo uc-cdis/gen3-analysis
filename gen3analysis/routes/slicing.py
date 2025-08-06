@@ -1,3 +1,4 @@
+import os
 from pydantic import BaseModel
 from typing import List
 
@@ -99,13 +100,9 @@ async def get_slicing_view(
 ) -> dict:
     # return get_coordinates_slices_for_bam(bam)
 
-    # # TODO how similar to private GDC code can this be?
     # GENCODE_VERSION = 22
-    # # TODO are these files sensitive? what are they? can i copy/paste them to this repo?
+    # TODO are these files sensitive? what are they? can i copy/paste them to this repo?
     # gencode_mapping_file = f"/Users/paulineribeyre/Downloads/gencode_{GENCODE_VERSION}_gene_mapping.json"
-
-    region_pattern = "^[a-zA-Z0-9]+(:([0-9]+)?(-[0-9]+)?)?$"
-    # return {}
 
     # TODO until_eof=True for unmapped
 
@@ -117,77 +114,33 @@ async def get_slicing_view(
     bam_path = bam
 
     region = body.regions[0]  # TODO: what to do with multiple regions?
+    region_pattern = "^[a-zA-Z0-9]+(:([0-9]+)?(-[0-9]+)?)?$"
     # region = ("chr7", 158192358, 158192478)
     print("get_slicing_view - region =", region)
 
     file_type = "b"  # "b" for bam or "c" for cram
 
-    # StreamingResponse expects an *iterator of bytes chunks*
-    # We'll define a generator to yield chunks of data
-
-    # Create an in-memory file with fileno support
-    # with tempfile.SpooledTemporaryFile() as temp_bam:
-    if True:
-        # temp_bam = tempfile.SpooledTemporaryFile()
-        temp_bam = tempfile.NamedTemporaryFile(delete=False, mode="w+")
+    # print('bam_path', bam_path)
+    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_bam:
         # Open input BAM file
         # with pysam.AlignmentFile(bam_path, f"r{file_type}", index_filename=bai_path) as samfile:
         with pysam.AlignmentFile(bam_path, f"r{file_type}") as samfile:
-            # Open the output BAM file in write mode, using the input file's header as a template
+            # Open the output BAM file, using the input file's header as a template
             with pysam.AlignmentFile(temp_bam, "wb", template=samfile) as outfile:
                 # Iterate over reads in the specified region and write to buffer
-                # for read in samfile.fetch(*region):
                 for read in samfile.fetch(region=region):
                     outfile.write(read)
 
-        # Seek back to start to read the written BAM content
-        temp_bam.seek(0)
-        # data = temp_bam.read()
+    async def file_iterator():
+        with open(temp_bam.name, "rb") as f:
+            while chunk := f.read(8192):  # Read in 8KB chunks
+                yield chunk
+        # Clean up the temporary file after streaming
+        os.unlink(temp_bam.name)
 
-        # data = "abc"
-        # print(data)
-        # return StreamingResponse(data)
-
-        print("Temp file is:", temp_bam.name)
-        background_tasks.add_task(temp_bam.close)
-
-        # 1. Create a temporary file
-        # with NamedTemporaryFile(delete=False, mode="w+") as temp_file:
-        #     temp_file.write("This is line 1.\n")
-        #     temp_file.write("This is line 2.\n")
-        #     temp_file.write("This is the final line.\n")
-        #     temp_file_path = temp_file.name
-
-        # # 3. Define a generator function to read and yield chunks
-        # async def file_iterator():
-        #     with open(temp_file_path, "rb") as f:
-        #         while chunk := f.read(8192):  # Read in 8KB chunks
-        #             yield chunk
-        #     # Clean up the temporary file after streaming
-        #     os.unlink(temp_file_path)
-
-        # # 4. Return a StreamingResponse
-
-        # return FileResponse(temp_bam.name, media_type="application/octet-stream", filename="test-filename.bam")
-        import os
-
-        # def bam_chunk_generator(chunk_size=8192):
-        #     while True:
-        #         chunk = temp_bam.read(chunk_size)
-        #         if not chunk:
-        #             break
-        #         yield chunk
-
-        async def file_iterator():
-            with open(temp_bam.name, "rb") as f:
-                while chunk := f.read(8192):  # Read in 8KB chunks
-                    yield chunk
-            # Clean up the temporary file after streaming
-            os.unlink(temp_bam.name)
-
-        return StreamingResponse(file_iterator(), media_type="application/octet-stream")
-        # return StreamingResponse(
-        #     file_iterator(),
-        #     media_type="text/plain",
-        #     headers={"Content-Disposition": "attachment; filename=my_temp_file.txt"}
-        # )
+    return StreamingResponse(file_iterator(), media_type="application/octet-stream")
+    # return StreamingResponse(
+    #     file_iterator(),
+    #     media_type="text/plain",
+    #     headers={"Content-Disposition": "attachment; filename=my_temp_file.txt"}
+    # )

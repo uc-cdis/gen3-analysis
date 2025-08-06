@@ -89,12 +89,13 @@ components:
     PlotRequest:
       properties:
         filters:
-          default: []
           items:
             additionalProperties: true
             type: object
           title: Filters
           type: array
+      required:
+      - filters
       title: PlotRequest
       type: object
     ValidationError:

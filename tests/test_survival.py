@@ -767,8 +767,8 @@ mocked_compare_guppy_data = [
 async def test_survival_compare_endpoint(app, client):
     parameters = {
         "filters": [
-            {"and": [{"nested": {"path": "demographic", "in": {"gender": ["male"]}}}]},
-            {"and": [{"nested": {"path": "demographic", "in": {"race": ["white"]}}}]},
+            {"nested": {"path": "demographic", "in": {"gender": ["male"]}}},
+            {"nested": {"path": "demographic", "in": {"race": ["white"]}}},
         ],
         "doc_type": "case",
         "field": "_case_id",

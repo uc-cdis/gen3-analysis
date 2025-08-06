@@ -290,7 +290,7 @@ async def plot(
 
 # Define a Pydantic model for the request body
 class CompareSurvivalRequest(BaseModel):
-    filters: List[Dict] = []
+    filters: List[Dict]
     doc_type: str
     field: str
     limit: int = MAX_CASES
@@ -328,73 +328,54 @@ async def compare(
     field = request.field
     limit = request.limit
 
-    ## get the cases
-
     if len(filters) != 2:
         raise HTTPException(
             status_code=400, detail="filters must be a list of 2 filters"
         )
 
-    if field is None:
-        raise HTTPException(status_code=400, detail="field must be specified")
-
-    if doc_type is None:
-        raise HTTPException(status_code=400, detail="doc_type must be specified")
-
     # get a list of cases to perform set operation on, for each cohort
-    try:
-        plot_items_0 = await cases.get_item_ids(
-            gen3_graphql_client, auth, doc_type, field, filters[0], limit
-        )
+    plot_items_0 = await cases.get_item_ids(
+        gen3_graphql_client, auth, doc_type, field, filters[0], limit
+    )
 
-        plot_items_1 = await cases.get_item_ids(
-            gen3_graphql_client, auth, doc_type, field, filters[1], limit
-        )
+    plot_items_1 = await cases.get_item_ids(
+        gen3_graphql_client, auth, doc_type, field, filters[1], limit
+    )
 
-        if plot_items_0.get("data") is None:
-            raise HTTPException(
-                status_code=400, detail="No cases found for the first filter"
-            )
-        if plot_items_1.get("data") is None:
-            raise HTTPException(
-                status_code=400, detail="No cases found for the second filter"
-            )
-
-        # extract ids
-
-        ids = glom(plot_items_0, f"data.{doc_type}", default=[])
-        ids_0 = [x[field] for x in ids if x.get(field) is not None]
-
-        ids = glom(plot_items_1, f"data.{doc_type}", default=[])
-        ids_1 = [x[field] for x in ids if x.get(field) is not None]
-
-        # Fastest approach: Convert to sets once and reuse
-        set0 = set(ids_0)
-        set1 = set(ids_1)
-
-        intersection = set0 & set1
-
-        # Subtract the intersection from both sets
-        item_id_0_minus_intersection = list(set0 - intersection)
-        item_id_1_minus_intersection = list(set1 - intersection)
-
-        # build graphql filter for both using in
-
-        filter_0 = {"and": [{"in": {field: item_id_0_minus_intersection}}]}
-
-        filter_1 = {"and": [{"in": {field: item_id_1_minus_intersection}}]}
-
-        return await plot(
-            PlotRequest(filters=[filter_0, filter_1]),
-            gen3_graphql_client,
-            auth,
-        )
-
-    except HTTPException as e:
-        raise e
-    except ValueError:
+    if plot_items_0.get("data") is None:
         raise HTTPException(
-            status_code=500, detail="Error with comparative survival calculation"
+            status_code=400, detail="No cases found for the first filter"
         )
-    except Exception:
-        raise HTTPException(status_code=500)
+    if plot_items_1.get("data") is None:
+        raise HTTPException(
+            status_code=400, detail="No cases found for the second filter"
+        )
+
+    # extract ids
+
+    ids = glom(plot_items_0, f"data.{doc_type}", default=[])
+    ids_0 = [x[field] for x in ids if x.get(field) is not None]
+
+    ids = glom(plot_items_1, f"data.{doc_type}", default=[])
+    ids_1 = [x[field] for x in ids if x.get(field) is not None]
+
+    # Fastest approach: Convert to sets once and reuse
+    set0 = set(ids_0)
+    set1 = set(ids_1)
+
+    intersection = set0 & set1
+
+    # Subtract the intersection from both sets
+    item_id_0_minus_intersection = list(set0 - intersection)
+    item_id_1_minus_intersection = list(set1 - intersection)
+
+    # build graphql filter for both using in
+
+    filter_0 = {"in": {field: item_id_0_minus_intersection}}
+    filter_1 = {"in": {field: item_id_1_minus_intersection}}
+
+    return await plot(
+        PlotRequest(filters=[filter_0, filter_1]),
+        gen3_graphql_client,
+        auth,
+    )

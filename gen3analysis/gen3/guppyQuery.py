@@ -66,9 +66,6 @@ class GuppyGQLClient:
 
                     return result
 
-            except HTTPException as e:
-                logger.error(e.detail)
-                raise e
             except Exception as e:
                 if attempt == retry_count:
                     raise

@@ -97,6 +97,7 @@ class SlicingRequest(BaseModel):
 async def get_slicing_view(
     background_tasks: BackgroundTasks,
     bam: str,
+    bai: str,
     body: SlicingRequest,
     auth: Auth = Depends(Auth),
 ) -> dict:
@@ -113,11 +114,14 @@ async def get_slicing_view(
     # bam_guid = "PREFIX/a03fff27-ff92-4d17-bfb1-3c1908ba90ac"
     # bai_guid = "PREFIX/131e3a2c-8e7d-4e49-9775-16adab4475f8"
 
-    # url = "http://0.0.0.0:8000/data"
-    bam_guid = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
-    bai_guid = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam.bai"
+    url = "http://0.0.0.0:8000/data"
+    # bam_guid = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
+    # bai_guid = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam.bai"
     # bam_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam"
     # bai_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam.bai"
+
+    bam_guid = bam
+    bai_guid = bai
 
     # TODO: clean this up for multiple regions
     region = body.regions[0]
@@ -144,47 +148,47 @@ async def get_slicing_view(
     # with open(f"{bam_path}.bai", "rb") as f:
     #     bai_data = f.read()
 
-    # # BAM file
-    # # get presigned url
-    # print("Getting BAM file")
-    # bam_res = requests.get(
-    #     f"{url}/{bam_guid}",
-    #     verify=True,
-    # )
-    # bam_res.raise_for_status()
-    # bam_presigned_url = bam_res.json().get("url")
-    # assert bam_presigned_url, bam_res.json()
-    # # get file data from presigned url
-    # # headers["Range"] = f"bytes={int(off)}-"
-    # bam_res = requests.get(
-    #     bam_presigned_url,
-    #     # headers=headers,
-    #     # cookies=gdcapi_request.create_auth_cookies(),
-    #     # stream=True,
-    #     verify=True,
-    # )
-    # bam_res.raise_for_status()
+    # BAM file
+    # get presigned url
+    print("Getting BAM file")
+    bam_res = requests.get(
+        f"{url}/{bam_guid}",
+        verify=True,
+    )
+    bam_res.raise_for_status()
+    bam_presigned_url = bam_res.json().get("url")
+    assert bam_presigned_url, bam_res.json()
+    # get file data from presigned url
+    # headers["Range"] = f"bytes={int(off)}-"
+    bam_res = requests.get(
+        bam_presigned_url,
+        # headers=headers,
+        # cookies=gdcapi_request.create_auth_cookies(),
+        # stream=True,
+        verify=True,
+    )
+    bam_res.raise_for_status()
 
-    # # BAI file
-    # # get presigned url
-    # print("Getting BAI file")
-    # bai_res = requests.get(
-    #     f"{url}/{bai_guid}",
-    #     verify=True,
-    # )
-    # bai_res.raise_for_status()
-    # bai_presigned_url = bai_res.json().get("url")
-    # assert bai_presigned_url, bai_res.json()
-    # # get file data from presigned url
-    # # headers["Range"] = f"bytes={int(off)}-"
-    # bai_res = requests.get(
-    #     bai_presigned_url,
-    #     # headers=headers,
-    #     # cookies=gdcapi_request.create_auth_cookies(),
-    #     # stream=True,  # TODO stream maybe not needed
-    #     verify=True,
-    # )
-    # bai_res.raise_for_status()
+    # BAI file
+    # get presigned url
+    print("Getting BAI file")
+    bai_res = requests.get(
+        f"{url}/{bai_guid}",
+        verify=True,
+    )
+    bai_res.raise_for_status()
+    bai_presigned_url = bai_res.json().get("url")
+    assert bai_presigned_url, bai_res.json()
+    # get file data from presigned url
+    # headers["Range"] = f"bytes={int(off)}-"
+    bai_res = requests.get(
+        bai_presigned_url,
+        # headers=headers,
+        # cookies=gdcapi_request.create_auth_cookies(),
+        # stream=True,  # TODO stream maybe not needed
+        verify=True,
+    )
+    bai_res.raise_for_status()
 
     get_range = False
     if get_range:
@@ -289,27 +293,26 @@ async def get_slicing_view(
     output_bam = None
     # with pysam.BGZFile(bam_stream, 'rb') as bam_path:
     try:
-        # with open(input_bam, "wb") as input_bam_f:
-        # # with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="wb+") as input_bam:
-        #     input_bam_f.write(bam_res.content)
-        # with open(input_bai, "wb") as input_bai_f:
-        # # with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="wb+") as input_bam:
-        #     input_bai_f.write(bai_res.content)
+        with open(input_bam, "wb") as input_bam_f:
+        # with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="wb+") as input_bam:
+            input_bam_f.write(bam_res.content)
+        with open(input_bai, "wb") as input_bai_f:
+        # with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="wb+") as input_bam:
+            input_bai_f.write(bai_res.content)
         with tempfile.NamedTemporaryFile(
             suffix=".bam", delete=False, mode="w+"
         ) as output_bam:
             # Open input BAM file
-            print("trying to open input BAM file")
             # with pysam.AlignmentFile(bam_path, f"r{file_type}", index_filename=bai_path) as samfile:
             # with pysam.AlignmentFile(bam_path, f"r{file_type}") as samfile:
-            path = bam_guid  # input_bam
+            # path = bam_guid  # input_bam
             # path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
             # with pysam.AlignmentFile(path, f"r{file_type}", index_filename=input_bai) as samfile:
-            # with pysam.AlignmentFile(path, f"r{file_type}", index_filename=bai_guid) as samfile:
-            with pysam.AlignmentFile(path, f"r{file_type}") as samfile:
+            with pysam.AlignmentFile(input_bam, f"r{file_type}", index_filename=input_bai) as samfile:
+            # with pysam.AlignmentFile(path, f"r{file_type}") as samfile:
                 # with pysam.AlignmentFile("-", f"r{file_type}") as samfile:
                 # Open the output BAM file, using the input file's header as a template
-                print("output_bam.name", output_bam.name)
+                # print("output_bam.name", output_bam.name)
                 with pysam.AlignmentFile(
                     output_bam.name, f"w{file_type}", template=samfile
                 ) as outfile:

@@ -22,6 +22,7 @@ EXPECTED_OUTPUT_UNMAPPED = os.path.join(
 )
 
 GDC_BAM_PATH = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam"
+GDC_BAI_PATH = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam.bai"
 EXPECTED_OUTPUT_GDC_BAM_PATH1 = "/Users/paulineribeyre/Downloads/GDC_BAM/TCGA-H5-A2HR-01A-11R-A180-07.chr7.158192358.158192478.bam"
 EXPECTED_OUTPUT_GDC_BAM_PATH2 = "/Users/paulineribeyre/Downloads/GDC_BAM/TCGA-H5-A2HR-01A-11R-A180-07.chr7.73769179.125673677.bam"
 
@@ -57,19 +58,19 @@ def test_slicing1(request, regions, unmapped, expected):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "file_path,regions,unmapped,expected",
+    "bam_path,bai_path,regions,unmapped,expected",
     [
-        (BAM_PATH, [("chr1", None, None)], False, EXPECTED_OUTPUT_CHR1),
+        (BAM_PATH, BAI_PATH, [("chr1", None, None)], False, EXPECTED_OUTPUT_CHR1),
         # 10	65	chr1	10001
-        # (BAM_PATH, [("chr1", 10001, 10361)], False, EXPECTED_OUTPUT_CHR2),
+        (BAM_PATH, BAI_PATH, [("chr1", 10001, 10361)], False, EXPECTED_OUTPUT_CHR2),
         # (
-        #     GDC_BAM_PATH,
+        #     GDC_BAM_PATH, GDC_BAI_PATH,
         #     [("chr7", 158192358, 158192478)],
         #     False,
         #     EXPECTED_OUTPUT_GDC_BAM_PATH1,
         # ),
         # (
-        #     GDC_BAM_PATH,
+        #     GDC_BAM_PATH, GDC_BAI_PATH,
         #     [("chr7", 73769179, 125673677)],
         #     False,
         #     EXPECTED_OUTPUT_GDC_BAM_PATH2,
@@ -83,7 +84,7 @@ def test_slicing1(request, regions, unmapped, expected):
 # 73769132 73769199
 # 73769132 73769266
 # 73769139 73769100
-async def test_slicing2(file_path, client, regions, unmapped, expected):
+async def test_slicing2(bam_path, bai_path, client, regions, unmapped, expected):
     # import pysam
     # import io
 
@@ -98,7 +99,7 @@ async def test_slicing2(file_path, client, regions, unmapped, expected):
     # print('test_slicing2', region)
 
     res = await client.post(
-        f"/slicing/view/{file_path}",
+        f"/slicing/view/{bam_path}?bai={bai_path}",
         json={"regions": [region]},
         # headers={"Authorization": f"bearer {TEST_ACCESS_TOKEN}"},
     )
@@ -113,7 +114,7 @@ async def test_slicing2(file_path, client, regions, unmapped, expected):
     #     print(f"Received chunk of size: {len(chunk)} bytes")
 
     # print(type(res))
-    out_path = f"{file_path}_test_output"  # TODO use tempfile
+    out_path = f"{bam_path}_test_output"  # TODO use tempfile
     with open(out_path, "wb") as f:
         for chunk in res.iter_bytes():
             if chunk:

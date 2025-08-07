@@ -28,7 +28,9 @@ from urllib3 import response
 
 import pysam
 import tempfile
-
+import io
+import gzip
+import struct
 
 slicing = APIRouter()
 
@@ -111,12 +113,76 @@ async def get_slicing_view(
     # bam_path = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam"
     # bai_path = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam.bai"
 
+    bam_guid = "PREFIX/a03fff27-ff92-4d17-bfb1-3c1908ba90ac"
+    bai_guid = "PREFIX/131e3a2c-8e7d-4e49-9775-16adab4475f8"
     bam_path = bam
 
     region = body.regions[0]  # TODO: what to do with multiple regions?
-    region_pattern = "^[a-zA-Z0-9]+(:([0-9]+)?(-[0-9]+)?)?$"
+    # region_pattern = "^[a-zA-Z0-9]+(:([0-9]+)?(-[0-9]+)?)?$"
     # region = ("chr7", 158192358, 158192478)
     print("get_slicing_view - region =", region)
+
+    with open(f"{bam_path}.bai", "rb") as f:
+        bai_data = f.read()
+
+    # BAM file
+    # get presigned url
+    bam_res = requests.get(
+        f"https://pauline.planx-pla.net/user/data/download/{bam_guid}",
+        stream=True,
+        verify=True,
+    )
+    bam_res.raise_for_status()
+    bam_presigned_url = bam_res.json().get("url")
+    assert bam_presigned_url, bam_res.json()
+    # get file data from presigned url
+    # headers["Range"] = f"bytes={int(off)}-"
+    bam_res = requests.get(
+        bam_presigned_url,
+        # headers=headers,
+        # cookies=gdcapi_request.create_auth_cookies(),
+        stream=True,
+        verify=True,
+    )
+    bam_res.raise_for_status()
+
+    # BAI file
+    # get presigned url
+    bai_res = requests.get(
+        f"https://pauline.planx-pla.net/user/data/download/{bai_guid}",
+        stream=True,
+        verify=True,
+    )
+    bai_res.raise_for_status()
+    bai_presigned_url = bai_res.json().get("url")
+    assert bai_presigned_url, bai_res.json()
+    # get file data from presigned url
+    # headers["Range"] = f"bytes={int(off)}-"
+    bai_res = requests.get(
+        bai_presigned_url,
+        # headers=headers,
+        # cookies=gdcapi_request.create_auth_cookies(),
+        stream=True,
+        verify=True,
+    )
+    bai_res.raise_for_status()
+
+    header_buff = gzip.GzipFile(fileobj=bam_res.raw)
+    header_buff = io.BufferedReader(header_buff, 2**15)
+    bam_head = header_file2dict(header_buff)
+    bai_dict = index_file2dict(bai_res.raw)
+
+    print('bam_head', bam_head)
+    print('bai_dict', bai_dict)
+
+
+    # byte_ranges = get_bam_ranges_from_bai(parsed_bai, tid, region_start, region_end)
+    # print("Byte ranges to download from BAM file:")
+    # for start, end in byte_ranges:
+    #     print(f"bytes={start}-{end-1}")
+
+
+    raise Exception("done")
 
     file_type = "b"  # "b" for bam or "c" for cram
 
@@ -126,7 +192,7 @@ async def get_slicing_view(
         # with pysam.AlignmentFile(bam_path, f"r{file_type}", index_filename=bai_path) as samfile:
         with pysam.AlignmentFile(bam_path, f"r{file_type}") as samfile:
             # Open the output BAM file, using the input file's header as a template
-            with pysam.AlignmentFile(temp_bam, "wb", template=samfile) as outfile:
+            with pysam.AlignmentFile(temp_bam, f"w{file_type}", template=samfile) as outfile:
                 # Iterate over reads in the specified region and write to buffer
                 for read in samfile.fetch(region=region):
                     outfile.write(read)
@@ -144,3 +210,210 @@ async def get_slicing_view(
     #     media_type="text/plain",
     #     headers={"Content-Disposition": "attachment; filename=my_temp_file.txt"}
     # )
+
+def deserialize(fmt, f):
+    return struct.unpack(fmt, f.read(struct.calcsize(fmt)))[0]
+
+import re
+
+def bytes2header(b):
+    """
+    Parses and returns a dictionary representation of a SAM header byte buffer.
+    """
+    ret = {
+        "HD": {},
+        "SQ": [],
+        "RG": [],
+        "PG": [],
+        "CO": [],
+    }
+
+    CODE_REGEX = r"^@(?P<code>[A-Z][A-Z])(?P<rest>\t.*)"
+    code_regex = re.compile(CODE_REGEX)
+
+    TAG_REGEX = r"\t(?P<tag>[A-Za-z][A-Za-z0-9]):(?P<val>[^\t]+)"
+    tag_regex = re.compile(TAG_REGEX)
+
+    TAGS_REGEX = rf"^(?:{TAG_REGEX})+$"
+    tags_regex = re.compile(TAGS_REGEX)
+
+    header = b.decode("us-ascii")
+
+    for i, line in enumerate(header.strip("\n").split("\n")):
+
+        match = code_regex.match(line)
+        if not match:
+            raise Exception("malformed code on line %d" % i)
+
+        code = match.group("code")
+        rest = match.group("rest")
+
+        if code not in ret:
+            raise Exception("unknown code on line %d" % i)
+
+        if code == "HD" and i:
+            raise Exception("header code found on line %d" % i)
+
+        if code == "CO":
+            ret[code].append(rest[1:])
+            continue
+
+        if tags_regex.match(rest) is None:
+            raise Exception("malformed tags on line %d" % i)
+
+        record = {}
+        for match in tag_regex.finditer(rest):
+            tag = match.group("tag")
+            val = match.group("val")
+
+            record[tag] = val
+
+        if code == "HD":
+            ret[code] = record
+        else:
+            ret[code].append(record)
+
+    return ret
+
+def header_file2dict(bam):
+    """
+    Deserialize BAM header from file-like object.
+    """
+    if bam.read(4) != b"BAM\x01":
+        raise Exception("magic number not found")
+
+    try:
+        header_length = deserialize("<I", bam)
+    except Exception:
+        raise Exception("unexpected EOF encountered")
+
+    # NOTE We preload the whole BAM header into memory since we'll be
+    # representing the whole thing in memory anyways, and we don't necessarily
+    # know if the file-like object is performant under small read sizes.
+    buffered = bam.read(header_length)
+    if len(buffered) < header_length:
+        raise Exception("unexpected EOF encountered")
+
+    header_dict = bytes2header(buffered)
+
+    # NOTE We're discarding the extra reference information, as it's encoded in
+    # the SAM header that we just parsed. No need to re-read the same info, and
+    # having two places with potentially conflicting information isn't great...
+    remainder = (
+        4 + (8 * len(header_dict["SQ"])) + sum(len(sq["SN"]) + 1 for sq in header_dict["SQ"])
+    )
+    bam.read(remainder)
+
+    return header_dict
+
+
+def index_file2dict(bai):
+    """
+    Deserialize a BAI file to a dict.
+    """
+    bai_dict = {
+        "references": [],
+        "unplaced": None,
+    }
+
+    # NOTE We preload the whole file-like object into memory since we'll
+    # be representing the whole thing in memory anyways, and we don't
+    # necessarily know if the file-like object is performant under small
+    # read sizes.
+    buffered = io.BytesIO(bai.read())
+
+    if buffered.read(4) != b"BAI\x01":
+        raise Exception("magic number not found")
+
+    mapped_end = 0
+    for i in range(deserialize("<i", buffered)):
+        ref, region_mapped_end = file2ref(buffered)
+        bai_dict["references"].append(ref)
+        mapped_end = region_mapped_end if region_mapped_end > mapped_end else mapped_end
+
+    try:
+        bai_dict["unplaced"] = deserialize("<Q", buffered)
+    except Exception:
+        # NOTE Unplaced / unmapped reads are optional.
+        pass
+
+    bai_dict["mapped_end"] = mapped_end
+    return bai_dict
+
+def file2ref(bai):
+    """
+    Deserialize a BAI file to a ref dict.
+    """
+    ref_dict = {
+        "bins": {},
+        "intervals": [],
+        "unmapped_beg": None,
+        "unmapped_end": None,
+        "num_mapped": None,
+        "num_unmapped": None,
+    }
+
+    region_mapped_end = 0
+
+    for i in range(deserialize("<i", bai)):
+
+        bin_dict = file2bin(bai)
+
+        if bin_dict["id"] == 37450:
+            ref_dict["unmapped_beg"] = bin_dict["chunks"][0][0]
+            ref_dict["unmapped_end"] = bin_dict["chunks"][0][1]
+            ref_dict["num_mapped"] = bin_dict["chunks"][1][0]
+            ref_dict["num_unmapped"] = bin_dict["chunks"][1][1]
+            continue
+
+        chunk_end = bin_dict["chunks"][0][1]
+        region_mapped_end = chunk_end if region_mapped_end < chunk_end else region_mapped_end
+
+        ref_dict["bins"][bin_dict["id"]] = bin_dict
+
+    for i in range(deserialize("<i", bai)):
+        ref_dict["intervals"].append(file2interval(bai))
+
+    return ref_dict, region_mapped_end
+
+
+def file2bin(bai):
+    """
+    Deserialize a BAI file to a bin dict.
+    """
+    bin_dict = {
+        "id": None,
+        "chunks": [],
+    }
+
+    try:
+        bin_dict["id"] = deserialize("<I", bai)
+    except struct.error:
+        raise Exception("unexpected EOF encountered")
+
+    for i in range(deserialize("<i", bai)):
+        bin_dict["chunks"].append(file2chunk(bai))
+
+    return bin_dict
+
+def file2interval(bai):
+    """
+    Deserialize a BAI file to an interval.
+    """
+    try:
+        return deserialize("<Q", bai)
+    except struct.error:
+        raise Exception("unexpected EOF encountered")
+
+
+def file2chunk(bai):
+    """
+    Deserialize a BAI file to a chunk tuple.
+    """
+    try:
+        return (
+            deserialize("<Q", bai),
+            deserialize("<Q", bai),
+        )
+    except struct.error:
+        raise Exception("unexpected EOF encountered")

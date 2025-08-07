@@ -108,27 +108,34 @@ async def get_slicing_view(
 
     # TODO until_eof=True for unmapped
 
-    # bam_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
-    # bai_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam.bai"
-    # bam_path = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam"
-    # bai_path = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam.bai"
-
+    url = "https://pauline.planx-pla.net/user/data/download/"
     bam_guid = "PREFIX/a03fff27-ff92-4d17-bfb1-3c1908ba90ac"
     bai_guid = "PREFIX/131e3a2c-8e7d-4e49-9775-16adab4475f8"
-    bam_path = bam
 
-    region = body.regions[0]  # TODO: what to do with multiple regions?
+    url = "http://0.0.0.0:8000/data"
+    # bam_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
+    # bai_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam.bai"
+    bam_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam"
+    bai_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam.bai"
+    # bam_path = bam
+
+    # TODO: clean this up for multiple regions
+    region = body.regions[0]
+    # regions = [f"{region[0]}:{region[1]}-{region[2]}"]
+    region = ("chr7", 73769179, 125673677)
+    regions = [region]
+
     # region_pattern = "^[a-zA-Z0-9]+(:([0-9]+)?(-[0-9]+)?)?$"
     # region = ("chr7", 158192358, 158192478)
     print("get_slicing_view - region =", region)
 
-    with open(f"{bam_path}.bai", "rb") as f:
-        bai_data = f.read()
+    # with open(f"{bam_path}.bai", "rb") as f:
+    #     bai_data = f.read()
 
     # BAM file
     # get presigned url
     bam_res = requests.get(
-        f"https://pauline.planx-pla.net/user/data/download/{bam_guid}",
+        f"{url}/{bam_guid}",
         stream=True,
         verify=True,
     )
@@ -145,12 +152,17 @@ async def get_slicing_view(
         verify=True,
     )
     bam_res.raise_for_status()
+    # bam_res = todoname(bam_path)
+    # requests_session = requests.session()
+    # requests_session.mount('file://', LocalFileAdapter())
+    # bam_res = requests_session.get(f'file://{bam_path}', stream=True)
+    # bam_res.raise_for_status()
 
     # BAI file
     # get presigned url
     bai_res = requests.get(
-        f"https://pauline.planx-pla.net/user/data/download/{bai_guid}",
-        stream=True,
+        f"{url}/{bai_guid}",
+        stream=True,  # TODO stream maybe not needed
         verify=True,
     )
     bai_res.raise_for_status()
@@ -166,18 +178,62 @@ async def get_slicing_view(
         verify=True,
     )
     bai_res.raise_for_status()
+    # bai_res = todoname(bai_path)
+    # requests_session.mount('file://', LocalFileAdapter())
+    # bai_res = requests_session.get(f'file://{bai_path}', stream=True)
+    # bai_res.raise_for_status()
 
     header_buff = gzip.GzipFile(fileobj=bam_res.raw)
     header_buff = io.BufferedReader(header_buff, 2**15)
     bam_head = header_file2dict(header_buff)
     bai_dict = index_file2dict(bai_res.raw)
 
-    print('bam_head', bam_head)
-    print('bai_dict', bai_dict)
+    import json
+    # print('bam_head', json.dumps(bam_head, indent=2))
+    # print('bai_dict', json.dumps(bai_dict, indent=2))
 
+
+    # Filter out any references that don't exist in the bam.
+    # example: if the requested regions are "chr1:x-y" and "chr2:x-y", but the BAM only
+    # includes "chr1" and "chr3", filter the requested regions down to down "chr1:x-y".
+    # NOTE If we want to error on reference mismatches, error here.
+    refs = {sq["SN"] for sq in bam_head["SQ"]}
+    regions2 = filter(lambda r: r[0] in refs, regions)
+
+    # NOTE If we want to error on unsatisfiable regions, error here.
+    regions = implicit_to_explicit_regions(bam_head, regions2)
+    # list(regions)
+
+    regions = sorted(regions)
+    regions = merged(regions)
+
+
+
+    for curr_ref, curr_beg, curr_end in regions:
+        print('fetch_records', curr_ref, curr_beg, curr_end)
+
+        # try:
+        b_off_start, v_off = index_region_offset(
+            bai_dict,
+            curr_ref,
+            curr_beg,
+            curr_end,
+        )
+        # except ValueError as err:
+        #     continue
+        # print('START: b_off, v_off', b_off_start, v_off)
+        # tuples = get_chunk(bam_f, b_off, v_off)
+
+        b_off_end, v_off = index_region_offset_end(
+            bai_dict,
+            curr_ref,
+            curr_beg,
+            curr_end,
+        )
+        # print('END: b_off, v_off', b_off_end, v_off)
 
     # byte_ranges = get_bam_ranges_from_bai(parsed_bai, tid, region_start, region_end)
-    # print("Byte ranges to download from BAM file:")
+    print("Byte ranges to download from BAM file:", b_off_start, b_off_end)
     # for start, end in byte_ranges:
     #     print(f"bytes={start}-{end-1}")
 
@@ -211,10 +267,80 @@ async def get_slicing_view(
     #     headers={"Content-Disposition": "attachment; filename=my_temp_file.txt"}
     # )
 
+
+# from requests_testadapter import Resp
+# import os
+
+# class LocalFileAdapter(requests.adapters.HTTPAdapter):
+#     def build_response_from_file(self, request):
+#         file_path = request.url[7:]
+#         with open(file_path, 'rb') as file:
+#             buff = bytearray(os.path.getsize(file_path))
+#             file.readinto(buff)
+#             resp = Resp(buff)
+#             r = self.build_response(request, resp)
+
+#             return r
+
+#     def send(self, request, stream=False, timeout=None,
+#              verify=True, cert=None, proxies=None):
+
+#         return self.build_response_from_file(request)
+
+
+
+
+# class todoname:
+#     def __init__(self, file_path):
+#         self.raw = stream_file_like_request(file_path)
+
+# def stream_file_like_request(file_path, chunk_size=8192):
+#     """
+#     Opens a local file and yields its content in chunks,
+#     mimicking a streaming GET request response.
+
+#     Args:
+#         file_path (str): The path to the local file.
+#         chunk_size (int): The size of each chunk to read.
+
+#     Yields:
+#         bytes: Chunks of data from the file.
+#     """
+#     try:
+#         with open(file_path, 'rb') as f:
+#             while True:
+#                 chunk = f.read(chunk_size)
+#                 if not chunk:
+#                     break  # End of file
+#                 yield chunk
+#     except FileNotFoundError:
+#         print(f"Error: File not found at {file_path}")
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+
+# # Example usage:
+# # Create a dummy file for demonstration
+# with open("my_local_file.txt", "wb") as f:
+#     f.write(b"This is the first line.\n")
+#     f.write(b"This is the second line.\n")
+#     f.write(b"And the third line.\n")
+
+# # Simulate processing the stream
+# print("Streaming content from local file:")
+# for data_chunk in stream_file_like_request("my_local_file.txt"):
+#     print(f"Received chunk: {data_chunk.decode('utf-8').strip()}")
+
+# # Clean up the dummy file
+# import os
+# os.remove("my_local_file.txt")
+
+
 def deserialize(fmt, f):
     return struct.unpack(fmt, f.read(struct.calcsize(fmt)))[0]
 
+
 import re
+
 
 def bytes2header(b):
     """
@@ -275,6 +401,7 @@ def bytes2header(b):
 
     return ret
 
+
 def header_file2dict(bam):
     """
     Deserialize BAM header from file-like object.
@@ -321,6 +448,7 @@ def index_file2dict(bai):
     # necessarily know if the file-like object is performant under small
     # read sizes.
     buffered = io.BytesIO(bai.read())
+    # buffered = io.BytesIO(bai.read(1024))  # TODO switch back. Needed for using requests with local file
 
     if buffered.read(4) != b"BAI\x01":
         raise Exception("magic number not found")
@@ -339,6 +467,7 @@ def index_file2dict(bai):
 
     bai_dict["mapped_end"] = mapped_end
     return bai_dict
+
 
 def file2ref(bai):
     """
@@ -396,6 +525,7 @@ def file2bin(bai):
 
     return bin_dict
 
+
 def file2interval(bai):
     """
     Deserialize a BAI file to an interval.
@@ -417,3 +547,184 @@ def file2chunk(bai):
         )
     except struct.error:
         raise Exception("unexpected EOF encountered")
+
+
+def implicit_to_explicit_region(bam_head, ref, beg, end):
+    """
+    Converts an implicit region to an explicit region.
+    """
+    # print('implicit_to_explicit_region', ref, beg, end)
+    # ("chr1", 10001, 10011)
+    # import json; print('bam_head', json.dumps(bam_head, indent=2))
+
+    refs = [sq["SN"] for sq in bam_head["SQ"]]
+    lens = {sq["SN"]: int(sq["LN"]) for sq in bam_head["SQ"]}
+    # print('refs', refs)
+    # print('lens', lens)
+
+    if beg is None and end is not None:
+        beg = lens[ref] - end
+        end = lens[ref]
+
+    end = end if end is not None else lens[ref]
+    beg = beg if beg is not None else lens[ref] - end
+
+    # print(refs.index(ref), beg, end)
+    return refs.index(ref), beg, end
+
+
+def implicit_to_explicit_regions(bam_head, regions):
+    """
+    Converts implicit regions to explicit regions.
+    """
+    return (implicit_to_explicit_region(bam_head, *r) for r in regions)
+
+
+def merged(regions):
+    """
+    Merge coordinate sorted regions.
+    TODO understand what this does
+    """
+    regions = iter(regions)
+    try:
+        prev_ref, prev_beg, prev_end = next(regions)
+    except StopIteration:
+        return
+
+    for curr_ref, curr_beg, curr_end in regions:
+
+        if curr_ref != prev_ref or curr_beg > prev_end:
+            yield prev_ref, prev_beg, prev_end
+            prev_ref = curr_ref
+            prev_beg = curr_beg
+            prev_end = curr_end
+            continue
+
+        if curr_beg < prev_end and curr_end > prev_end:
+            prev_end = curr_end
+
+    yield prev_ref, prev_beg, prev_end
+
+
+def index_region_offset(bai_dict, ref, beg, end):
+    """
+    Returns the byte offset of the first chunk containing alignments within
+    the specified region, and the offset within the chunk of the first
+    record within the specified region.
+
+    Raises ValueError if the region is not included in the bai dict.
+    """
+    linear = linear_offset(bai_dict, ref, beg)
+
+    offset = None
+
+    # Find the earliest chunk that overlaps the linear offset.
+    bins = bai_dict["references"][ref]["bins"]
+    for b in reg2bins(beg, end):
+
+        # Skip any bins that weren't indexed - nothing in them.
+        if b not in bins:
+            continue
+
+        for lower, upper in bins[b]["chunks"]:
+
+            if upper < linear:
+                continue
+
+            offset = min(offset, lower) if offset is not None else lower
+
+    if offset is None:
+        raise ValueError("region not included in bai")
+
+    # Convert and return the non-virtual offsets.
+    return offset >> 16, offset & 0x0000FFFF
+
+
+def index_region_offset_end(bai_dict, ref, beg, end):
+    """
+    Returns the byte offset of the last chunk containing alignments within
+    the specified region.
+
+    Raises ValueError if the region is not included in the bai dict.
+    """
+    print('--- start index_region_offset_end')
+    print('ref, beg, end', ref, beg, end)
+    linear = linear_offset(bai_dict, ref, beg)
+    linear_end = linear_offset(bai_dict, ref, end)
+    print('linear', linear)
+    print('linear_end', linear_end)
+
+    offset = None
+
+    # Find the earliest chunk that overlaps the linear offset.
+    bins = bai_dict["references"][ref]["bins"]
+    # print('bins', bins)
+    for b in reg2bins(beg, end):
+
+        # Skip any bins that weren't indexed - nothing in them.
+        if b not in bins:
+            # print('  skipping')
+            continue
+        # print('b', b)
+
+        for lower, upper in bins[b]["chunks"]:
+            # print('lower, upper', lower, upper)
+
+            if upper < linear_end:
+                continue
+
+            offset = max(offset, upper) if offset is not None else upper
+
+    if offset is None:
+        raise ValueError("region not included in bai")
+
+    print('offset', offset, offset >> 16)
+    # Convert and return the non-virtual offsets.
+    return offset >> 16, offset & 0x0000FFFF
+
+
+import math
+
+
+def linear_offset(bai_dict, ref, beg, end=None):
+    """
+    Returns the lower limit (virtual) file offset.
+    """
+    assert ref >= 0, "ref must be >= 0"
+    assert beg >= 0, "beg must be >= 0"
+
+    TILE_SIZE = 2**14
+
+    # Divies the genome up into TILE_SIZE bp chunks.
+    # Calculates the tile a bp corresponds to, looks up the offset.
+    tile = int(math.floor(beg / TILE_SIZE))
+
+    try:
+        ref_dict = bai_dict["references"][ref]
+    except IndexError:
+        raise IndexError("reference %d" % ref)
+
+    try:
+        vir = ref_dict["intervals"][tile]
+    except IndexError as err:
+        vir = 0
+
+    return vir
+
+def reg2bins(beg, end):
+    """
+    Generates bin ids which overlap the specified region.
+
+    Beg inclusive.
+    End exclusive.
+    """
+    # Based off the algorithm presented in:
+    # https://samtools.github.io/hts-specs/SAMv1.pdf
+
+    yield 0
+
+    yield from range(1 + (beg >> 26), 1 + ((end - 1) >> 26) + 1)
+    yield from range(9 + (beg >> 23), 9 + ((end - 1) >> 23) + 1)
+    yield from range(73 + (beg >> 20), 73 + ((end - 1) >> 20) + 1)
+    yield from range(585 + (beg >> 17), 585 + ((end - 1) >> 17) + 1)
+    yield from range(4681 + (beg >> 14), 4681 + ((end - 1) >> 14) + 1)

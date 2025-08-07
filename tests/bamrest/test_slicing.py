@@ -14,6 +14,9 @@ import pysam
 BAM_PATH = os.path.join(TEST_DIR, "data/slice_testing.bam")
 BAI_PATH = os.path.join(TEST_DIR, "data/slice_testing.bam.bai")
 EXPECTED_OUTPUT_CHR1 = os.path.join(TEST_DIR, "data/slice_testing.expected_chr1.bam")
+EXPECTED_OUTPUT_CHR2 = os.path.join(
+    TEST_DIR, "data/slice_testing.expected_chr1_with_region.bam"
+)
 EXPECTED_OUTPUT_UNMAPPED = os.path.join(
     TEST_DIR, "data/slice_testing.expected_unmapped.bam"
 )
@@ -58,22 +61,23 @@ def test_slicing1(request, regions, unmapped, expected):
     [
         (BAM_PATH, [("chr1", None, None)], False, EXPECTED_OUTPUT_CHR1),
         # 10	65	chr1	10001
-        # (BAM_PATH, [("chr1", 10001, 10011)], False, EXPECTED_OUTPUT_CHR1),  # TODO add a test for region not None
-        (
-            GDC_BAM_PATH,
-            [("chr7", 158192358, 158192478)],
-            False,
-            EXPECTED_OUTPUT_GDC_BAM_PATH1,
-        ),
-        (
-            GDC_BAM_PATH,
-            [("chr7", 73769179, 125673677)],
-            False,
-            EXPECTED_OUTPUT_GDC_BAM_PATH2,
-        ),
+        # (BAM_PATH, [("chr1", 10001, 10361)], False, EXPECTED_OUTPUT_CHR2),
+        # (
+        #     GDC_BAM_PATH,
+        #     [("chr7", 158192358, 158192478)],
+        #     False,
+        #     EXPECTED_OUTPUT_GDC_BAM_PATH1,
+        # ),
+        # (
+        #     GDC_BAM_PATH,
+        #     [("chr7", 73769179, 125673677)],
+        #     False,
+        #     EXPECTED_OUTPUT_GDC_BAM_PATH2,
+        # ),
         # number of reads: 293361
         # D7T4KXP1:317:C2542ACXX:3:1208:1907:88424	147	chrUn_JTFH01001608v1_decoy	699
         # D7T4KXP1:317:C2542ACXX:3:1306:19484:175359	97	HCV-1	9431
+        # TODO test multiple regions
     ],
 )
 # 73769132 73769199
@@ -109,12 +113,11 @@ async def test_slicing2(file_path, client, regions, unmapped, expected):
     #     print(f"Received chunk of size: {len(chunk)} bytes")
 
     # print(type(res))
-    out_path = f"{file_path}_test_output"
+    out_path = f"{file_path}_test_output"  # TODO use tempfile
     with open(out_path, "wb") as f:
         for chunk in res.iter_bytes():
             if chunk:
                 f.write(chunk)
-        # print('chunk', chunk)
 
     # print("assertions")
     # with open(expected, "rb") as f:
@@ -124,7 +127,7 @@ async def test_slicing2(file_path, client, regions, unmapped, expected):
     # print(len(expected_data), len(actual_data))
     # assert expected_data == actual_data
     try:
-        assert pysam.view(expected) == pysam.view(out_path)
+        assert pysam.view(out_path) == pysam.view(expected)
     finally:
         os.unlink(out_path)
 

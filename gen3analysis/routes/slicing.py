@@ -107,22 +107,26 @@ async def get_slicing_view(
     # gencode_mapping_file = f"/Users/paulineribeyre/Downloads/gencode_{GENCODE_VERSION}_gene_mapping.json"
 
     # TODO until_eof=True for unmapped
+    # bam_path = bam
 
     url = "https://pauline.planx-pla.net/user/data/download/"
     bam_guid = "PREFIX/a03fff27-ff92-4d17-bfb1-3c1908ba90ac"
     bai_guid = "PREFIX/131e3a2c-8e7d-4e49-9775-16adab4475f8"
 
-    url = "http://0.0.0.0:8000/data"
-    # bam_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
-    # bai_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam.bai"
-    bam_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam"
-    bai_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam.bai"
-    # bam_path = bam
+    # url = "http://0.0.0.0:8000/data"
+    # # bam_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
+    # # bai_path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam.bai"
+    # bam_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam"
+    # bai_guid = "/Users/paulineribeyre/Downloads/GDC_BAM/3c7b6176-c578-4d2d-bfdd-d2a2fed509a2.rna_seq.chimeric.gdc_realn.bam.bai"
 
     # TODO: clean this up for multiple regions
     region = body.regions[0]
     # regions = [f"{region[0]}:{region[1]}-{region[2]}"]
-    region = ("chr7", 73769179, 125673677)
+    # region = ("chr7", 73769179, 125673677)
+    contig = region.split(":")[0]
+    region_start = int(region.split(":")[1].split("-")[0])
+    region_end = int(region.split("-")[1])
+    region = (contig, region_start, region_end)
     regions = [region]
 
     # region_pattern = "^[a-zA-Z0-9]+(:([0-9]+)?(-[0-9]+)?)?$"
@@ -134,6 +138,7 @@ async def get_slicing_view(
 
     # BAM file
     # get presigned url
+    print("Getting BAM file")
     bam_res = requests.get(
         f"{url}/{bam_guid}",
         stream=True,
@@ -160,6 +165,7 @@ async def get_slicing_view(
 
     # BAI file
     # get presigned url
+    print("Getting BAI file")
     bai_res = requests.get(
         f"{url}/{bai_guid}",
         stream=True,  # TODO stream maybe not needed
@@ -185,32 +191,29 @@ async def get_slicing_view(
 
     header_buff = gzip.GzipFile(fileobj=bam_res.raw)
     header_buff = io.BufferedReader(header_buff, 2**15)
-    bam_head = header_file2dict(header_buff)
+    bam_header, bam_header_dict = header_file2dict(header_buff)
     bai_dict = index_file2dict(bai_res.raw)
 
     import json
-    # print('bam_head', json.dumps(bam_head, indent=2))
+    # print('bam_header_dict', json.dumps(bam_header_dict, indent=2))
     # print('bai_dict', json.dumps(bai_dict, indent=2))
-
 
     # Filter out any references that don't exist in the bam.
     # example: if the requested regions are "chr1:x-y" and "chr2:x-y", but the BAM only
     # includes "chr1" and "chr3", filter the requested regions down to down "chr1:x-y".
     # NOTE If we want to error on reference mismatches, error here.
-    refs = {sq["SN"] for sq in bam_head["SQ"]}
+    refs = {sq["SN"] for sq in bam_header_dict["SQ"]}
     regions2 = filter(lambda r: r[0] in refs, regions)
 
     # NOTE If we want to error on unsatisfiable regions, error here.
-    regions = implicit_to_explicit_regions(bam_head, regions2)
+    regions = implicit_to_explicit_regions(bam_header_dict, regions2)
     # list(regions)
 
     regions = sorted(regions)
     regions = merged(regions)
 
-
-
     for curr_ref, curr_beg, curr_end in regions:
-        print('fetch_records', curr_ref, curr_beg, curr_end)
+        # print("fetch_records", curr_ref, curr_beg, curr_end)
 
         # try:
         b_off_start, v_off = index_region_offset(
@@ -233,25 +236,69 @@ async def get_slicing_view(
         # print('END: b_off, v_off', b_off_end, v_off)
 
     # byte_ranges = get_bam_ranges_from_bai(parsed_bai, tid, region_start, region_end)
-    print("Byte ranges to download from BAM file:", b_off_start, b_off_end)
+        print("Byte ranges to download from BAM file:", b_off_start, b_off_end)
     # for start, end in byte_ranges:
     #     print(f"bytes={start}-{end-1}")
 
 
-    raise Exception("done")
+    # BAM file
+    # get presigned url
+    print("Getting BAM file range")
+    bam_res = requests.get(
+        f"{url}/{bam_guid}",
+        stream=True,
+        verify=True,
+    )
+    bam_res.raise_for_status()
+    bam_presigned_url = bam_res.json().get("url")
+    assert bam_presigned_url, bam_res.json()
+    # get file data from presigned url
+    headers = {}
+    headers["Range"] = f"bytes={int(b_off_start)}-"
+    if b_off_start != b_off_end:
+        headers["Range"] += str(b_off_end)
+    bam_res = requests.get(
+        bam_presigned_url,
+        headers=headers,
+        # cookies=gdcapi_request.create_auth_cookies(),
+        # stream=True,
+        verify=True,
+    )
+    bam_res.raise_for_status()
+    # bam_stream = io.BytesIO(bam_res.text.encode('utf-8')).getvalue()
+    # bam_path = io.BytesIO(bam_res.text.encode('utf-8'))
+
+    with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="w+b") as temp_bam1:
+        temp_bam1.write(b"BAM\x01")
+        print(bam_header)
+        temp_bam1.write(bam_header) #.encode('utf-8'))
+        temp_bam1.write(bam_res.text.encode('utf-8'))
+        temp_bam1.flush()
+        # temp_bam_path = temp_bam.name  # Save the path before closing
+        bam_path = temp_bam1.name
+        # pysam.index(bam_path)
+
+    # raise Exception("done")
 
     file_type = "b"  # "b" for bam or "c" for cram
 
-    # print('bam_path', bam_path)
-    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_bam:
-        # Open input BAM file
-        # with pysam.AlignmentFile(bam_path, f"r{file_type}", index_filename=bai_path) as samfile:
-        with pysam.AlignmentFile(bam_path, f"r{file_type}") as samfile:
-            # Open the output BAM file, using the input file's header as a template
-            with pysam.AlignmentFile(temp_bam, f"w{file_type}", template=samfile) as outfile:
-                # Iterate over reads in the specified region and write to buffer
-                for read in samfile.fetch(region=region):
-                    outfile.write(read)
+    # with pysam.BGZFile(bam_stream, 'rb') as bam_path:
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_bam:
+            # Open input BAM file
+            # with pysam.AlignmentFile(bam_path, f"r{file_type}", index_filename=bai_path) as samfile:
+            print('bam_path', bam_path)
+            with pysam.AlignmentFile(bam_path, f"r{file_type}") as samfile:
+                # Open the output BAM file, using the input file's header as a template
+                with pysam.AlignmentFile(
+                    temp_bam, f"w{file_type}", template=samfile
+                ) as outfile:
+                    # Iterate over reads in the specified region and write to buffer
+                    for alignment in samfile.fetch(region=f"{region[0]}:{region[1]}-{region[2]}"):
+                        outfile.write(alignment)
+    finally:
+        os.unlink(bam_path)
+        os.unlink(temp_bam.name)
 
     async def file_iterator():
         with open(temp_bam.name, "rb") as f:
@@ -286,8 +333,6 @@ async def get_slicing_view(
 #              verify=True, cert=None, proxies=None):
 
 #         return self.build_response_from_file(request)
-
-
 
 
 # class todoname:
@@ -399,7 +444,7 @@ def bytes2header(b):
         else:
             ret[code].append(record)
 
-    return ret
+    return b, ret
 
 
 def header_file2dict(bam):
@@ -421,17 +466,19 @@ def header_file2dict(bam):
     if len(buffered) < header_length:
         raise Exception("unexpected EOF encountered")
 
-    header_dict = bytes2header(buffered)
+    header, header_dict = bytes2header(buffered)
 
     # NOTE We're discarding the extra reference information, as it's encoded in
     # the SAM header that we just parsed. No need to re-read the same info, and
     # having two places with potentially conflicting information isn't great...
     remainder = (
-        4 + (8 * len(header_dict["SQ"])) + sum(len(sq["SN"]) + 1 for sq in header_dict["SQ"])
+        4
+        + (8 * len(header_dict["SQ"]))
+        + sum(len(sq["SN"]) + 1 for sq in header_dict["SQ"])
     )
     bam.read(remainder)
 
-    return header_dict
+    return header, header_dict
 
 
 def index_file2dict(bai):
@@ -496,7 +543,9 @@ def file2ref(bai):
             continue
 
         chunk_end = bin_dict["chunks"][0][1]
-        region_mapped_end = chunk_end if region_mapped_end < chunk_end else region_mapped_end
+        region_mapped_end = (
+            chunk_end if region_mapped_end < chunk_end else region_mapped_end
+        )
 
         ref_dict["bins"][bin_dict["id"]] = bin_dict
 
@@ -647,12 +696,12 @@ def index_region_offset_end(bai_dict, ref, beg, end):
 
     Raises ValueError if the region is not included in the bai dict.
     """
-    print('--- start index_region_offset_end')
-    print('ref, beg, end', ref, beg, end)
+    # print("--- start index_region_offset_end")
+    # print("ref, beg, end", ref, beg, end)
     linear = linear_offset(bai_dict, ref, beg)
     linear_end = linear_offset(bai_dict, ref, end)
-    print('linear', linear)
-    print('linear_end', linear_end)
+    # print("linear", linear)
+    # print("linear_end", linear_end)
 
     offset = None
 
@@ -678,7 +727,7 @@ def index_region_offset_end(bai_dict, ref, beg, end):
     if offset is None:
         raise ValueError("region not included in bai")
 
-    print('offset', offset, offset >> 16)
+    print("offset", offset, offset >> 16)
     # Convert and return the non-virtual offsets.
     return offset >> 16, offset & 0x0000FFFF
 
@@ -710,6 +759,7 @@ def linear_offset(bai_dict, ref, beg, end=None):
         vir = 0
 
     return vir
+
 
 def reg2bins(beg, end):
     """

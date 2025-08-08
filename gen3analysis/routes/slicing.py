@@ -164,7 +164,7 @@ async def get_slicing_view(
         bam_presigned_url,
         # headers=headers,
         # cookies=gdcapi_request.create_auth_cookies(),
-        stream=True,
+        # stream=True,
         verify=True,
     )
     bam_res.raise_for_status()
@@ -293,42 +293,41 @@ async def get_slicing_view(
     output_bam = None
     # with pysam.BGZFile(bam_stream, 'rb') as bam_path:
     try:
-        # with open(input_bam, "wb") as input_bam_f:
+        with open(input_bam, "wb") as input_bam_f:
         # # with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="wb+") as input_bam:
-        #     input_bam_f.write(bam_res.content)
+            input_bam_f.write(bam_res.content)
         with open(input_bai, "wb") as input_bai_f:
-        # with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="wb+") as input_bam:
+            # with tempfile.NamedTemporaryFile(suffix=".bam", delete=False, mode="wb+") as input_bam:
             input_bai_f.write(bai_res.content)
         with tempfile.NamedTemporaryFile(
             suffix=".bam", delete=False, mode="w+"
         ) as output_bam:
 
-
-            samtools_stream(bam_res.raw, input_bai, output_bam.name)
+            # samtools_stream(bam_res.raw, input_bai, output_bam.name)
             # raise Exception(f"done {output_bam.name}")
 
-            # # Open input BAM file
-            # # with pysam.AlignmentFile(bam_path, f"r{file_type}", index_filename=bai_path) as samfile:
-            # # with pysam.AlignmentFile(bam_path, f"r{file_type}") as samfile:
-            # # path = bam_guid  # input_bam
-            # # path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
-            # # with pysam.AlignmentFile(path, f"r{file_type}", index_filename=input_bai) as samfile:
-            # with pysam.AlignmentFile(input_bam, f"r{file_type}", index_filename=input_bai) as samfile:
-            # # with pysam.AlignmentFile(path, f"r{file_type}") as samfile:
-            #     # with pysam.AlignmentFile("-", f"r{file_type}") as samfile:
-            #     # Open the output BAM file, using the input file's header as a template
-            #     # print("output_bam.name", output_bam.name)
-            #     with pysam.AlignmentFile(
-            #         output_bam.name, f"w{file_type}", template=samfile
-            #     ) as outfile:
-            #         # Iterate over reads in the specified region and write to buffer
-            #         _region = region[0]
-            #         if region[1] and region[2]:
-            #             _region += f":{region[1]}-{region[2]}"
-            #         for alignment in samfile.fetch(region=_region):
-            #             # for alignment in samfile.fetch(region[0], region[1], region[2]):
-            #             # print(alignment)
-            #             outfile.write(alignment)
+            # Open input BAM file
+            # with pysam.AlignmentFile(bam_path, f"r{file_type}", index_filename=bai_path) as samfile:
+            # with pysam.AlignmentFile(bam_path, f"r{file_type}") as samfile:
+            # path = bam_guid  # input_bam
+            # path = "/Users/paulineribeyre/Projects/gen3-analysis/tests/bamrest/data/slice_testing.bam"
+            # with pysam.AlignmentFile(path, f"r{file_type}", index_filename=input_bai) as samfile:
+            with pysam.AlignmentFile(input_bam, f"r{file_type}", index_filename=input_bai) as samfile:
+            # with pysam.AlignmentFile(path, f"r{file_type}") as samfile:
+                # with pysam.AlignmentFile("-", f"r{file_type}") as samfile:
+                # Open the output BAM file, using the input file's header as a template
+                # print("output_bam.name", output_bam.name)
+                with pysam.AlignmentFile(
+                    output_bam.name, f"w{file_type}", template=samfile
+                ) as outfile:
+                    # Iterate over reads in the specified region and write to buffer
+                    _region = region[0]
+                    if region[1] and region[2]:
+                        _region += f":{region[1]}-{region[2]}"
+                    for alignment in samfile.fetch(region=_region):
+                        # for alignment in samfile.fetch(region[0], region[1], region[2]):
+                        # print(alignment)
+                        outfile.write(alignment)
     finally:
         if input_bam and os.path.exists(input_bam):
             # pass

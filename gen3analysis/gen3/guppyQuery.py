@@ -11,10 +11,10 @@ from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 
 class GuppyGQLClient:
-    def __init__(self, graphql_url: str):
+    def __init__(self, graphql_url: str, csrf_token_url: str):
         self.graphql_url = graphql_url
         self.csrf_cache = CSRFTokenCache(
-            rest_api_url=f"{config.HOSTNAME}/_status",
+            rest_api_url=f"{csrf_token_url}/_status",
             token_ttl_seconds=3600,  # 1 hour
         )
 

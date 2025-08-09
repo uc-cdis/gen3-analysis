@@ -45,12 +45,12 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    # if config.DEPLOYMENT_TYPE == "prod":
-    #     guppy_url = "http://guppy-service"
-    #     revproxy_url = "http://revproxy-service"
-    # else:
-    guppy_url = f"{config.HOSTNAME}/guppy"
-    revproxy_url = f"{config.HOSTNAME}"
+    if config.DEPLOYMENT_TYPE == "prod":
+        guppy_url = "http://guppy-service"
+        revproxy_url = "http://revproxy-service"
+    else:
+        guppy_url = f"{config.HOSTNAME}/guppy"
+        revproxy_url = f"{config.HOSTNAME}"
 
     guppy_client = GuppyGQLClient(
         graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url

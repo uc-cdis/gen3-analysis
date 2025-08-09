@@ -28,6 +28,8 @@ class GuppyGQLClient:
         for attempt in range(retry_count + 1):
             try:
                 csrf_token = await self.csrf_cache.get_token()
+
+                logger.info("got token: ", csrf_token)
                 headers = {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": csrf_token,
@@ -67,6 +69,7 @@ class GuppyGQLClient:
                     return result
 
             except Exception as e:
+                logger.error(f"Error executing GuppyGQLClient query: {e}")
                 if attempt == retry_count:
                     raise
                 await asyncio.sleep(0.1 * (2**attempt))  # Exponential backoff

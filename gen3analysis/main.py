@@ -47,10 +47,14 @@ async def lifespan(app: FastAPI):
     # startup
     if config.DEPLOYMENT_TYPE == "prod":
         guppy_url = "http://guppy-service"
+        revproxy_url = "http://revproxy-service"
     else:
         guppy_url = f"{config.HOSTNAME}/guppy"
+        revproxy_url = f"{config.HOSTNAME}"
 
-    guppy_client = GuppyGQLClient(graphql_url=f"{guppy_url}/graphql")
+    guppy_client = GuppyGQLClient(
+        graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url
+    )
 
     gdc_graphql_client = GDCGQLClient(
         graphql_url="https://portal.gdc.cancer.gov/auth/api/v0/graphql",

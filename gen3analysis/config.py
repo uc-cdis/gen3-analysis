@@ -14,7 +14,7 @@ else:
     PATH = os.path.abspath(f"{CURRENT_DIR}/../.env")
 config = Config(PATH)
 
-DEBUG = config("DEBUG", cast=bool, default=False)
+DEBUG = config("DEBUG", cast=bool, default=True)
 
 logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "info")
 

@@ -18,7 +18,7 @@ DEBUG = config("DEBUG", cast=bool, default=True)
 
 logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "info")
 
-HOSTNAME = config("HOSTNAME", default="")
+HOSTNAME = config("HOSTNAME", default="https://dev-virtuallab.themmrf.org")
 
 # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
 GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)

@@ -5,7 +5,6 @@ from fastapi import Cookie, HTTPException
 import httpx
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
-from gen3analysis import config
 from gen3analysis.config import logger
 from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
@@ -24,7 +23,6 @@ class GuppyGQLClient:
         query: str,
         variables: Dict[str, Any] = None,
         retry_count: int = 1,
-        request_headers: Dict[str, str] = None,
     ) -> Dict[str, Any]:
         for attempt in range(retry_count + 1):
             try:
@@ -36,15 +34,7 @@ class GuppyGQLClient:
                 if access_token:
                     headers["Authorization"] = f"Bearer {access_token}"
 
-                # Forward specific headers from the original request
-                if request_headers:
-                    logger.info("got header")
-                    cookie_value = request_headers.get("cookie") or request_headers.get(
-                        "Cookie"
-                    )
-                    if cookie_value:
-                        headers["Cookie"] = cookie_value
-                        logger.info("setting Cookie in header")
+                print(f"GuppyGQLClient headers: {headers}")
 
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:

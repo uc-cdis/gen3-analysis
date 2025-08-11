@@ -1,5 +1,6 @@
-from typing import List, Dict
+from typing import Annotated, List, Dict, Optional
 import pandas as pd
+from fastapi import Cookie, FastAPI
 from fastapi import APIRouter, Depends, HTTPException
 from glom import glom
 from lifelines import KaplanMeierFitter
@@ -12,6 +13,7 @@ from gen3analysis.auth import Auth
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.routes import cases
+from gen3analysis.config import logger
 
 MAX_CASES = 10000
 
@@ -72,7 +74,7 @@ def transform(data) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-async def get_curve(filters, gen3_graphql_client, auth, request_headers):
+async def get_curve(filters, gen3_graphql_client, auth):
     query_filter = {
         "and": [
             filters,
@@ -99,7 +101,6 @@ async def get_curve(filters, gen3_graphql_client, auth, request_headers):
         query=Gen3GraphQLQuery,
         variables={"filter": query_filter},
         retry_count=1,
-        request_headers=request_headers,
     )
 
     if glom(data, "data._aggregation.case._totalCount", default=0) == 0:
@@ -253,6 +254,7 @@ class PlotRequest(BaseModel):
 )
 async def plot(
     body: PlotRequest,
+    access_token: Optional[str] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
@@ -261,10 +263,12 @@ async def plot(
     if filters is None or len(filters) == 0:
         raise HTTPException(status_code=400, detail="Must have at least one filter")
 
+    logger.info(f"Processing survival plot for filters: {access_token}")
+
     try:
         non_empty_curves = []
         for f in filters:
-            curve = await get_curve(f, gen3_graphql_client, auth, body.headers)
+            curve = await get_curve(f, gen3_graphql_client, auth)
             if curve:
                 non_empty_curves.append(curve)
 
@@ -283,9 +287,11 @@ async def plot(
             },
         )
 
-    except ValueError:
+    except ValueError as e:
+        logger.error(f"Error while processing survival plot: {e}")
         raise HTTPException(status_code=500, detail="Error with survival calculation")
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error while processing survival plot: {e}")
         raise HTTPException(status_code=500)
 
 

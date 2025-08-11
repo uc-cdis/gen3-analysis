@@ -16,7 +16,7 @@ config = Config(PATH)
 
 DEBUG = config("DEBUG", cast=bool, default=True)
 
-logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "info")
+logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "debug")
 
 HOSTNAME = config("HOSTNAME", default="")
 

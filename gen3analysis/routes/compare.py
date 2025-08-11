@@ -1,15 +1,15 @@
 import json
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Cookie
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
 from gen3analysis.auth import Auth
 from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-
+from starlette.responses import JSONResponse
 
 compare = APIRouter()
 
@@ -112,7 +112,6 @@ async def compare_facets(
         query=query,
         variables={"cohort1": body.cohort1, "cohort2": body.cohort2},
         retry_count=1,
-        request_headers=body.headers,
     )
 
     # parse and transform the output
@@ -197,7 +196,6 @@ async def get_cohort_intersection(
             "intersection": {"AND": [body.cohort1, body.cohort2]},
         },
         retry_count=1,
-        request_headers=body.headers,
     )
 
     # parse and transform the output
@@ -214,3 +212,14 @@ async def get_cohort_intersection(
         raise HTTPException(HTTP_500_INTERNAL_SERVER_ERROR, err_msg)
 
     return res
+
+
+@compare.get("/headers", status_code=HTTP_200_OK)
+async def survival_plot(
+    access_token: Annotated[Optional[str], Cookie()] = None,
+) -> JSONResponse:
+
+    return JSONResponse(
+        status_code=HTTP_200_OK,
+        content={"results": "has access" if access_token else "no access"},
+    )

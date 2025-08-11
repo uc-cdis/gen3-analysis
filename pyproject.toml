@@ -1,10 +1,10 @@
 [project]
 name = "gen3analysis"
-version = "1.0.0"
+version = "1.0.1"
 
 [tool.poetry]
 name = "gen3analysis"
-version = "1.0.0"
+version = "1.0.1"
 description = "Gen3 Analysis Service"
 authors = ["CTDS UChicago <cdis@uchicago.edu>"]
 license = "Apache-2.0"

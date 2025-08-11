@@ -26,7 +26,6 @@ class GuppyGQLClient:
         retry_count: int = 1,
         request_headers: Dict[str, str] = None,
     ) -> Dict[str, Any]:
-        attempted = 0
         for attempt in range(retry_count + 1):
             try:
                 csrf_token = await self.csrf_cache.get_token()
@@ -39,11 +38,13 @@ class GuppyGQLClient:
 
                 # Forward specific headers from the original request
                 if request_headers:
+                    logger.info("got header")
                     cookie_value = request_headers.get("cookie") or request_headers.get(
                         "Cookie"
                     )
                     if cookie_value:
                         headers["Cookie"] = cookie_value
+                        logger.info("setting Cookie in header")
 
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:
@@ -60,6 +61,8 @@ class GuppyGQLClient:
                         )
 
                     result = response.json()
+
+                    logger.info(f"GuppyGQLClient result: {result}")
 
                     # Check for CSRF-related errors
                     if self._is_csrf_error(result):

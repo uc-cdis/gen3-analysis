@@ -74,7 +74,7 @@ def transform(data) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-async def get_curve(filters, gen3_graphql_client, auth, access_token=None):
+async def get_curve(filters, gen3_graphql_client, access_token=None):
     query_filter = {
         "and": [
             filters,
@@ -263,14 +263,10 @@ async def plot(
     if filters is None or len(filters) == 0:
         raise HTTPException(status_code=400, detail="Must have at least one filter")
 
-    logger.info(f"Processing survival plot for filters: {access_token}")
-
     try:
         non_empty_curves = []
         for f in filters:
-            curve = await get_curve(
-                f, gen3_graphql_client, auth, access_token=access_token
-            )
+            curve = await get_curve(f, gen3_graphql_client, access_token=access_token)
             if curve:
                 non_empty_curves.append(curve)
 
@@ -329,6 +325,7 @@ class CompareSurvivalRequest(BaseModel):
 )
 async def compare(
     request: CompareSurvivalRequest,
+    access_token: Optional[str] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
@@ -344,11 +341,21 @@ async def compare(
 
     # get a list of cases to perform set operation on, for each cohort
     plot_items_0 = await cases.get_item_ids(
-        gen3_graphql_client, auth, doc_type, field, filters[0], limit
+        gen3_graphql_client,
+        doc_type,
+        field,
+        filters[0],
+        limit=limit,
+        access_token=access_token,
     )
 
     plot_items_1 = await cases.get_item_ids(
-        gen3_graphql_client, auth, doc_type, field, filters[1], limit
+        gen3_graphql_client,
+        doc_type,
+        field,
+        filters[1],
+        limit=limit,
+        access_token=access_token,
     )
 
     if plot_items_0.get("data") is None:
@@ -385,6 +392,6 @@ async def compare(
 
     return await plot(
         PlotRequest(filters=[filter_0, filter_1]),
+        access_token,
         gen3_graphql_client,
-        auth,
     )

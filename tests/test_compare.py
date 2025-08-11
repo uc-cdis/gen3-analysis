@@ -121,7 +121,7 @@ async def test_compare_facets_endpoint(app, client):
     res = await client.post(
         "/compare/facets",
         json=body,
-        headers={"Authorization": f"bearer {TEST_ACCESS_TOKEN}"},
+        cookies={"access_token": TEST_ACCESS_TOKEN},
     )
     assert res.status_code == 200, res.json()
 
@@ -129,9 +129,9 @@ async def test_compare_facets_endpoint(app, client):
         access_token=TEST_ACCESS_TOKEN,
         query="query ($cohort1: JSON, $cohort2: JSON){\n        cohort1: _aggregation {\n            case (filter: $cohort1, accessibility: accessible) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2, accessibility: accessible) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n    }",
         variables={"cohort1": cohort1, "cohort2": cohort2},
+        retry_count=1,
     )
 
-    print("Result:", json.dumps(res.json(), indent=2))
     assert res.json() == {
         "cohort1": {
             "facets": {
@@ -204,9 +204,7 @@ async def test_compare_intersection_endpoint(app, client):
         "cohort2": cohort2,
     }
     res = await client.post(
-        "/compare/intersection",
-        json=body,
-        headers={"Authorization": f"bearer {TEST_ACCESS_TOKEN}"},
+        "/compare/intersection", json=body, cookies={"access_token": TEST_ACCESS_TOKEN}
     )
     assert res.status_code == 200, res.json()
 
@@ -218,6 +216,7 @@ async def test_compare_intersection_endpoint(app, client):
             "cohort2": cohort2,
             "intersection": {"AND": [cohort1, cohort2]},
         },
+        retry_count=1,
     )
 
     print("Result:", json.dumps(res.json(), indent=2))

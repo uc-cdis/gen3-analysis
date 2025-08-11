@@ -34,8 +34,6 @@ class GuppyGQLClient:
                 if access_token:
                     headers["Authorization"] = f"Bearer {access_token}"
 
-                print(f"GuppyGQLClient headers: {headers}")
-
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:
                     response = await client.post(

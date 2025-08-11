@@ -217,7 +217,12 @@ async def get_cohort_intersection(
 @compare.get("/headers", status_code=HTTP_200_OK)
 async def survival_plot(
     access_token: Annotated[Optional[str], Cookie()] = None,
+    auth: Auth = Depends(Auth),
 ) -> JSONResponse:
+
+    access_token_local = await auth.get_access_token()
+
+    logger.info(f"Access token local: {access_token_local}")
 
     return JSONResponse(
         status_code=HTTP_200_OK,

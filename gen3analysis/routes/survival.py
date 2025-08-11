@@ -74,7 +74,7 @@ def transform(data) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-async def get_curve(filters, gen3_graphql_client, auth):
+async def get_curve(filters, gen3_graphql_client, auth, access_token=None):
     query_filter = {
         "and": [
             filters,
@@ -97,7 +97,7 @@ async def get_curve(filters, gen3_graphql_client, auth):
         ]
     }
     data = await gen3_graphql_client.execute(
-        access_token=(await auth.get_access_token()),
+        access_token=access_token,
         query=Gen3GraphQLQuery,
         variables={"filter": query_filter},
         retry_count=1,
@@ -268,7 +268,9 @@ async def plot(
     try:
         non_empty_curves = []
         for f in filters:
-            curve = await get_curve(f, gen3_graphql_client, auth)
+            curve = await get_curve(
+                f, gen3_graphql_client, auth, access_token=access_token
+            )
             if curve:
                 non_empty_curves.append(curve)
 

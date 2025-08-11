@@ -217,6 +217,33 @@ paths:
       summary: Compare Facets
       tags:
       - Compare
+  /compare/headers:
+    get:
+      operationId: survival_plot_compare_headers_get
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Survival Plot
+      tags:
+      - Compare
   /compare/intersection:
     post:
       description: "Get the number of documents at the intersection between two cohorts,\
@@ -262,6 +289,15 @@ paths:
       description: Retrieves the survival plot(s) for the given filters. An array
         of filters is provided and will return an array of survival plot data
       operationId: plot_survival__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         content:
           application/json:

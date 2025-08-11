@@ -1,5 +1,4 @@
 from typing import List, Dict
-
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from glom import glom
@@ -73,7 +72,7 @@ def transform(data) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-async def get_curve(filters, gen3_graphql_client, auth):
+async def get_curve(filters, gen3_graphql_client, auth, request_headers):
     query_filter = {
         "and": [
             filters,
@@ -99,6 +98,8 @@ async def get_curve(filters, gen3_graphql_client, auth):
         access_token=(await auth.get_access_token()),
         query=Gen3GraphQLQuery,
         variables={"filter": query_filter},
+        retry_count=1,
+        request_headers=request_headers,
     )
 
     if glom(data, "data._aggregation.case._totalCount", default=0) == 0:
@@ -251,11 +252,11 @@ class PlotRequest(BaseModel):
     },
 )
 async def plot(
-    request: PlotRequest,
+    body: PlotRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
-    filters = request.filters
+    filters = body.filters
 
     if filters is None or len(filters) == 0:
         raise HTTPException(status_code=400, detail="Must have at least one filter")
@@ -263,7 +264,7 @@ async def plot(
     try:
         non_empty_curves = []
         for f in filters:
-            curve = await get_curve(f, gen3_graphql_client, auth)
+            curve = await get_curve(f, gen3_graphql_client, auth, body.headers)
             if curve:
                 non_empty_curves.append(curve)
 

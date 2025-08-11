@@ -1,7 +1,7 @@
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-from fastapi import Depends, HTTPException
+from fastapi import Cookie, HTTPException
 import httpx
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -24,18 +24,27 @@ class GuppyGQLClient:
         query: str,
         variables: Dict[str, Any] = None,
         retry_count: int = 1,
+        request_headers: Dict[str, str] = None,
     ) -> Dict[str, Any]:
+        attempted = 0
         for attempt in range(retry_count + 1):
             try:
                 csrf_token = await self.csrf_cache.get_token()
-
-                logger.info("got token: ", csrf_token)
                 headers = {
                     "Content-Type": "application/json",
                     "X-CSRF-Token": csrf_token,
                 }
                 if access_token:
                     headers["Authorization"] = f"Bearer {access_token}"
+
+                # Forward specific headers from the original request
+                if request_headers:
+                    cookie_value = request_headers.get("cookie") or request_headers.get(
+                        "Cookie"
+                    )
+                    if cookie_value:
+                        headers["Cookie"] = cookie_value
+
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:
                     response = await client.post(

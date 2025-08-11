@@ -111,6 +111,8 @@ async def compare_facets(
         access_token=(await auth.get_access_token()),
         query=query,
         variables={"cohort1": body.cohort1, "cohort2": body.cohort2},
+        retry_count=1,
+        request_headers=body.headers,
     )
 
     # parse and transform the output
@@ -194,6 +196,8 @@ async def get_cohort_intersection(
             "cohort2": body.cohort2,
             "intersection": {"AND": [body.cohort1, body.cohort2]},
         },
+        retry_count=1,
+        request_headers=body.headers,
     )
 
     # parse and transform the output

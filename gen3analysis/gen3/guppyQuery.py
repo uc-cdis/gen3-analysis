@@ -78,7 +78,8 @@ class GuppyGQLClient:
                     return result
 
             except Exception as e:
-                logger.error(f"Error executing GuppyGQLClient query: {e}")
+                # log exception
+                logger.error(f"GuppyGQLClient error: {str(e)}")
                 if attempt == retry_count:
                     raise
                 await asyncio.sleep(0.1 * (2**attempt))  # Exponential backoff

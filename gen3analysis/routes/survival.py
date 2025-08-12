@@ -1,6 +1,6 @@
-from typing import List, Dict
-
+from typing import Annotated, List, Dict, Optional
 import pandas as pd
+from fastapi import Cookie, FastAPI
 from fastapi import APIRouter, Depends, HTTPException
 from glom import glom
 from lifelines import KaplanMeierFitter
@@ -13,6 +13,7 @@ from gen3analysis.auth import Auth
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.routes import cases
+from gen3analysis.config import logger
 
 MAX_CASES = 10000
 
@@ -73,7 +74,7 @@ def transform(data) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-async def get_curve(filters, gen3_graphql_client, auth):
+async def get_curve(filters, gen3_graphql_client, access_token=None):
     query_filter = {
         "and": [
             filters,
@@ -96,9 +97,10 @@ async def get_curve(filters, gen3_graphql_client, auth):
         ]
     }
     data = await gen3_graphql_client.execute(
-        access_token=(await auth.get_access_token()),
+        access_token=access_token,
         query=Gen3GraphQLQuery,
         variables={"filter": query_filter},
+        retry_count=1,
     )
 
     if glom(data, "data._aggregation.case._totalCount", default=0) == 0:
@@ -251,11 +253,12 @@ class PlotRequest(BaseModel):
     },
 )
 async def plot(
-    request: PlotRequest,
+    body: PlotRequest,
+    access_token: Optional[str] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
-    filters = request.filters
+    filters = body.filters
 
     if filters is None or len(filters) == 0:
         raise HTTPException(status_code=400, detail="Must have at least one filter")
@@ -263,7 +266,7 @@ async def plot(
     try:
         non_empty_curves = []
         for f in filters:
-            curve = await get_curve(f, gen3_graphql_client, auth)
+            curve = await get_curve(f, gen3_graphql_client, access_token=access_token)
             if curve:
                 non_empty_curves.append(curve)
 
@@ -282,9 +285,11 @@ async def plot(
             },
         )
 
-    except ValueError:
+    except ValueError as e:
+        logger.error(f"Error while processing survival plot: {e}")
         raise HTTPException(status_code=500, detail="Error with survival calculation")
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error while processing survival plot: {e}")
         raise HTTPException(status_code=500)
 
 
@@ -320,6 +325,7 @@ class CompareSurvivalRequest(BaseModel):
 )
 async def compare(
     request: CompareSurvivalRequest,
+    access_token: Optional[str] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
@@ -335,11 +341,21 @@ async def compare(
 
     # get a list of cases to perform set operation on, for each cohort
     plot_items_0 = await cases.get_item_ids(
-        gen3_graphql_client, auth, doc_type, field, filters[0], limit
+        gen3_graphql_client,
+        doc_type,
+        field,
+        filters[0],
+        limit=limit,
+        access_token=access_token,
     )
 
     plot_items_1 = await cases.get_item_ids(
-        gen3_graphql_client, auth, doc_type, field, filters[1], limit
+        gen3_graphql_client,
+        doc_type,
+        field,
+        filters[1],
+        limit=limit,
+        access_token=access_token,
     )
 
     if plot_items_0.get("data") is None:
@@ -376,6 +392,6 @@ async def compare(
 
     return await plot(
         PlotRequest(filters=[filter_0, filter_1]),
+        access_token,
         gen3_graphql_client,
-        auth,
     )

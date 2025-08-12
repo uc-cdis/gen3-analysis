@@ -125,7 +125,7 @@ components:
       type: http
 info:
   title: Gen3 Analysis Service
-  version: 1.0.0
+  version: 1.0.1
 openapi: 3.1.0
 paths:
   /:
@@ -191,6 +191,15 @@ paths:
         \                }\n            },\n            \"cohort2\": {\n         \
         \       \"facets\": { [...] }\n            },\n        }"
       operationId: compare_facets_compare_facets_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         content:
           application/json:
@@ -212,8 +221,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
-      security:
-      - HTTPBearer: []
       summary: Compare Facets
       tags:
       - Compare
@@ -231,6 +238,15 @@ paths:
         \ are in cohort2 and not in cohort1>,\n            \"intersection\": <number\
         \ of documents that are in both cohorts>,\n        }"
       operationId: get_cohort_intersection_compare_intersection_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         content:
           application/json:
@@ -252,8 +268,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
-      security:
-      - HTTPBearer: []
       summary: Get Cohort Intersection
       tags:
       - Compare
@@ -262,6 +276,15 @@ paths:
       description: Retrieves the survival plot(s) for the given filters. An array
         of filters is provided and will return an array of survival plot data
       operationId: plot_survival__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         content:
           application/json:
@@ -299,6 +322,15 @@ paths:
       description: Retrieves the comparison survival plot(s) for the given pair of
         filters.
       operationId: compare_survival_compare_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         content:
           application/json:

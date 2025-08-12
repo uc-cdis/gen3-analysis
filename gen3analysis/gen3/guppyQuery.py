@@ -1,20 +1,19 @@
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-from fastapi import Depends, HTTPException
+from fastapi import Cookie, HTTPException
 import httpx
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
-from gen3analysis import config
 from gen3analysis.config import logger
 from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 
 class GuppyGQLClient:
-    def __init__(self, graphql_url: str):
+    def __init__(self, graphql_url: str, csrf_token_url: str):
         self.graphql_url = graphql_url
         self.csrf_cache = CSRFTokenCache(
-            rest_api_url=f"{config.HOSTNAME}/_status",
+            rest_api_url=f"{csrf_token_url}/_status",
             token_ttl_seconds=3600,  # 1 hour
         )
 
@@ -34,6 +33,7 @@ class GuppyGQLClient:
                 }
                 if access_token:
                     headers["Authorization"] = f"Bearer {access_token}"
+
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
@@ -49,6 +49,8 @@ class GuppyGQLClient:
                         )
 
                     result = response.json()
+
+                    logger.info(f"GuppyGQLClient result: {result}")
 
                     # Check for CSRF-related errors
                     if self._is_csrf_error(result):
@@ -67,6 +69,8 @@ class GuppyGQLClient:
                     return result
 
             except Exception as e:
+                # log exception
+                logger.error(f"GuppyGQLClient error: {str(e)}")
                 if attempt == retry_count:
                     raise
                 await asyncio.sleep(0.1 * (2**attempt))  # Exponential backoff

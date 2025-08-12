@@ -1,11 +1,10 @@
 import json
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Cookie
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
-from gen3analysis.auth import Auth
 from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
@@ -41,8 +40,8 @@ def facet_name_to_props(facet_name) -> list:
 @compare.post("/facets", status_code=HTTP_200_OK)
 async def compare_facets(
     body: FacetComparisonRequest,
+    access_token: Optional[str] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    auth: Auth = Depends(Auth),
 ) -> dict:
     """
     Compare facets between two cohorts.
@@ -108,9 +107,10 @@ async def compare_facets(
     }}"""
 
     data = await gen3_graphql_client.execute(
-        access_token=(await auth.get_access_token()),
+        access_token=access_token,
         query=query,
         variables={"cohort1": body.cohort1, "cohort2": body.cohort2},
+        retry_count=1,
     )
 
     # parse and transform the output
@@ -144,8 +144,8 @@ class IntersectionRequest(BaseModel):
 @compare.post("/intersection", status_code=HTTP_200_OK)
 async def get_cohort_intersection(
     body: IntersectionRequest,
+    access_token: Optional[str] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    auth: Auth = Depends(Auth),
 ) -> dict:
     """
     Get the number of documents at the intersection between two cohorts, as well as the number
@@ -187,13 +187,14 @@ async def get_cohort_intersection(
     }}"""
 
     data = await gen3_graphql_client.execute(
-        access_token=(await auth.get_access_token()),
+        access_token=access_token,
         query=query,
         variables={
             "cohort1": body.cohort1,
             "cohort2": body.cohort2,
             "intersection": {"AND": [body.cohort1, body.cohort2]},
         },
+        retry_count=1,
     )
 
     # parse and transform the output

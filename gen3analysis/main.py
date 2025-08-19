@@ -12,8 +12,8 @@ from gen3analysis.auth import Gen3SdkAuth
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.routes.compare import compare
-
 from gen3analysis.routes.survival import survival
+from gen3analysis.routes.embeddings import embeddings
 from gen3analysis import config
 
 from gen3analysis.routes.basic import basic_router
@@ -25,6 +25,7 @@ route_definitions = [
     (basic_router, "", ["Basic"]),
     (compare, "/compare", ["Compare"]),
     (survival, "/survival", ["Survival"]),
+    (embeddings, "/embeddings", ["Embeddings"]),
 ]
 
 for router, prefix, tags in route_definitions:

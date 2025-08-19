@@ -29,10 +29,6 @@ class Embedded_vector(BaseModel):
         },
     },
 )
-# access_token: Optinal[str] = Cookie(None),
-# auth: Auth = Depends(Auth)
-
-
 async def cosine_query(
     embedding: Embedded_vector,
 ) -> JSONResponse:
@@ -53,3 +49,7 @@ async def cosine_query(
     except Exception as e:
         logger.error(f"Error while finding similar embeddings: {e}")
         raise HTTPException(status_code=500)
+
+
+# access_token: Optinal[str] = Cookie(None),
+# auth: Auth = Depends(Auth)

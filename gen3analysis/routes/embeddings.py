@@ -1,6 +1,8 @@
 import time
 from importlib.metadata import version
 
+from typing import List
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel

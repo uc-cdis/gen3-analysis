@@ -14,7 +14,7 @@ embeddings = APIRouter()
 
 
 class Embedded_vector(BaseModel):
-    embedding_type: str | None = None
+    embedding_type: str
     vector: List[float]
 
 

@@ -1,6 +1,6 @@
 from typing import Annotated, List, Dict, Optional
 import pandas as pd
-from fastapi import Cookie, FastAPI
+from fastapi import Cookie
 from fastapi import APIRouter, Depends, HTTPException
 from glom import glom
 from lifelines import KaplanMeierFitter

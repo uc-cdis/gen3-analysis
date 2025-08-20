@@ -14,6 +14,7 @@ from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.routes.compare import compare
 
 from gen3analysis.routes.survival import survival
+from gen3analysis.routes.cohorts import cohorts
 from gen3analysis import config
 
 from gen3analysis.routes.basic import basic_router
@@ -25,6 +26,7 @@ route_definitions = [
     (basic_router, "", ["Basic"]),
     (compare, "/compare", ["Compare"]),
     (survival, "/survival", ["Survival"]),
+    (cohorts, "/cohorts", ["Cohorts"]),
 ]
 
 for router, prefix, tags in route_definitions:

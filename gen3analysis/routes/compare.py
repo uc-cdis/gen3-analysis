@@ -98,10 +98,10 @@ async def compare_facets(
 
     # apply this query to each of the 2 cohorts
     query = f"""query ($cohort1: JSON, $cohort2: JSON){{
-        cohort1: _aggregation {{
+        cohort1: Case__aggregation {{
             {body.doc_type} (filter: $cohort1, accessibility: accessible) {{ {facets_query} }}
         }}
-        cohort2: _aggregation {{
+        cohort2: Case__aggregation {{
             {body.doc_type} (filter: $cohort2, accessibility: accessible) {{ {facets_query} }}
         }}
     }}"""
@@ -169,17 +169,17 @@ async def get_cohort_intersection(
     # Build the GraphQL query: query the number of documents in each cohort and in their
     # intersection.
     query = f"""query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {{
-        cohort1: _aggregation {{
+        cohort1: Case__aggregation {{
             {body.doc_type} (filter: $cohort1, accessibility: accessible) {{
                 _totalCount
             }}
         }}
-        cohort2: _aggregation {{
+        cohort2: Case__aggregation {{
             {body.doc_type} (filter: $cohort2, accessibility: accessible) {{
                 _totalCount
             }}
         }}
-        intersection: _aggregation {{
+        intersection: Case__aggregation {{
             {body.doc_type} (filter: $intersection, accessibility: accessible) {{
                 _totalCount
             }}

@@ -20,10 +20,12 @@ MAX_CASES = 10000
 survival = APIRouter()
 
 Gen3GraphQLQuery = f"""query ($filter: JSON) {{
-    case(accessibility: accessible, offset: 0, first: {MAX_CASES}, filter: $filter) {{
+    Case_case(accessibility: accessible, offset: 0, first: {MAX_CASES}, filter: $filter) {{
         submitter_id
-        _case_id
-        project_id
+        case_id
+        project {{
+            project_id
+        }}
         demographic {{
             days_to_death
             vital_status
@@ -32,7 +34,7 @@ Gen3GraphQLQuery = f"""query ($filter: JSON) {{
             days_to_last_follow_up
         }}
     }}
-    _aggregation {{
+    Case__aggregation {{
         case(filter: $filter, accessibility: accessible) {{
             _totalCount
         }}
@@ -50,7 +52,7 @@ def transform(data) -> pd.DataFrame:
         if not demographic:
             continue
 
-        demo = demographic[0]
+        demo = demographic
         days_to_death = demo.get("days_to_death")
         diagnoses = case.get("diagnoses", [{}])[0]
         days_to_follow_up = diagnoses.get("days_to_last_follow_up")
@@ -65,9 +67,9 @@ def transform(data) -> pd.DataFrame:
                     "event": int(
                         demo.get("vital_status", "").lower() != "alive"
                     ),  # 1 if dead, 0 if alive
-                    "case_id": case.get("_case_id"),
+                    "case_id": case.get("case_id"),
                     "submitter_id": case.get("submitter_id"),
-                    "project_id": case.get("project_id"),
+                    "project_id": glom(case, "project.project_id", default="---"),
                 }
             )
 
@@ -103,9 +105,9 @@ async def get_curve(filters, gen3_graphql_client, access_token=None):
         retry_count=1,
     )
 
-    if glom(data, "data._aggregation.case._totalCount", default=0) == 0:
+    if glom(data, "data.Case__aggregation.case._totalCount", default=0) == 0:
         return None
-    data_root = glom(data, "data.case", default={})
+    data_root = glom(data, "data.Case_case", default={})
     df = transform(data_root)
     if df.empty:
         return None

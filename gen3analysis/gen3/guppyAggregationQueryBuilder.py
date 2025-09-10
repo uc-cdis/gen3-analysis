@@ -39,6 +39,7 @@ def build_get_aggregation_query(
     filters: FilterSet,
     accessibility: Accessibility = Accessibility.ALL,
     filter_self: bool = False,
+    index_prefix: str = "",
 ) -> GraphQLQuery:
     """
     Build GraphQL aggregation query from type, fields, and filters.
@@ -56,12 +57,12 @@ def build_get_aggregation_query(
     if is_filter_empty(filters):
         query_start = f"""
               query getAggs {{
-              _aggregation {{
+              {index_prefix}_aggregation {{
               {type_name} (accessibility: {accessibility.value}) {{"""
     else:
         filter_self_str = "true" if filter_self else "false"
         query_start = f"""query getAggs ($filter: JSON) {{
-               _aggregation {{
+                {index_prefix}_aggregation {{
                       {type_name} (filter: $filter, filterSelf: {filter_self_str}, accessibility: {accessibility.value}) {{"""
 
     # Generate field queries

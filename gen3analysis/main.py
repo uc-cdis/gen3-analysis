@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
         guppy_url = "http://guppy-service"
         revproxy_url = "http://revproxy-service"
     else:
-        guppy_url = f"{config.HOSTNAME}/guppy"
+        guppy_url = f"{config.HOSTNAME}"
         revproxy_url = f"{config.HOSTNAME}"
 
     guppy_client = GuppyGQLClient(

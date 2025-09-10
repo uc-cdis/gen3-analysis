@@ -18,12 +18,12 @@ cohorts = APIRouter()
 
 # Define a Pydantic model for the request body
 class CohortQueryRequest(BaseModel):
-    cohort_filters: List[Dict]
-    filters: List[Dict]
-    query: str
-    doc_type: str
-    item_field: str
-    cohort_item_field: str
+    cohort_filters: Dict
+    filters: Dict = {}
+    query: str = ""
+    doc_type: str = ""
+    item_field: str = ""
+    cohort_item_field: str = ""
     limit: int = 10000
 
 
@@ -63,18 +63,19 @@ async def cohort_query(
     query = body.query
     filters = body.filters
 
-    if cohort_filters is None or len(cohort_filters) == 0:
-        raise HTTPException(status_code=400, detail="Must have the query filter")
+    if cohort_filters is None == 0:
+        raise HTTPException(status_code=400, detail="Must have the cohort_query filter")
 
-    if filters is None or len(filters) == 0:
-        raise HTTPException(status_code=400, detail="Must have the query filter")
+    # if filters is None or len(filters) == 0:
+    #     raise HTTPException(status_code=400, detail="Must have the query filter")
 
     try:
         data = await cases.cohort_query(
-            gen3_graphql_client,
+            gen3_graphql_client=gen3_graphql_client,
             doc_type=doc_type,
             item_field=item_field,
-            queery=query,
+            cohort_item_field=cohort_item_field,
+            query=query,
             cohort_filters=cohort_filters,
             filters=filters,
             limit=limit,

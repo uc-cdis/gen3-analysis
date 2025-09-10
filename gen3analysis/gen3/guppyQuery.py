@@ -26,10 +26,10 @@ class GuppyGQLClient:
     ) -> Dict[str, Any]:
         for attempt in range(retry_count + 1):
             try:
-                csrf_token = await self.csrf_cache.get_token()
+                #    csrf_token = await self.csrf_cache.get_token()
                 headers = {
                     "Content-Type": "application/json",
-                    "X-CSRF-Token": csrf_token,
+                    #        "X-CSRF-Token": csrf_token,
                 }
                 if access_token:
                     headers["Authorization"] = f"Bearer {access_token}"

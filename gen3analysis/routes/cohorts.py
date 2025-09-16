@@ -21,8 +21,7 @@ class CohortQueryRequest(BaseModel):
     cohort_filters: Dict
     filters: Dict = {}
     query: str = ""
-    doc_type: str = ""
-    item_field: str = ""
+    case_index: str = ""
     cohort_item_field: str = ""
     limit: int = 10000
 
@@ -56,8 +55,7 @@ async def cohort_query(
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
     cohort_filters = body.cohort_filters
-    doc_type = body.doc_type
-    item_field = body.item_field
+    case_index = body.case_index
     cohort_item_field = body.cohort_item_field
     limit = body.limit
     query = body.query
@@ -66,14 +64,16 @@ async def cohort_query(
     if cohort_filters is None == 0:
         raise HTTPException(status_code=400, detail="Must have the cohort_query filter")
 
-    # if filters is None or len(filters) == 0:
-    #     raise HTTPException(status_code=400, detail="Must have the query filter")
+    if filters is None or len(filters) == 0:
+        raise HTTPException(status_code=400, detail="Must have the query filter")
+
+    if query is None or len(filters) == 0:
+        raise HTTPException(status_code=400, detail="Must have the query")
 
     try:
         data = await cases.cohort_query(
             gen3_graphql_client=gen3_graphql_client,
-            doc_type=doc_type,
-            item_field=item_field,
+            case_index=case_index,
             cohort_item_field=cohort_item_field,
             query=query,
             cohort_filters=cohort_filters,
@@ -91,3 +91,15 @@ async def cohort_query(
     except Exception as e:
         logger.error(f"Error while processing cohort query: {e}")
         raise HTTPException(status_code=500, detail="Error with cohort query")
+
+
+@cohorts.get(
+    path="/status",
+)
+def get_cohort_status() -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "results": "test",
+        },
+    )

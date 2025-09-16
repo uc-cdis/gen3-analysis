@@ -37,7 +37,7 @@ class GuppyGQLClient:
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
-                        self.graphql_url, json=payload, headers=headers
+                        self.graphql_url, json=payload, headers=headers, timeout=None
                     )
 
                     if response.status_code != 200:
@@ -49,8 +49,6 @@ class GuppyGQLClient:
                         )
 
                     result = response.json()
-
-                    logger.info(f"GuppyGQLClient result: {result}")
 
                     # Check for CSRF-related errors
                     if self._is_csrf_error(result):

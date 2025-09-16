@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.utils.filterEdit import (
     dot_notation_to_graphql,
@@ -7,19 +7,30 @@ from gen3analysis.utils.filterEdit import (
 from glom import glom
 
 
+def process_item_fields(fields):
+    results = ""
+    for field in fields:
+        results += dot_notation_to_graphql(field)
+    return results
+
+
 async def get_item_ids(
     gen3_graphql_client: GuppyGQLClient,
-    doc_type,
-    item_field,
+    doc_type: str,
+    item_fields: List[str],
     guppy_filter: Dict,
     limit=10000,
     access_token: Optional[str] = None,
 ):
+
     graphql_query = f"""query objectId ($filter: JSON) {{
             {doc_type}(first:{limit}, filter:$filter) {{
-              {item_field}
+             {process_item_fields(item_fields)}
               }}
     }}"""
+
+    print("executing query", graphql_query)
+    print("executing variables", guppy_filter)
 
     data = await gen3_graphql_client.execute(
         access_token=access_token,
@@ -49,7 +60,7 @@ async def cohort_query(
     data = await gen3_graphql_client.execute(
         access_token=access_token,
         query=cohort_query,
-        variables={"$cohort_filters": cohort_filters},
+        variables={"cohort_filters": cohort_filters},
     )
 
     if (data.get("data") is None) or (data.get("data").get(case_index) is None):

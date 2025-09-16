@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
         revproxy_url = f"{config.HOSTNAME}"
 
     guppy_client = GuppyGQLClient(
-        graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url
+        graphql_url=f"{guppy_url}/graphql", csrf_token_url="http://localhost"
     )
 
     gdc_graphql_client = GDCGQLClient(
@@ -65,15 +65,15 @@ async def lifespan(app: FastAPI):
     app.state.guppy_client = guppy_client
     app.state.gdc_graphql_client = gdc_graphql_client
     app.state.gen3_sdk_auth = None
-    if config.DEPLOYMENT_TYPE == "dev":
-        app.state.gen3_sdk_auth = Gen3SdkAuth(endpoint=config.HOSTNAME)
+    # if config.DEPLOYMENT_TYPE == "dev":
+    #     app.state.gen3_sdk_auth = Gen3SdkAuth(endpoint=config.HOSTNAME)
 
-    app.state.arborist_client = ArboristClient(
-        arborist_base_url=config.ARBORIST_URL,
-        logger=get_logger(
-            "gen3analysis.gen3authz", log_level="debug" if config.DEBUG else "info"
-        ),
-    )
+    # app.state.arborist_client = ArboristClient(
+    #     arborist_base_url=config.ARBORIST_URL,
+    #     logger=get_logger(
+    #         "gen3analysis.gen3authz", log_level="debug" if config.DEBUG else "info"
+    #     ),
+    # )
 
     yield
 

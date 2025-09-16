@@ -97,8 +97,8 @@ class Auth:
         resources: list,
         throw: bool = True,
     ) -> bool:
-        # if config.MOCK_AUTH:
-        #     return True
+        if config.MOCK_AUTH:
+            return True
 
         token = self.get_access_token()
         try:

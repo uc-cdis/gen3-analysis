@@ -5,6 +5,7 @@ from gen3analysis.utils.filterEdit import (
     update_filters_with_object_ids,
 )
 from glom import glom
+import json
 
 
 def process_item_fields(fields):
@@ -30,7 +31,7 @@ async def get_item_ids(
     }}"""
 
     print("executing query", graphql_query)
-    print("executing variables", guppy_filter)
+    print("executing variables", json.dumps(guppy_filter, indent=2))
 
     data = await gen3_graphql_client.execute(
         access_token=access_token,

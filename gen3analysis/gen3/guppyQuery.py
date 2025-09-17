@@ -37,7 +37,7 @@ class GuppyGQLClient:
                 payload = {"query": query, "variables": variables or {}}
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
-                        self.graphql_url, json=payload, headers=headers, timeout=None
+                        self.graphql_url, json=payload, headers=headers
                     )
 
                     if response.status_code != 200:

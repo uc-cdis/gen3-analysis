@@ -301,6 +301,7 @@ class CompareSurvivalRequest(BaseModel):
     doc_type: str
     field: str
     limit: int = MAX_CASES
+    useIntersection: bool = True
 
 
 @survival.post(
@@ -335,6 +336,7 @@ async def compare(
     doc_type = request.doc_type
     field = request.field
     limit = request.limit
+    useIntersection = request.useIntersection
 
     if len(filters) != 2:
         raise HTTPException(
@@ -345,7 +347,7 @@ async def compare(
     plot_items_0 = await cases.get_item_ids(
         gen3_graphql_client,
         doc_type,
-        field,
+        [field],
         filters[0],
         limit=limit,
         access_token=access_token,
@@ -354,7 +356,7 @@ async def compare(
     plot_items_1 = await cases.get_item_ids(
         gen3_graphql_client,
         doc_type,
-        field,
+        [field],
         filters[1],
         limit=limit,
         access_token=access_token,
@@ -370,30 +372,40 @@ async def compare(
         )
 
     # extract ids
-
     ids = glom(plot_items_0, f"data.{doc_type}", default=[])
     ids_0 = [x[field] for x in ids if x.get(field) is not None]
 
     ids = glom(plot_items_1, f"data.{doc_type}", default=[])
     ids_1 = [x[field] for x in ids if x.get(field) is not None]
-
-    # Fastest approach: Convert to sets once and reuse
     set0 = set(ids_0)
     set1 = set(ids_1)
+    if useIntersection:
 
-    intersection = set0 & set1
+        # Fastest approach: Convert to sets once and reuse
 
-    # Subtract the intersection from both sets
-    item_id_0_minus_intersection = list(set0 - intersection)
-    item_id_1_minus_intersection = list(set1 - intersection)
+        intersection = set0 & set1
 
-    # build graphql filter for both using in
+        # Subtract the intersection from both sets
+        item_id_0_minus_intersection = list(set0 - intersection)
+        item_id_1_minus_intersection = list(set1 - intersection)
 
-    filter_0 = {"in": {field: item_id_0_minus_intersection}}
-    filter_1 = {"in": {field: item_id_1_minus_intersection}}
+        # build graphql filter for both using in
 
-    return await plot(
-        PlotRequest(filters=[filter_0, filter_1]),
-        access_token,
-        gen3_graphql_client,
-    )
+        filter_0 = {"in": {field: item_id_0_minus_intersection}}
+        filter_1 = {"in": {field: item_id_1_minus_intersection}}
+
+        return await plot(
+            PlotRequest(filters=[filter_0, filter_1]),
+            access_token,
+            gen3_graphql_client,
+        )
+    else:
+
+        excludes = list(set1 - set0)
+        filter_0 = {"in": {field: list(set0)}}
+        filter_1 = {"in": {field: excludes}}
+        return await plot(
+            PlotRequest(filters=[filter_1, filter_0]),
+            access_token,
+            gen3_graphql_client,
+        )

@@ -30,8 +30,8 @@ async def get_item_ids(
               }}
     }}"""
 
-    print("executing query", graphql_query)
-    print("executing variables", json.dumps(guppy_filter, indent=2))
+    with open(f"{doc_type}.json", "w") as f:
+        f.write(json.dumps({"query": graphql_query, "filter": guppy_filter}, indent=2))
 
     data = await gen3_graphql_client.execute(
         access_token=access_token,

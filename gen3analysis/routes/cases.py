@@ -5,7 +5,7 @@ from gen3analysis.utils.filterEdit import (
     update_filters_with_object_ids,
 )
 from glom import glom
-import json
+from dataclasses import dataclass
 
 
 def process_item_fields(fields):
@@ -37,6 +37,45 @@ async def get_item_ids(
         access_token=access_token,
         query=graphql_query,
         variables={"filter": guppy_filter},
+    )
+
+    return data
+
+
+@dataclass
+class IndexQueryParameters:
+    fields: List[str]
+    index: str
+    filter: Dict
+
+
+async def get_multiple_item_ids(
+    gen3_graphql_client: GuppyGQLClient,
+    queryParameters: Dict[str, IndexQueryParameters],
+    limit=10000,
+    access_token: Optional[str] = None,
+):
+
+    # for each key in queryParameters, add a filter to the guppy_filter
+    filterArgs = ""
+    for key in queryParameters.keys():
+        filterArgs += f"${key}Filter:JSON, "
+
+    graphql_query = f"query multipleItemIds ({filterArgs}) {{"
+    variables = {}
+    for key, value in queryParameters.items():
+        graphql_query += f"""{key} : {value.index}(first:{limit}, filter:${key}Filter) {{
+         {process_item_fields(value.fields)}
+          }}
+        """
+        variables[key + "Filter"] = value.filter
+
+    graphql_query += "}"
+
+    data = await gen3_graphql_client.execute(
+        access_token=access_token,
+        query=graphql_query,
+        variables=variables,
     )
 
     return data

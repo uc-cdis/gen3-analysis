@@ -12,7 +12,6 @@ from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.routes import cases
-import json
 from collections import defaultdict
 
 cohorts = APIRouter()
@@ -151,9 +150,6 @@ async def top_genes_in_cohort(
         case_filters = {"and": []}
 
     case_filters["and"].append({"in": {"available_variation_data": ["ssm"]}})
-    # case_filters["and"].append(
-    #     {"nested": {"path": "gene", "eq": {"is_cancer_gene_census": True}}}
-    # )
 
     ssm_filters = body.ssm_filters
     if (ssm_filters is None) or (ssm_filters.get("and") is None):
@@ -181,19 +177,9 @@ async def top_genes_in_cohort(
         glom(x, "case_id") for x in glom(case_data, f"data.CaseCentric_case_centric")
     ]
 
-    # print(
-    #     "case ids",
-    #     json.dumps({"nested": {"path": "case", "in": {"case_id": case_ids}}}),
-    # )
-
     # build a filter containing the cohort ids and merge with the other filters
     gene_filters["and"].append({"eq": {"is_cancer_gene_census": True}})
-    # gene_filters = {
-    #     "and": [
-    #         {"eq": {"is_cancer_gene_census": True}}
-    #         #  ,  {"nested": {"path": "case", "in": {"case_id": case_ids}}}
-    #     ]
-    # }
+
     gene_data = await cases.get_item_ids(
         gen3_graphql_client=gen3_graphql_client,
         item_fields=["gene_id"],
@@ -217,17 +203,8 @@ async def top_genes_in_cohort(
             }
         }
     )
-    # ssm_filters["and"].append(
-    #     {
-    #         "nested": {
-    #             "path": "occurrence.case",
-    #             "in": {"case_id": case_ids},
-    #         },
-    #     }
-    # )
 
     # save query and variables to a file for debugging
-
     # use case id and gene filters to get a list of genes
 
     ssm_data = await cases.get_item_ids(
@@ -273,38 +250,6 @@ async def top_genes_in_cohort(
             if case_id in case_set:
                 filtered_case_ids.add(case_id)
 
-    # print("filtered gene ids", len(list(filtered_gene_ids)))
-
-    # print("filtered gene ids", len(list(genomic_gene_ids)))
-
-    top_cases_query = """
-   query topGeneCases($filters: JSON, $geneFilters: JSON,  $numGenes: Int) {
-    CaseCentric__aggregation {
-        case_centric(filter: $filters) {
-        _totalCount
-            gene {
-                gene_id {
-                    histogram {
-                        key
-                        count
-                    }
-                }
-            }
-        }
-    }
-    Gene_gene (filter: $geneFilters, first: $numGenes) {
-        gene_id
-        symbol
-        symbol
-        name
-        cytoband
-        biotype
-        gene_id
-        is_cancer_gene_census
-    }
-}
-   """
-
     filter_gene_ids = list(genomic_gene_ids)
 
     top_gene_filters = {
@@ -318,10 +263,6 @@ async def top_genes_in_cohort(
         "numGenes": len(filter_gene_ids),
     }
 
-    # print("executing query", top_cases_query)
-    # print("executing variables",  json.dumps(top_gene_filters, indent=2))
-    # with open("topGenesQuery.json", "w") as f:
-    #     f.write(json.dumps({"query": top_cases_query, "filter": top_gene_filters}, indent=2))
     chart_data = await gen3_graphql_client.execute(
         access_token=access_token, query=TOP_GENES_QUERY, variables=top_gene_filters
     )

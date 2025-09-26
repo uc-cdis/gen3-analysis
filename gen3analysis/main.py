@@ -15,6 +15,7 @@ from gen3analysis.routes.compare import compare
 
 from gen3analysis.routes.survival import survival
 from gen3analysis.routes.cohorts import cohorts
+from gen3analysis.routes.genomic import genomic
 from gen3analysis import config
 
 from gen3analysis.routes.basic import basic_router
@@ -27,6 +28,7 @@ route_definitions = [
     (compare, "/compare", ["Compare"]),
     (survival, "/survival", ["Survival"]),
     (cohorts, "/cohorts", ["Cohorts"]),
+    (genomic, "/genomic", ["Genomic"]),
 ]
 
 for router, prefix, tags in route_definitions:

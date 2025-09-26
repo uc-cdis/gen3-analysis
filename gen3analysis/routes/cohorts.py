@@ -127,9 +127,6 @@ async def top_genes_in_cohort(
         case_filters = {"and": []}
 
     case_filters["and"].append({"in": {"available_variation_data": ["ssm"]}})
-    # case_filters["and"].append(
-    #     {"nested": {"path": "gene", "eq": {"is_cancer_gene_census": True}}}
-    # )
 
     # gene_filters = body.gene_filters
     ssm_filters = body.ssm_filters

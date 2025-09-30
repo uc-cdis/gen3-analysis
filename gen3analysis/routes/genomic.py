@@ -4,14 +4,22 @@ from typing import Any, Dict, List, Optional, Tuple
 from elasticsearch import Elasticsearch
 from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette import status
-from starlette.responses import JSONResponse
+import json
+from pydantic import BaseModel
+from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 
-from gen3analysis.routes.cohorts import cohorts
 from gen3analysis.settings import settings
 from gen3analysis.gen3.es_client import open_pit, get_es
 from gen3analysis.gen3.cursor import encode_cursor, decode_cursor
 from gen3analysis.utils.filters import project_filter
-from gen3analysis.models.genes import TopGenesQuery, TopGenesResponse, GeneBucket
+from gen3analysis.models.genes import (
+    TopGenesQuery,
+    TopGenesResponse,
+    GeneBucket,
+    CaseIds,
+)
+from gen3analysis.filters.gen3GQLFilters import GQLFilter
+from gen3analysis.routes.genomicQueries.queries import query_top_genes
 
 genomic = APIRouter()
 
@@ -94,7 +102,19 @@ def fetch_top_genes_page(
     body = _build_agg_body(
         size=size, after_key=after_key, project=project, pit_id=pit_id
     )
+
+    json_query = json.dumps(body)
+    # write the query to a file
+    with open(
+        f"./logs/es_query.json",
+        "w",
+    ) as f:
+        f.write(json_query)
+
     resp = es.search(body=body)
+
+    json_resp = json.dumps(resp)
+    print(json_resp)
 
     buckets = resp["aggregations"]["by_gene"]["buckets"]
     next_after = resp["aggregations"]["by_gene"].get("after_key")
@@ -121,7 +141,7 @@ def fetch_top_genes_page(
     return items, next_cursor
 
 
-@cohorts.post(
+@genomic.post(
     path="/top-by-cases",
     status_code=status.HTTP_200_OK,
     description="Performs a cohort query and return the query for all items matching the ids.",
@@ -162,4 +182,25 @@ def top_genes(
     return TopGenesResponse(
         items=[GeneBucket(**i) for i in items],
         cursor=next_cursor,
+    )
+
+
+class TopGeneChartRequest(BaseModel):
+    cohort_filter: Optional[Dict[str, Any]] = Query(
+        default=None, description="Case filter (optional)"
+    )
+    genomic_filter: Optional[Dict[str, Any]] = Query(
+        default=None, description="Genomic filter (optional)"
+    )
+
+
+@genomic.post(path="/top-cases")
+def top_cases(body: TopGeneChartRequest):
+
+    cohort_filter = parse_gql_filter(body.cohort_filter)
+    genomic_filter = body.genomic_filter
+
+    return query_top_genes(
+        case_filter=cohort_filter,
+        genomic_filter=genomic_filter,
     )

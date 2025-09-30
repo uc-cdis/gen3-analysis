@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     ES_USERNAME: Optional[str] = None
     ES_PASSWORD: Optional[str] = None
     ES_API_KEY: Optional[str] = None  # base64, or "id:api_key" (client supports either)
-    ES_VERIFY_SSL: bool = True
+    ES_VERIFY_SSL: bool = False
     ES_CA_CERT: Optional[str] = None
     ES_PIT_KEEP_ALIVE: str = "1m"
 

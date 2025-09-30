@@ -147,6 +147,36 @@ class GQLIntersection:
         default_factory=list, metadata=config(field_name="and")
     )
 
+    @classmethod
+    def from_payload(cls, data: Dict[str, Any]) -> "GQLIntersection":
+        """
+        Custom constructor that parses a raw payload like:
+          {"and": [ {...}, {...} ]}
+        into a GQLIntersection with parsed operand filters.
+        """
+        items = data.get("and", [])
+        parsed: List["GQLFilter"] = []
+        for item in items:
+            if isinstance(item, dict):
+                f = parse_gql_filter(item)
+                if f is not None:
+                    parsed.append(f)
+        return cls(and_op=parsed)
+
+    @classmethod
+    def from_operands(cls, operands: List["GQLFilter"]) -> "GQLIntersection":
+        """
+        Custom constructor that accepts already-built GQLFilter operands.
+        """
+        return cls(and_op=[op for op in operands if op is not None])
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GQLIntersection":
+        return GQLIntersection.from_payload(data)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"and": [x.to_dict() for x in self.and_op]}
+
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
@@ -158,8 +188,22 @@ class GQLUnion:
     )
 
     @classmethod
+    def from_payload(cls, data: Dict[str, Any]) -> "GQLUnion":
+        # convert each member of "and" to its concrete GQLFilter using parse_gql_filter
+        items = data.get("or", [])
+        parsed = []
+        for item in items:
+            f = parse_gql_filter(item) if isinstance(item, dict) else None
+            if f is not None:
+                parsed.append(f)
+        return cls(or_op=parsed)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"or": [x.to_dict() for x in self.or_op]}
+
+    @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLUnion":
-        return cls(or_op=data.get("or", []))
+        return GQLUnion.from_payload(data)
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
@@ -171,6 +215,14 @@ class NestedContents:
     # This will contain the actual filter content
     filter_content: "GQLFilter" = None
 
+    @classmethod
+    def from_payload(cls, data: Dict[str, Any]) -> "NestedContents":
+        path = data.get("path", "")
+        # Extract filter content (everything except path)
+        filter_data = {k: v for k, v in data.items() if k != "path"}
+        filter_content = parse_gql_filter(filter_data) if filter_data else None
+        return cls(path=path, filter_content=filter_content)
+
     def to_dict(self) -> Dict[str, Any]:
         result = {"path": self.path}
         if self.filter_content and hasattr(self.filter_content, "to_dict"):
@@ -179,11 +231,7 @@ class NestedContents:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "NestedContents":
-        path = data.get("path", "")
-        # Extract filter content (everything except path)
-        filter_data = {k: v for k, v in data.items() if k != "path"}
-        filter_content = parse_gql_filter(filter_data) if filter_data else None
-        return cls(path=path, filter_content=filter_content)
+        return NestedContents.from_payload(data)
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
@@ -194,6 +242,19 @@ class GQLNestedFilter:
     nested_op: NestedContents = field(
         default_factory=NestedContents, metadata=config(field_name="nested")
     )
+
+    @classmethod
+    def from_payload(cls, data: Dict[str, Any]) -> "GQLNestedFilter":
+        return cls(
+            nested_op=NestedContents(
+                path=data.get("path", ""),
+                filter_content=parse_gql_filter(data.get("filter_content", {})),
+            )
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GQLNestedFilter":
+        return GQLNestedFilter.from_payload(data)
 
 
 # Union type for all GQL filters
@@ -223,6 +284,8 @@ def is_gql_intersection(value: Any) -> bool:
     Returns:
         True if the value is a GQLIntersection
     """
+    if isinstance(value, GQLIntersection):
+        return True
     return (
         isinstance(value, dict)
         and "and" in value
@@ -240,6 +303,8 @@ def is_gql_union(value: Any) -> bool:
     Returns:
         True if the value is a GQLUnion
     """
+    if isinstance(value, GQLUnion):
+        return True
     return (
         isinstance(value, dict) and "or" in value and isinstance(value.get("or"), list)
     )
@@ -255,51 +320,75 @@ def is_gql_nested_filter(value: Any) -> bool:
     Returns:
         True if the value is a GQLNestedFilter
     """
-    return (
+    if isinstance(value, GQLNestedFilter):
+        return True
+    if (
         isinstance(value, dict)
         and "nested" in value
         and isinstance(value.get("nested"), dict)
         and "path" in value.get("nested", {})
-    )
+    ):
+        return True
+    return False
 
 
 def is_gql_equal(value: Any) -> bool:
     """Check if value is a GQLEqual filter"""
-    return isinstance(value, dict) and "=" in value
+
+    if isinstance(value, GQLEqual):
+        return True
+
+    if isinstance(value, dict) and "=" in value:
+        return True
+    return False
 
 
 def is_gql_not_equal(value: Any) -> bool:
     """Check if value is a GQLNotEqual filter"""
+    if isinstance(value, GQLNotEqual):
+        return True
     return isinstance(value, dict) and "!=" in value
 
 
 def is_gql_less_than(value: Any) -> bool:
     """Check if value is a GQLLessThan filter"""
+    if isinstance(value, GQLLessThan):
+        return True
     return isinstance(value, dict) and "<" in value
 
 
 def is_gql_less_than_or_equals(value: Any) -> bool:
     """Check if value is a GQLLessThanOrEquals filter"""
+    if isinstance(value, GQLLessThanOrEquals):
+        return True
     return isinstance(value, dict) and "<=" in value
 
 
 def is_gql_greater_than(value: Any) -> bool:
     """Check if value is a GQLGreaterThan filter"""
+    if isinstance(value, GQLGreaterThan):
+        return True
     return isinstance(value, dict) and ">" in value
 
 
 def is_gql_greater_than_or_equals(value: Any) -> bool:
     """Check if value is a GQLGreaterThanOrEquals filter"""
+    if isinstance(value, GQLGreaterThanOrEquals):
+        return True
     return isinstance(value, dict) and ">=" in value
 
 
 def is_gql_includes(value: Any) -> bool:
     """Check if value is a GQLIncludes filter"""
+    if isinstance(value, GQLIncludes):
+        return True
     return isinstance(value, dict) and "in" in value
 
 
 def is_gql_excludes(value: Any) -> bool:
     """Check if value is a GQLExcludes filter"""
+    if isinstance(value, GQLExcludes):
+        return True
     return isinstance(value, dict) and "exclude" in value
 
 
@@ -333,10 +422,10 @@ def parse_gql_filter(data: Dict[str, Any]) -> Optional["GQLFilter"]:
     elif "excludeifany" in data:
         return GQLExcludeIfAny.from_dict(data)
     elif "and" in data:
-        return GQLIntersection.from_dict(data)
+        return GQLIntersection.from_payload(data)
     elif "or" in data:
-        return GQLUnion.from_dict(data)
+        return GQLUnion.from_payload(data)
     elif "nested" in data:
-        return GQLNestedFilter.from_dict(data)
+        return GQLNestedFilter.from_payload(data)
     else:
         return None

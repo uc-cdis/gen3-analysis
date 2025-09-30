@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 
-from .filters import (
+from gen3analysis.filters.filters import (
     Operation,
     Equals,
     NotEquals,
@@ -16,7 +16,7 @@ from .filters import (
     Exists,
     Missing,
 )
-from .gdcGQLFilters import (
+from gen3analysis.filters.gdcGQLFilters import (
     GqlOperation,
     is_gql_missing,
     is_gql_exists,

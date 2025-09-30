@@ -2,14 +2,16 @@ from elasticsearch import Elasticsearch
 from gen3analysis.settings import settings
 from functools import lru_cache
 from typing import Optional
+from elasticsearch_dsl import connections
+
+hosts = [h.strip() for h in settings.ES_HOSTS.split(",") if h.strip()]
+connections.create_connection(hosts=hosts, timeout=45, use_ssl=settings.ES_VERIFY_SSL)
 
 
 @lru_cache
 def get_es() -> Elasticsearch:
-    hosts = [h.strip() for h in settings.ES_HOSTS.split(",") if h.strip()]
-    kwargs = {
-        "hosts": hosts,
-    }
+
+    kwargs = {"hosts": hosts, "use_ssl": settings.ES_VERIFY_SSL, "request_timeout": 45}
     return Elasticsearch(**kwargs)
 
 

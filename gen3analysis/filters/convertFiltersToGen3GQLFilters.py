@@ -1,6 +1,6 @@
 from typing import Optional
 
-from filters import (
+from gen3analysis.filters.filters import (
     FilterSet,
     Operation,
     LessThanOrEquals,
@@ -19,7 +19,7 @@ from filters import (
     is_notequals,
     is_includes,
 )
-from gen3GQLFilters import (
+from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
     GQLEqual,
     GQLNotEqual,

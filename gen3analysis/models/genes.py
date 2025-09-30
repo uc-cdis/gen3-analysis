@@ -13,6 +13,12 @@ class TopGenesQuery(BaseModel):
     )
 
 
+class CaseIds(BaseModel):
+    cases: List[str] = Field(
+        default_factory=list,
+    )
+
+
 class GeneBucket(BaseModel):
     gene_id: str
     case_count: int

@@ -90,3 +90,15 @@ def build_wrapped_term_Q(field_path: str, value, nested_paths: List[str]):
     for p in reversed(nested_paths):
         q = Q("nested", path=p, query=q)
     return q
+
+
+def build_wrapped_query_Q(value, nested_paths: List[str]):
+    """
+    Same as above but returns an elasticsearch-dsl Q (if installed).
+    """
+    if Q is None:
+        raise RuntimeError("elasticsearch-dsl is not installed")
+    q = value
+    for p in reversed(nested_paths):
+        q = Q("nested", path=p, query=Q("bool", must=[q]), ignore_unmapped=True)
+    return q

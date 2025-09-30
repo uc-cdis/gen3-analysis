@@ -147,10 +147,10 @@ class NestingRegistry:
                 return True
         return False
 
-    def get(self, field: str) -> FieldInfo:
+    def get(self, field: str) -> Optional[FieldInfo]:
         with self._lock:
             if field not in self._by_field:
-                raise KeyError(f"Field '{field}' not registered in NestingRegistry.")
+                return None
             return self._by_field[field]
 
     def ensure(

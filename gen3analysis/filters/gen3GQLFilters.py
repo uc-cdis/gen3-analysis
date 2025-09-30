@@ -429,3 +429,17 @@ def parse_gql_filter(data: Dict[str, Any]) -> Optional["GQLFilter"]:
         return GQLNestedFilter.from_payload(data)
     else:
         return None
+
+
+def get_gql_filter_contents(f: GQLFilter) -> Optional[List[GQLFilter]]:
+
+    if f is None:
+        return []
+
+    if is_gql_intersection(f):
+        return f.and_op
+
+    if is_gql_union(f):
+        return f.or_op
+
+    return []

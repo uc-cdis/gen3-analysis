@@ -1,7 +1,9 @@
 from elasticsearch import Elasticsearch
+
+from gen3analysis.filters.es.nesting_registry import NestingRegistry
 from gen3analysis.settings import settings
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Dict, List
 from elasticsearch_dsl import connections
 
 hosts = [h.strip() for h in settings.ES_HOSTS.split(",") if h.strip()]
@@ -13,6 +15,20 @@ def get_es() -> Elasticsearch:
 
     kwargs = {"hosts": hosts, "use_ssl": settings.ES_VERIFY_SSL, "request_timeout": 45}
     return Elasticsearch(**kwargs)
+
+
+@lru_cache
+def get_nested_registry() -> dict:
+    fieldsByIndex = {
+        "gene_centric": ["case.ssm.consequence.transcript.annotation.vep_impact"]
+    }
+    es = get_es()
+    registry = {}
+    for index in fieldsByIndex.keys():
+        fields = fieldsByIndex[index]
+        registry[index] = NestingRegistry.build(es, index, fields)
+
+    return registry
 
 
 def open_pit(index: str, keep_alive: Optional[str] = None) -> str:

@@ -189,8 +189,11 @@ class TopGeneChartRequest(BaseModel):
     cohort_filter: Optional[Dict[str, Any]] = Query(
         default=None, description="Case filter (optional)"
     )
-    genomic_filter: Optional[Dict[str, Any]] = Query(
-        default=None, description="Genomic filter (optional)"
+    gene_filter: Optional[Dict[str, Any]] = Query(
+        default=None, description="Gene filter (optional)"
+    )
+    ssm_filter: Optional[Dict[str, Any]] = Query(
+        default=None, description="Mutation filter (optional)"
     )
 
 
@@ -198,9 +201,11 @@ class TopGeneChartRequest(BaseModel):
 def top_cases(body: TopGeneChartRequest):
 
     cohort_filter = parse_gql_filter(body.cohort_filter)
-    genomic_filter = body.genomic_filter
+    gene_filter = parse_gql_filter(body.gene_filter)
+    ssm_filter = parse_gql_filter(body.ssm_filter)
 
     return query_top_genes(
         case_filter=cohort_filter,
-        genomic_filter=genomic_filter,
+        gene_filter=gene_filter,
+        ssm_filter=ssm_filter,
     )

@@ -9,6 +9,7 @@ import fastapi
 from fastapi import FastAPI, APIRouter
 
 from gen3analysis.auth import Gen3SdkAuth
+from gen3analysis.gen3.es_client import get_nested_registry
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.routes.compare import compare
@@ -63,6 +64,9 @@ async def lifespan(app: FastAPI):
     gdc_graphql_client = GDCGQLClient(
         graphql_url="https://portal.gdc.cancer.gov/auth/api/v0/graphql",
     )
+
+    # TODO: add to settings
+    get_nested_registry()
 
     app.state.guppy_client = guppy_client
     app.state.gdc_graphql_client = gdc_graphql_client

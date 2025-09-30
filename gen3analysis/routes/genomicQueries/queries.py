@@ -1,19 +1,16 @@
 from typing import Optional, Union, List, Dict, Any, Iterable
-
 from elasticsearch_dsl import Q, A, Search
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
 )
 from gen3analysis.filters.es.query_builder import ESQueryBuilder
-from gen3analysis.filters.gen3GQLFilters import GQLFilter
+from gen3analysis.filters.gen3GQLFilters import GQLFilter, get_gql_filter_contents
 from gen3analysis.gen3.es_client import get_es
 from gen3analysis.routes.survival import MAX_CASES
-import json
 
 
 def build_gen3_es_query(
     case_filter: GQLFilter,
-    include: Optional[Union[str, List[str]]] = None,
     size: Optional[int] = 20,
 ) -> Dict[str, Any]:
     """
@@ -123,7 +120,8 @@ def build_composite_by_ssm(
 
 def query_top_genes(
     case_filter: GQLFilter,
-    genomic_filter: GQLFilter,
+    gene_filter: GQLFilter,
+    ssm_filter: GQLFilter,
     size: int = 20,
 ) -> Dict[str, Any]:
     s = Search(using=get_es(), index="case_centric")
@@ -138,41 +136,41 @@ def query_top_genes(
 
     case_ids = [x._id for x in results["hits"]["hits"]]
 
-    print("case ids", len(case_ids))
+    if len(case_ids) == 0:
+        return {"data": [], "total": 0}
 
-    # add case id as filter to genomic filter
+    gene_filter_contents = get_gql_filter_contents(gene_filter)
+    gene_es_filters = []
+    for x in gene_filter_contents:
+        gene_query = convert_gql_to_elastic_search(x, index="gene_centric", boost=0)
+        gene_es_filters.append(gene_query)
 
-    genomic_query = convert_gql_to_elastic_search(genomic_filter)
-
-    if genomic_query is None:
-        gene_query = Q(
-            "bool",
-            must=[
-                Q(
-                    "nested",
-                    path="case",
-                    ignore_unmapped=True,
-                    query=Q("terms", case__case_id=case_ids),
-                ),
-            ],
+    ssm_filter_contents = get_gql_filter_contents(ssm_filter)
+    ssm_es_filters = []
+    for x in ssm_filter_contents:
+        ssm_query = convert_gql_to_elastic_search(
+            x, index="gene_centric", start_path_index=1, boost=0
         )
-    else:
-        gene_query = Q(
-            "bool",
-            must=[
-                genomic_query,
-                Q(
-                    "nested",
-                    path="case",
-                    ignore_unmapped=True,
-                    query=Q("terms", case__case_id=case_ids),
-                ),
-            ],
+        ssm_es_filters.append(ssm_query)
+
+    # Build must-clauses conditionally
+    must_clauses = [
+        Q(
+            "nested",
+            path="case",
+            ignore_unmapped=True,
+            query=Q(
+                "bool",
+                must=[Q("terms", case__case_id=case_ids, boost=0), *ssm_es_filters],
+            ),
         )
+    ]
+    if len(gene_es_filters) > 0:
+        must_clauses.extend(gene_es_filters)
 
     top_gene_query = Q(
         "bool",
-        must=[gene_query],
+        must=must_clauses,
         should=[
             Q(
                 "bool",
@@ -193,9 +191,25 @@ def query_top_genes(
                                             Q(
                                                 "bool",
                                                 must=[
-                                                    Q("terms", case__case_id=case_ids),
-                                                    ## Add SSM Filters here
+                                                    Q(
+                                                        "terms",
+                                                        case__case_id=case_ids,
+                                                        boost=0,
+                                                    ),
+                                                    *ssm_es_filters,
                                                 ],
+                                            )
+                                        ],
+                                    ),
+                                    Q(
+                                        "bool",
+                                        must=[
+                                            Q(
+                                                "nested",
+                                                path="case.ssm",
+                                                query=Q(
+                                                    "exists", field="case.ssm.ssm_id"
+                                                ),
                                             )
                                         ],
                                     ),
@@ -211,23 +225,17 @@ def query_top_genes(
         ],
     )
 
-    # given case ids, get top genes
+    # given case ids, get 20 top genes
 
     gene_s = Search(using=get_es(), index="gene_centric")
     gene_s = gene_s.source(
-        ["score", "symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"]
+        ["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"]
     )
     gene_s = gene_s.query(top_gene_query)
     gene_s = gene_s[0:size]
     gene_s = gene_s.extra(track_scores=True)
-    gd = gene_s.to_dict()
-    print(json.dumps(gd, indent=2))
     results = gene_s.execute()
-    return results.to_dict()
-
-
-def build_top_genes_query(
-    case_filter: GQLFilter,
-    genomic_filter: GQLFilter,
-):
-    results = query_top_genes(case_filter, genomic_filter)
+    return {
+        "data": results["hits"]["hits"]._l_,
+        "total": results["hits"]["total"]["value"],
+    }

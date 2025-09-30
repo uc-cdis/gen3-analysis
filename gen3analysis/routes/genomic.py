@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from elasticsearch import Elasticsearch
 from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette import status
+from starlette.responses import JSONResponse
 import json
 from pydantic import BaseModel
 from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
@@ -13,12 +14,10 @@ from gen3analysis.gen3.es_client import open_pit, get_es
 from gen3analysis.gen3.cursor import encode_cursor, decode_cursor
 from gen3analysis.utils.filters import project_filter
 from gen3analysis.models.genes import (
-    TopGenesQuery,
     TopGenesResponse,
     GeneBucket,
-    CaseIds,
 )
-from gen3analysis.filters.gen3GQLFilters import GQLFilter
+
 from gen3analysis.routes.genomicQueries.queries import query_top_genes
 
 genomic = APIRouter()
@@ -197,15 +196,41 @@ class TopGeneChartRequest(BaseModel):
     )
 
 
-@genomic.post(path="/top-cases")
-def top_cases(body: TopGeneChartRequest):
-
+@genomic.post(
+    path="/gene_frequency_chart",
+    status_code=status.HTTP_200_OK,
+    description="Returns top genes filtered by cohort, gene, and ssm filters",
+    summary="Top Genes by Cohort, Gene, and SSM",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully processed the chart query"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "The request body is missing required fields or has invalid values."
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
+@genomic.post(path="/gene_frequency_chart")
+def gene_frequency_chart(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)
     ssm_filter = parse_gql_filter(body.ssm_filter)
 
-    return query_top_genes(
+    chart_data = query_top_genes(
         case_filter=cohort_filter,
         gene_filter=gene_filter,
         ssm_filter=ssm_filter,
+    )
+    JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "results": chart_data,
+        },
     )

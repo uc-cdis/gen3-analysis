@@ -20,7 +20,13 @@ def get_es() -> Elasticsearch:
 @lru_cache
 def get_nested_registry() -> dict:
     fieldsByIndex = {
-        "gene_centric": ["case.ssm.consequence.transcript.annotation.vep_impact"]
+        "gene_centric": [
+            "case.ssm.consequence.transcript.annotation.vep_impact",
+            "case.ssm.consequence.transcript.annotation.sift_impact",
+            "case.ssm.consequence.transcript.annotation.polyphen_impact",
+            "case.ssm.consequence.transcript.consequence_type",
+            "case.ssm.mutation_subtype",
+        ]
     }
     es = get_es()
     registry = {}

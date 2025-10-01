@@ -18,7 +18,7 @@ from gen3analysis.models.genes import (
     GeneBucket,
 )
 
-from gen3analysis.routes.genomicQueries.queries import query_top_genes
+from gen3analysis.routes.genomicQueries.queries import query_top_genes, gene_table_query
 
 genomic = APIRouter()
 
@@ -194,6 +194,8 @@ class TopGeneChartRequest(BaseModel):
     ssm_filter: Optional[Dict[str, Any]] = Query(
         default=None, description="Mutation filter (optional)"
     )
+    size: int = Query(default=20, ge=1, le=1000)
+    offset: int = Query(default=0, ge=0)
 
 
 @genomic.post(
@@ -228,9 +230,32 @@ def gene_frequency_chart(body: TopGeneChartRequest):
         gene_filter=gene_filter,
         ssm_filter=ssm_filter,
     )
-    JSONResponse(
+    return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={
-            "results": chart_data,
-        },
+        content=chart_data,
     )
+
+
+@genomic.post(
+    path="/gene_table",
+    status_code=status.HTTP_200_OK,
+    description="Returns pages gene frequency table filtered by cohort, gene, and ssm filters",
+    summary="Mutation Frequency: Gene Table",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully processed the table query"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "The request body is missing required fields or has invalid values."
+        },
+    },
+)
+@genomic.post(path="/gene_table")
+def gene_table(body: TopGeneChartRequest):
+    cohort_filter = parse_gql_filter(body.cohort_filter)
+    gene_filter = parse_gql_filter(body.gene_filter)
+    ssm_filter = parse_gql_filter(body.ssm_filter)
+    size = body.size
+    offset = body.offset
+
+    table_data = gene_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)

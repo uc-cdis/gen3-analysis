@@ -6,7 +6,11 @@ from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
 )
 from gen3analysis.filters.es.es_nested_path import build_wrapped_query_Q
 from gen3analysis.filters.es.query_builder import ESQueryBuilder
-from gen3analysis.filters.gen3GQLFilters import GQLFilter, get_gql_filter_contents
+from gen3analysis.filters.gen3GQLFilters import (
+    GQLFilter,
+    get_gql_filter_contents,
+    GQLIncludes,
+)
 from gen3analysis.gen3.es_client import get_es, get_nested_registry
 from gen3analysis.routes.survival import MAX_CASES
 import json
@@ -122,9 +126,64 @@ def build_composite_by_ssm(
     return qb.to_dict()
 
 
-def build_total_case_count_for_gene_filters(gene_id: str):
+def build_cnv_case_total_query(cohort_filter: GQLFilter, case_ids: List[str]):
+    q = Q(
+        "bool",
+        must=[
+            Q("terms", case__case_id=case_ids, boost=0),
+            Q("nested", path="case", ignore_unmapped=True, query=Q()),
+        ],
+    )
 
-    ssm_query = convert_gql_to_elastic_search
+
+def build_cnv_change_query(gene_id: str, change: str, case_ids: List[str]):
+
+    q = Q(
+        "bool",
+        must=[
+            Q("ids", values=[gene_id], boost=0),
+            Q(
+                "nested",
+                path="case",
+                ignore_unmapped=True,
+                query=Q(
+                    "bool",
+                    must=[
+                        Q(
+                            "terms",
+                            case__case_id=case_ids,
+                            boost=0,
+                        ),
+                        Q("terms", case__available_variation_data=["cnv"], boost=0),
+                        Q(
+                            "nested",
+                            path="case.cnv",
+                            ignore_unmapped=True,
+                            query=Q(
+                                "bool",
+                                must=[
+                                    Q(
+                                        "terms",
+                                        case__cnv__cnv_change_5_category=[change],
+                                        boost=0,
+                                    )
+                                ],
+                            ),
+                        ),
+                    ],
+                ),
+                inner_hits={
+                    "size": 0,
+                    "from": 0,
+                    "_source": {"includes": ["case.case_id"]},
+                },
+            ),
+        ],
+    )
+    return q
+
+
+def build_total_case_count_for_gene_filters(gene_id: str):
     q = Q(
         "bool",
         must=[
@@ -402,13 +461,36 @@ def gene_table_query(
     size: int = 20,
     offset: int = 0,
 ) -> Dict[str, Any]:
-    # first get the case using the cohort filter
 
+    # set up the nesting registry
     nested_registry = get_nested_registry()
     gene_nested_registry = nested_registry.get("gene_centric")
 
+    # first get the case using the cohort filter
+
     case_ids = query_case_ids(case_filter)
 
+    # get CNV cases
+    case_filter_contents = get_gql_filter_contents(case_filter)
+
+    case_filter_contents.append(GQLIncludes({"available_variation_data": ["cnv"]}))
+    must_query = []
+    for x in case_filter_contents:
+        must_query.append(convert_gql_to_elastic_search(x, "case_centric", boost=0))
+
+    case_filters_cnv = Q("bool", must=must_query)
+    cnv_cases_s = Search(using=get_es(), index="case_centric")
+    cnv_cases_s = cnv_cases_s.source(False)
+    cnv_cases_s = cnv_cases_s[:0]
+    cnv_cases_s = cnv_cases_s.extra(track_total_hits=True)
+    cnv_cases_s = cnv_cases_s.query(case_filters_cnv)
+    results = cnv_cases_s.execute()
+
+    cnv_case_total = glom(results, "hits.total.value", default=0)
+
+    # get the genes counts for the current size and offset
+
+    # set up the gene and ssm filters
     gene_filter_contents = get_gql_filter_contents(gene_filter)
     gene_es_filters = []
     for x in gene_filter_contents:
@@ -424,7 +506,6 @@ def gene_table_query(
         ssm_es_filters.append(ssm_query)
 
     # then get the top genes
-
     gene_cases_s = Search(using=get_es(), index="gene_centric")
     gene_cases_s = gene_cases_s.source(
         [
@@ -446,11 +527,17 @@ def gene_table_query(
     results = gene_cases_s.execute()
 
     # now we have the list of genes, create multiple queries for each gene for cnv and ssm counts
-    gene_ids = [x._id for x in results["hits"]["hits"]]
-
-    gene_information = {}
-    for id in gene_ids:
-        gene_information[id] = {"gene_id": id}
+    gene_information = {
+        "cnv_case_total": cnv_case_total,
+    }
+    gene_ids = []
+    for x in results["hits"]["hits"]:
+        gene_information[x._id] = {
+            "gene_id": x._id,
+            "case_count": x._score,
+            **(x._source.to_dict()),
+        }
+        gene_ids.append(x._id)
 
     for gene_id in gene_ids:
         gene_all_cases_s = Search(using=get_es(), index="gene_centric")
@@ -459,10 +546,35 @@ def gene_table_query(
         gene_all_cases_s = gene_all_cases_s.source(False)
         gene_count_all_cases_query = build_total_case_count_for_gene_filters(gene_id)
         gene_all_cases_s = gene_all_cases_s.query(gene_count_all_cases_query)
-        print(json.dumps(gene_all_cases_s.to_dict()))
         results = gene_all_cases_s.execute()
         base = glom(results, "hits.hits", default={"_l_": [None]})[0]
         total = glom(base, "inner_hits.case.hits.total.value", default=0)
-        gene_information[gene_id]["case_count"] = total
+        gene_information[gene_id]["ssm_cases_across_commons"] = total
+
+        # get the cnv count for each change type
+        for change in ["Gain", "Loss", "Amplification", "Homozygous Deletion"]:
+            cnv_s = Search(using=get_es(), index="gene_centric")
+            cnv_s = cnv_s[:1]
+            cnv_s = cnv_s.extra(track_scores=False)
+            cnv_s = cnv_s.source(False)
+            cnv_query = build_cnv_change_query(gene_id, change, case_ids)
+            cnv_s = cnv_s.query(cnv_query)
+
+            results = cnv_s.execute()
+            base = glom(results, "hits.hits", default=[{"novalue": True}])
+            if len(base) == 0:
+                gene_information[gene_id][f"cnv_count_{change}"] = 0
+            else:
+                base_array = base[0]
+                total = glom(base_array, "inner_hits.case.hits.total.value", default=0)
+                gene_information[gene_id][f"cnv_count_{change}"] = total
+
+        # # get the ssm counts
+        # ssm_s = Search(using=get_es(), index="gene_centric")
+        # ssm_s = ssm_s[:1]
+        # ssm_s = ssm_s.extra(track_scores=False)
+        # ssm_s = ssm_s.source(False)
+        # ssm_query = build_gene_query(gene_es_filters, ssm_es_filters, case_ids)
+        # ssm_s = ssm_s.query(ssm_query)
 
     return gene_information

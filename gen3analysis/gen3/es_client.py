@@ -26,6 +26,8 @@ def get_nested_registry() -> dict:
             "case.ssm.consequence.transcript.annotation.polyphen_impact",
             "case.ssm.consequence.transcript.consequence_type",
             "case.ssm.mutation_subtype",
+            "case.ssm.observation.observation_id",
+            "case.cnv.cnv_change_5_category",
         ]
     }
     es = get_es()

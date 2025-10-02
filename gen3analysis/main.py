@@ -1,7 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
 from importlib.metadata import version
-import os
 
 from cdislogging import get_logger
 from gen3authz.client.arborist.async_client import ArboristClient

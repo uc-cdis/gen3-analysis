@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Union, Dict, Any, Optional
+
 from dataclasses_json import dataclass_json, LetterCase, config
 
 
@@ -105,6 +106,17 @@ class GQLIncludes:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLIncludes":
         return cls(in_op=data.get("in", {}))
+
+    def get_field(self):
+        return list(self.in_op.keys())[0]
+
+    def get_values(self) -> List[Union[str, int]]:
+        return self.in_op.get(self.get_field(), [])
+
+    def search(self, s: str) -> bool:
+        if s in self.get_field():
+            return True
+        return False
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
@@ -432,7 +444,6 @@ def parse_gql_filter(data: Dict[str, Any]) -> Optional["GQLFilter"]:
 
 
 def get_gql_filter_contents(f: GQLFilter) -> Optional[List[GQLFilter]]:
-
     if f is None:
         return []
 

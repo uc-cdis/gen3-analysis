@@ -14,7 +14,7 @@ from gen3analysis.filters.gen3GQLFilters import (
 from gen3analysis.gen3.es_client import get_es, get_nested_registry
 from gen3analysis.routes.survival import MAX_CASES
 import json
-from glom import glom
+from glom import glom, Path
 
 
 def build_gen3_es_query(
@@ -124,6 +124,155 @@ def build_composite_by_ssm(
     )
 
     return qb.to_dict()
+
+
+def build_ssm_gene_mutations(
+    gene_ids: List[str], case_ids: List[str], filters: Dict[str, Any]
+):
+    consequence_must = [
+        Q("terms", **{"consequence.transcript.gene.gene_id": gene_ids}, boost=0),
+    ]
+    if "is_cancer_gene_census" in filters:
+        consequence_must.append(
+            Q(
+                "terms",
+                **{
+                    "consequence.transcript.gene.is_cancer_gene_census": filters[
+                        "is_cancer_gene_census"
+                    ]
+                },
+                boost=0,
+            )
+        )
+    if "biotype" in filters:
+        consequence_must.append(
+            Q(
+                "terms",
+                **{"consequence.transcript.gene.biotype": filters["biotype"]},
+                boost=0,
+            )
+        )
+    if "vep_impact" in filters:
+        consequence_must.append(
+            Q(
+                "terms",
+                **{
+                    "consequence.transcript.annotation.vep_impact": filters[
+                        "vep_impact"
+                    ]
+                },
+                boost=0,
+            )
+        )
+    if "consequence_type" in filters:
+        consequence_must.append(
+            Q(
+                "terms",
+                **{
+                    "consequence.transcript.consequence_type": filters[
+                        "consequence_type"
+                    ]
+                },
+                boost=0,
+            )
+        )
+    if "sift_impact" in filters:
+        consequence_must.append(
+            Q(
+                "terms",
+                **{
+                    "consequence.transcript.annotation.sift_impact": filters[
+                        "sift_impact"
+                    ]
+                },
+                boost=0,
+            )
+        )
+    if "polyphen_impact" in filters:
+        consequence_must.append(
+            Q(
+                "terms",
+                **{
+                    "consequence.transcript.annotation.polyphen_impact": filters[
+                        "polyphen_impact"
+                    ]
+                },
+                boost=0,
+            )
+        )
+
+    # ---- build the Search ----
+    s = Search(using=get_es(), index="ssm_centric")
+
+    # _source: false and size: 0
+    s = s.source(False)
+    s = s[:0]
+
+    # bool/must with nested queries + a top-level terms filter
+    occurrence_nested_q = Q(
+        "nested",
+        path="occurrence",
+        ignore_unmapped=True,
+        query=Q(
+            "bool", must=[Q("terms", **{"occurrence.case.case_id": case_ids}, boost=0)]
+        ),
+    )
+
+    consequence_nested_q = Q(
+        "nested",
+        path="consequence",
+        ignore_unmapped=True,
+        query=Q("bool", must=consequence_must),
+    )
+
+    query_filters = [occurrence_nested_q, consequence_nested_q]
+
+    if "subtype" in filters:
+        mutation_subtype_q = Q("terms", mutation_subtype=filters["mutation.subtype"])
+        query_filters.append(mutation_subtype_q)
+
+    s = s.query(Q("bool", must=query_filters))
+
+    # ---- aggregations ----
+    # nested agg on "consequence"
+    consequence_agg = s.aggs.bucket("consequence", "nested", path="consequence")
+
+    # filtered sub-agg with the same 'consequence' constraints
+    filtered = consequence_agg.bucket(
+        "consequence.transcript.gene.gene_id:filtered",
+        "filter",
+        Q("bool", must=consequence_must),
+    )
+
+    # terms agg on gene_id, with reverse_nested to jump back to root docs if needed
+    terms_agg = filtered.bucket(
+        "consequence.transcript.gene.gene_id",
+        "terms",
+        field="consequence.transcript.gene.gene_id",
+        size=200,
+    )
+
+    # reverse_nested sub-agg
+    terms_agg.bucket("rn", "reverse_nested")
+    # save query to file
+    with open("./logs/ssm_mutations_query.json", "w") as f:
+        json.dump(s.to_dict(), f, indent=2)
+    results = s.execute()
+
+    data_path = Path(
+        "aggregations",
+        "consequence",
+        "consequence.transcript.gene.gene_id:filtered",
+        "consequence.transcript.gene.gene_id",
+        "buckets",
+    )
+    mutation_subtype_counts = glom(results, data_path, default=[])
+    ssm_by_gene_id = {}
+    for subtype_count in mutation_subtype_counts:
+        gene_id = subtype_count["key"]
+        ssm_by_gene_id[gene_id] = glom(subtype_count, "rn.doc_count", default=0)
+
+    return ssm_by_gene_id
 
 
 def build_cnv_case_total_query(cohort_filter: GQLFilter, case_ids: List[str]):
@@ -569,12 +718,20 @@ def gene_table_query(
                 total = glom(base_array, "inner_hits.case.hits.total.value", default=0)
                 gene_information[gene_id][f"cnv_count_{change}"] = total
 
-        # # get the ssm counts
-        # ssm_s = Search(using=get_es(), index="gene_centric")
-        # ssm_s = ssm_s[:1]
-        # ssm_s = ssm_s.extra(track_scores=False)
-        # ssm_s = ssm_s.source(False)
-        # ssm_query = build_gene_query(gene_es_filters, ssm_es_filters, case_ids)
-        # ssm_s = ssm_s.query(ssm_query)
+    # get teh ssm mutations and counts
+    # build the filters from the gene and ssm filter list
+    filters = {}
+    for gf in gene_filter_contents:
+        for gene_filter_key in ["is_cancer_gene_census", "biotype", "vep_impact"]:
+            if gf.search(gene_filter_key):
+                filters[gene_filter_key] = gf.get_values()
+    for sf in ssm_filter_contents:
+        for ssm_filter_key in ["consequence_type", "sift_impact", "polyphen_impact"]:
+            if sf.search(ssm_filter_key):
+                filters[ssm_filter_key] = sf.get_values()
 
+    ssm_counts = build_ssm_gene_mutations(gene_ids, case_ids, filters)
+    for key in ssm_counts:
+        if key in gene_information:
+            gene_information[key]["ssm_count"] = ssm_counts[key]
     return gene_information

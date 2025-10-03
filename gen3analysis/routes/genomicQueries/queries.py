@@ -4,7 +4,6 @@ from elasticsearch_dsl import Q, A, Search
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
 )
-from gen3analysis.filters.es.es_nested_path import build_wrapped_query_Q
 from gen3analysis.filters.es.query_builder import ESQueryBuilder
 from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
@@ -227,8 +226,8 @@ def build_ssm_gene_mutations(
 
     query_filters = [occurrence_nested_q, consequence_nested_q]
 
-    if "subtype" in filters:
-        mutation_subtype_q = Q("terms", mutation_subtype=filters["mutation.subtype"])
+    if "mutation_subtype" in filters:
+        mutation_subtype_q = Q("terms", mutation_subtype=filters["mutation_subtype"])
         query_filters.append(mutation_subtype_q)
 
     s = s.query(Q("bool", must=query_filters))
@@ -283,6 +282,21 @@ def build_cnv_case_total_query(cohort_filter: GQLFilter, case_ids: List[str]):
             Q("nested", path="case", ignore_unmapped=True, query=Q()),
         ],
     )
+
+
+def query_case_count(case_filters: List[GQLFilter]) -> int:
+    must_query = []
+    for x in case_filters:
+        must_query.append(convert_gql_to_elastic_search(x, "case_centric", boost=0))
+
+    case_filters_cnv = Q("bool", must=must_query)
+    cnv_cases_s = Search(using=get_es(), index="case_centric")
+    cnv_cases_s = cnv_cases_s.source(False)
+    cnv_cases_s = cnv_cases_s[:0]
+    cnv_cases_s = cnv_cases_s.extra(track_total_hits=True)
+    cnv_cases_s = cnv_cases_s.query(case_filters_cnv)
+    results = cnv_cases_s.execute()
+    return glom(results, "hits.total.value", default=0)
 
 
 def build_cnv_change_query(gene_id: str, change: str, case_ids: List[str]):
@@ -726,7 +740,12 @@ def gene_table_query(
             if gf.search(gene_filter_key):
                 filters[gene_filter_key] = gf.get_values()
     for sf in ssm_filter_contents:
-        for ssm_filter_key in ["consequence_type", "sift_impact", "polyphen_impact"]:
+        for ssm_filter_key in [
+            "consequence_type",
+            "sift_impact",
+            "polyphen_impact",
+            "subtype",
+        ]:
             if sf.search(ssm_filter_key):
                 filters[ssm_filter_key] = sf.get_values()
 

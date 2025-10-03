@@ -11,7 +11,7 @@ from gen3analysis.filters.gen3GQLFilters import (
     GQLIncludes,
 )
 from gen3analysis.gen3.es_client import get_es, get_nested_registry
-from gen3analysis.routes.genomicQueries.queries import query_case_ids, query_case_count
+from gen3analysis.query_builders.genomic.queries import query_case_ids, query_case_count
 from glom import glom, flatten
 
 
@@ -412,6 +412,7 @@ def ssm_table_query(
     ssm_filter: GQLFilter,
     size: int = 20,
     offset: int = 0,
+    search: Optional[str] = ".*.*",
 ) -> Dict[str, Any]:
 
     # first get the case id using the cohort filter

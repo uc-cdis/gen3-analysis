@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
-from importlib.metadata import version
+from importlib.metadata import version, files
 
 from cdislogging import get_logger
 from gen3authz.client.arborist.async_client import ArboristClient
@@ -16,6 +16,8 @@ from gen3analysis.routes.compare import compare
 from gen3analysis.routes.survival import survival
 from gen3analysis.routes.cohorts import cohorts
 from gen3analysis.routes.genomic import genomic
+from gen3analysis.routes.cases import cases
+from gen3analysis.routes.files import files
 from gen3analysis import config
 
 from gen3analysis.routes.basic import basic_router
@@ -29,6 +31,8 @@ route_definitions = [
     (survival, "/survival", ["Survival"]),
     (cohorts, "/cohorts", ["Cohorts"]),
     (genomic, "/genomic", ["Genomic"]),
+    (cases, "/cases", ["Cases"]),
+    (files, "/files", ["Files"]),
 ]
 
 for router, prefix, tags in route_definitions:

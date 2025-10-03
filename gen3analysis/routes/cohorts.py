@@ -11,7 +11,7 @@ from gen3analysis.auth import Auth
 from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.routes import cases
+from gen3analysis.query_builders.cases import cases
 import json
 
 cohorts = APIRouter()
@@ -274,10 +274,6 @@ async def top_genes_in_cohort(
     chart_data = await gen3_graphql_client.execute(
         access_token=access_token, query=top_cases_query, variables=top_genee_filters
     )
-
-    # print("executing query", top_cases_query)
-    # print("executing variables",  json.dumps(top_genee_filters, indent=2))
-    # filters counts by gene_id symbol
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,

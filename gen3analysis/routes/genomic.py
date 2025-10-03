@@ -8,6 +8,7 @@ from starlette.responses import JSONResponse
 import json
 from pydantic import BaseModel
 from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
+from gen3analysis.query_builders.genomic.ssm import ssm_table_query
 
 from gen3analysis.settings import settings
 from gen3analysis.gen3.es_client import open_pit, get_es
@@ -18,7 +19,10 @@ from gen3analysis.models.genes import (
     GeneBucket,
 )
 
-from gen3analysis.routes.genomicQueries.queries import query_top_genes, gene_table_query
+from gen3analysis.query_builders.genomic.queries import (
+    query_top_genes,
+    gene_table_query,
+)
 
 genomic = APIRouter()
 
@@ -196,6 +200,7 @@ class TopGeneChartRequest(BaseModel):
     )
     size: int = Query(default=20, ge=1, le=1000)
     offset: int = Query(default=0, ge=0)
+    search: Optional[str] = Query(default=".*.*", description="Search term (optional)")
 
 
 @genomic.post(
@@ -257,5 +262,31 @@ def gene_table(body: TopGeneChartRequest):
     offset = body.offset
 
     table_data = gene_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)
+
+
+@genomic.post(
+    path="/gene_table",
+    status_code=status.HTTP_200_OK,
+    description="Returns pages gene frequency table filtered by cohort, gene, and ssm filters",
+    summary="Mutation Frequency: Gene Table",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully processed the table query"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "The request body is missing required fields or has invalid values."
+        },
+    },
+)
+@genomic.post(path="/ssm_table")
+def ssm_table(body: TopGeneChartRequest):
+    cohort_filter = parse_gql_filter(body.cohort_filter)
+    gene_filter = parse_gql_filter(body.gene_filter)
+    ssm_filter = parse_gql_filter(body.ssm_filter)
+    size = body.size
+    offset = body.offset
+    search = body.search
+
+    table_data = ssm_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)

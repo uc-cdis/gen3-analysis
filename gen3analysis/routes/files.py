@@ -5,22 +5,22 @@ from pydantic import BaseModel
 from starlette import status
 from starlette.responses import JSONResponse
 from gen3analysis.dependencies.guppy_client import get_guppy_client
-from gen3analysis.filters.gen3GQLFilters import GQLFilter, parse_gql_filter
+from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.query_builders.cases.cases import cases_query, case_summary_query
+from gen3analysis.query_builders.files.files import files_query, file_summary_query
 from gen3analysis.routes.survival import MAX_CASES
 
-cases = APIRouter()
+files = APIRouter()
 
 
 class CasesRequest(BaseModel):
     filters: Dict = Query(default=None, description="filter (optional)")
-    fields: list = Query(default=["case_id"], description="fields (optional)")
+    fields: list = Query(default=["file_id"], description="fields (optional)")
     size: int = Query(
         default=10,
         ge=1,
         le=MAX_CASES,
-        description="number of cases to return (optional) default: 10",
+        description="number of files to return (optional) default: 10",
     )
     offset: int = Query(
         default=0, ge=0, le=MAX_CASES, description="offset (optional) default: 0"
@@ -30,15 +30,15 @@ class CasesRequest(BaseModel):
 
 class CaseSummaryRequest(BaseModel):
     id: str = Query(default=None, description="case id", required=True)
-    fields: list = Query(default=["case_id"], description="fields (optional)")
+    fields: list = Query(default=["file_id"], description="fields (optional)")
     access_token: Optional[str] = None
 
 
-@cases.post(
+@files.post(
     path="/",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
-    description="Performs a cases query and returns case metadata for the matching cases.",
+    description="Performs a files query and returns case metadata for the matching files.",
     summary="Query case metadata",
     responses={
         status.HTTP_200_OK: {"description": "Successfully processed the cohort query"},
@@ -56,8 +56,8 @@ class CaseSummaryRequest(BaseModel):
         },
     },
 )
-@cases.post(path="/")
-def query_cases(body: CasesRequest):
+@files.post(path="/")
+def query_files(body: CasesRequest):
     filters = body.filters
     size = body.size
     offset = body.offset
@@ -66,20 +66,20 @@ def query_cases(body: CasesRequest):
 
     gql_filters = parse_gql_filter(filters)
 
-    results = cases_query(
+    results = files_query(
         gen3_graphql_client, gql_filters, body.fields, size, offset, access_token
     )
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)
 
 
-@cases.get(
-    path="/{case_id}",
+@files.get(
+    path="/{file_id}",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
-    description="Performs a cases query and returns case metadata for case id",
-    summary="Get case id metadata",
+    description="Performs a files query and returns file metadata for file id",
+    summary="Get file id metadata",
     responses={
-        status.HTTP_200_OK: {"description": "Successfully processed the case query"},
+        status.HTTP_200_OK: {"description": "Successfully processed the file query"},
         status.HTTP_400_BAD_REQUEST: {
             "description": "The request body is missing required fields or has invalid values."
         },
@@ -94,10 +94,10 @@ def query_cases(body: CasesRequest):
         },
     },
 )
-def get_case_by_id(
-    case_id: str = Path(..., description="case id"),
+def get_file_by_id(
+    file_id: str = Path(..., description="file id"),
     access_token: Optional[Tuple[Any]] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ):
-    results = case_summary_query(gen3_graphql_client, case_id, access_token)
+    results = file_summary_query(gen3_graphql_client, file_id, access_token)
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

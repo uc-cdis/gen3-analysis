@@ -1,4 +1,4 @@
-from typing import Annotated, List, Dict, Optional
+from typing import List, Dict, Optional
 import pandas as pd
 from fastapi import Cookie
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 from gen3analysis.auth import Auth
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.routes import cases
+from gen3analysis.query_builders.cases import cases
 from gen3analysis.config import logger
 
 MAX_CASES = 10000

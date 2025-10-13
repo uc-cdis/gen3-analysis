@@ -1,16 +1,19 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
+
+from glom import glom
+
+from gen3analysis.config import logger
+from gen3analysis.filters.gen3GQLFilters import (
+    GQLFilter,
+)
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
+from gen3analysis.query_builders.cases.summary_fields import case_metadata_fields
+from gen3analysis.settings import settings
 from gen3analysis.utils.filterEdit import (
     dot_notation_to_graphql,
     update_filters_with_object_ids,
 )
-from gen3analysis.filters.gen3GQLFilters import (
-    GQLFilter,
-)
-from gen3analysis.utils.group import group_paths
-from gen3analysis.query_builders.cases.summary_fields import case_metadata_fields
-from glom import glom
-import json
+from gen3analysis.utils.group import build_fields_query_body
 
 
 def process_item_fields(fields):
@@ -28,15 +31,16 @@ async def get_item_ids(
     limit=10000,
     access_token: Optional[str] = None,
 ):
-
     graphql_query = f"""query objectId ($filter: JSON) {{
             {doc_type}(first:{limit}, filter:$filter) {{
              {process_item_fields(item_fields)}
               }}
     }}"""
 
-    print("executing query", graphql_query)
-    print("executing variables", json.dumps(guppy_filter, indent=2))
+    logger.info(f"executing: query {graphql_query}, variables {guppy_filter}")
+    # TODO - remove this
+    # print("executing query", graphql_query)
+    # print("executing variables", json.dumps(guppy_filter, indent=2))
 
     data = await gen3_graphql_client.execute(
         access_token=access_token,
@@ -57,6 +61,34 @@ async def cohort_query(
     access_token: Optional[str] = None,
     limit=10000,
 ):
+    """
+    Executes a cohort-oriented query using a Gen3 GraphQL client and retrieves results
+    based on specified filters and cohort items.
+
+    Parameters:
+        gen3_graphql_client (GuppyGQLClient): The Gen3 GraphQL client used to execute
+            the queries.
+        case_index (str): The index of the case or entity to be queried.
+        cohort_item_field (str): The field of the cohort items from which ids will
+            be extracted.
+        cohort_filters (Dict): Filters to apply when retrieving the initial cohort
+            items.
+        filters (Dict): Additional filters to merge with the cohort item-related
+            ids for the final query.
+        query (str): The GraphQL query to be executed after filtering for cohort
+            item ids.
+        access_token (Optional[str]): Optional access token to authorize the client
+            for API execution. Defaults to None.
+        limit (int): The maximum number of cohort items/entities to retrieve in the
+            first query. Defaults to 10000.
+
+    Returns:
+        dict: A dictionary containing the results of the final query, including
+            entities matching the filters.
+
+    Raises:
+        None
+    """
     # Get the cohort items by id
     cohort_query = f"""query objectIds ($cohort_filters: JSON) {{
             {case_index}(first:{limit}, filter:$cohort_filters) {{
@@ -96,9 +128,10 @@ def cases_query(
     if fields is None:
         fields = ["case_id"]
     query = f"""
-    query casesQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: CaseCentric_Accessibility)) {{
-    CaseCentric_case_centric(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
-            {group_paths(fields)}
+    query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: CaseCentric_Accessibility)) {{
+    {settings.CASE_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+            {build_fields_query_body(fields)}
+            }}
    }}"""
 
     return gen3_graphql_client.execute(
@@ -113,19 +146,20 @@ def cases_query(
     )
 
 
-def case_summary_query(
+async def case_summary_query(
     gen3_graphql_client: GuppyGQLClient,
     id: str,
     access_token: Optional[str] = None,
-):
+) -> Dict[str, Any]:
     query = f"""
-     query casesQuery($filter: JSON) {{
-     CaseCentric_case_centric(filter:$filter, first:1, offset:0, accessibility:"all" ) {{
-             {group_paths(case_metadata_fields)}
+     query caseSummaryQuery($filter: JSON) {{
+     {settings.CASE_INDEX}(filter:$filter, first:1, offset:0, accessibility:accessible) {{
+             {build_fields_query_body(case_metadata_fields)}
+             }}
     }}"""
 
-    return gen3_graphql_client.execute(
+    return await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
-        variables={"filter": {"in": {"case_id": [id]}}, "accessibility": "accessible"},
+        variables={"filter": {"in": {"case_id": [id]}}},
     )

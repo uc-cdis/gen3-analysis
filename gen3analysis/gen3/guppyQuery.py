@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Dict, Any, Optional
 
 from fastapi import Cookie, HTTPException
@@ -35,6 +36,10 @@ class GuppyGQLClient:
                     headers["Authorization"] = f"Bearer {access_token}"
 
                 payload = {"query": query, "variables": variables or {}}
+                with open("./logs/query.json", "w") as f:
+                    f.write(query)
+                    f.write(json.dumps(variables, indent=2))
+
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         self.graphql_url, json=payload, headers=headers

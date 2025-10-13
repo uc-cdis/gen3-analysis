@@ -57,7 +57,7 @@ class CaseSummaryRequest(BaseModel):
     },
 )
 @files.post(path="/")
-def query_files(body: CasesRequest):
+async def query_files(body: CasesRequest):
     filters = body.filters
     size = body.size
     offset = body.offset
@@ -66,7 +66,7 @@ def query_files(body: CasesRequest):
 
     gql_filters = parse_gql_filter(filters)
 
-    results = files_query(
+    results = await files_query(
         gen3_graphql_client, gql_filters, body.fields, size, offset, access_token
     )
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)
@@ -94,10 +94,10 @@ def query_files(body: CasesRequest):
         },
     },
 )
-def get_file_by_id(
+async def get_file_by_id(
     file_id: str = Path(..., description="file id"),
     access_token: Optional[Tuple[Any]] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ):
-    results = file_summary_query(gen3_graphql_client, file_id, access_token)
+    results = await file_summary_query(gen3_graphql_client, file_id, access_token)
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

@@ -5,7 +5,6 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 from cdislogging import get_logger
 from starlette.config import Config
-from starlette.datastructures import Secret
 
 
 ENV = os.getenv("ENV", "production")

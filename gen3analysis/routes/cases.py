@@ -94,10 +94,10 @@ def query_cases(body: CasesRequest):
         },
     },
 )
-def get_case_by_id(
+async def get_case_by_id(
     case_id: str = Path(..., description="case id"),
     access_token: Optional[Tuple[Any]] = Cookie(None),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ):
-    results = case_summary_query(gen3_graphql_client, case_id, access_token)
+    results = await case_summary_query(gen3_graphql_client, case_id, access_token)
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

@@ -68,3 +68,23 @@ def dot_notation_to_graphql(dot_string: str) -> str:
         result = f"{part} {{ {result} }}"
 
     return result
+
+
+def get_subfields(fields_list, query_path):
+    """
+    Given a list of dot-delimited hierarchical strings and a partial path,
+    returns all elements that are children of that path.
+
+    Args:
+        fields_list: List of strings with '.' as hierarchy delimiter
+        query_path: Partial path string to search for
+
+    Returns:
+        List of strings that start with the query_path
+    """
+    # Ensure the query path ends with a dot for exact prefix matching
+    # This prevents matching "consequence.transcript.gen" when looking for "consequence.transcript.gene"
+    search_prefix = query_path if query_path.endswith(".") else query_path + "."
+
+    # Filter fields that start with the search prefix
+    return [field for field in fields_list if field.startswith(search_prefix)]

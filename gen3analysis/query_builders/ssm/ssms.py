@@ -3,7 +3,6 @@ from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
 )
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.query_builders.cases.summary_fields import case_metadata_fields
 from gen3analysis.settings import settings
 from gen3analysis.utils.filterEdit import (
     dot_notation_to_graphql,
@@ -353,7 +352,7 @@ async def ssms_query(
     seen = set()
     query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
 
-    # Use correct SSM index; adjust if your schema uses a different name
+    # Use the correct SSM index; adjust if your schema uses a different name
     index_name = settings.SSM_CENTRIC_INDEX
 
     query = f"""

@@ -7,34 +7,19 @@ from starlette.responses import JSONResponse
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.query_builders.files.files import files_query, file_summary_query
-from gen3analysis.routes.survival import MAX_CASES
+from gen3analysis.query_builders.ssm.ssms import ssms_query
 
-files = APIRouter()
+ssms = APIRouter()
 
 
-class FilesRequest(BaseModel):
+class SSMSRequest(BaseModel):
+    id: str = Query(default=None, description="ssms id")
     filters: Dict = Query(default=None, description="filter (optional)")
     fields: list = Query(default=["file_id"], description="fields (optional)")
-    size: int = Query(
-        default=10,
-        ge=1,
-        le=MAX_CASES,
-        description="number of files to return (optional) default: 10",
-    )
-    offset: int = Query(
-        default=0, ge=0, le=MAX_CASES, description="offset (optional) default: 0"
-    )
     access_token: Optional[str] = None
 
 
-class FilesSummaryRequest(BaseModel):
-    id: str = Query(default=None, description="file id", required=True)
-    fields: list = Query(default=["file_id"], description="fields (optional)")
-    access_token: Optional[str] = None
-
-
-@files.post(
+@ssms.post(
     path="/",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
@@ -56,24 +41,27 @@ class FilesSummaryRequest(BaseModel):
         },
     },
 )
-@files.post(path="/")
-async def query_files(body: FilesRequest):
+@ssms.post(path="/{ssms_id")
+async def query_ssms(body: SSMSRequest):
     filters = body.filters
-    size = body.size
-    offset = body.offset
+    expand = body.expand
+    id = body.id
     access_token: Optional[Tuple[Any]] = (Cookie(None),)
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client)
-
     gql_filters = parse_gql_filter(filters)
 
-    results = await files_query(
-        gen3_graphql_client, gql_filters, body.fields, size, offset, access_token
+    results = await ssms_query(
+        gen3_graphql_client=gen3_graphql_client,
+        id=id,
+        fields=body.fields,
+        expand=expand,
+        access_token=access_token,
     )
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)
 
 
-@files.get(
-    path="/{file_id}",
+@ssms.get(
+    path="/{ssms_id}",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Performs a files query and returns file metadata for file id",
@@ -94,10 +82,18 @@ async def query_files(body: FilesRequest):
         },
     },
 )
-async def get_file_by_id(
-    file_id: str = Path(..., description="file id"),
-    access_token: Optional[Tuple[Any]] = Cookie(None),
+async def get_ssms_by_id(
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    ssm_id: str = Path(..., description="ssms id"),
+    fields: list = Query(default=["file_id"], description="fields (optional)"),
+    expand: list = Query(default=None, description="expand (optional)"),
+    access_token: Optional[Tuple[Any]] = Cookie(None),
 ):
-    results = await file_summary_query(gen3_graphql_client, file_id, access_token)
+    results = await ssms_query(
+        gen3_graphql_client=gen3_graphql_client,
+        id=ssm_id,
+        fields=fields,
+        expand=expand,
+        access_token=access_token,
+    )
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

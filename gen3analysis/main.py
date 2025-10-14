@@ -18,6 +18,7 @@ from gen3analysis.routes.cohorts import cohorts
 from gen3analysis.routes.genomic import genomic
 from gen3analysis.routes.cases import cases
 from gen3analysis.routes.files import files
+from gen3analysis.routes.ssms import ssms
 from gen3analysis import config
 
 from gen3analysis.routes.basic import basic_router
@@ -33,6 +34,7 @@ route_definitions = [
     (genomic, "/genomic", ["Genomic"]),
     (cases, "/cases", ["Cases"]),
     (files, "/files", ["Files"]),
+    (ssms, "/ssms", ["SSMS"]),
 ]
 
 for router, prefix, tags in route_definitions:

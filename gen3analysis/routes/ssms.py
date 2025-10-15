@@ -1,30 +1,40 @@
-from typing import Dict, Optional, Tuple, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from typing import Dict, Optional, List
+from fastapi import APIRouter, Depends, Query, Path
 from fastapi import Cookie
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.query_builders.ssm.ssms import ssms_query
+from gen3analysis.query_builders.ssm.ssms import ssms_query, ssms_id_query
 
 ssms = APIRouter()
 
 
-class SSMSRequest(BaseModel):
-    id: str = Query(default=None, description="ssms id")
-    filters: Dict = Query(default=None, description="filter (optional)")
-    fields: list = Query(default=["file_id"], description="fields (optional)")
-    access_token: Optional[str] = None
+class SSMSRBaseRequest(BaseModel):
+    expand: Optional[List[str]] = Field(
+        default=None, description="which fields to expand (optional)"
+    )
+    fields: Optional[List[str]] = Field(default=None, description="fields (optional)")
+
+
+class SSMSRequest(SSMSRBaseRequest):
+    filter: Optional[Dict] = Field(default=None, description="filter (optional)")
+    start: Optional[int] = Field(default=0, ge=0, le=10000, description="start index")
+    size: Optional[int] = Field(default=10, ge=1, le=1000, description="page size")
+
+
+class SSMSIDRequest(SSMSRBaseRequest):
+    id: str = Field(default=None, description="ssms id")
 
 
 @ssms.post(
     path="/",
-    dependencies=[Depends(get_guppy_client)],
+    # remove dependencies here if you want the value in the handler
     status_code=status.HTTP_200_OK,
-    description="Performs a files query and returns case metadata for the matching files.",
-    summary="Query case metadata",
+    description="Query the ssms metadata",
+    summary="Query ssms metadata",
     responses={
         status.HTTP_200_OK: {"description": "Successfully processed the cohort query"},
         status.HTTP_400_BAD_REQUEST: {
@@ -41,33 +51,38 @@ class SSMSRequest(BaseModel):
         },
     },
 )
-@ssms.post(path="/{ssms_id")
-async def query_ssms(body: SSMSRequest):
-    filters = body.filters
+async def get_ssms(
+    body: SSMSRequest,
+    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+):
+    fltr = body.filter
     expand = body.expand
-    id = body.id
-    access_token: Optional[Tuple[Any]] = (Cookie(None),)
-    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client)
-    gql_filters = parse_gql_filter(filters)
+    start = body.start
+    size = body.size
+    fields = body.fields
+    gql_filter = parse_gql_filter(fltr)
 
     results = await ssms_query(
         gen3_graphql_client=gen3_graphql_client,
-        id=id,
-        fields=body.fields,
+        fields=fields,
         expand=expand,
+        filter=gql_filter,
+        start=start,
+        size=size,
         access_token=access_token,
     )
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)
 
 
 @ssms.get(
-    path="/{ssms_id}",
+    path="/{ssm_id}",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
-    description="Performs a files query and returns file metadata for file id",
-    summary="Get file id metadata",
+    description="Query the ssms metadata for the ssms id",
+    summary="Get ssms metadata",
     responses={
-        status.HTTP_200_OK: {"description": "Successfully processed the file query"},
+        status.HTTP_200_OK: {"description": "Successfully processed the ssms query"},
         status.HTTP_400_BAD_REQUEST: {
             "description": "The request body is missing required fields or has invalid values."
         },
@@ -83,13 +98,13 @@ async def query_ssms(body: SSMSRequest):
     },
 )
 async def get_ssms_by_id(
+    ssm_id: str = Path(..., description="SSM identifier"),
+    fields: Optional[List[str]] = Query(default=None, description="fields (optional)"),
+    expand: Optional[List[str]] = Query(default=None, description="expand (optional)"),
+    access_token: str | None = Cookie(default=None, alias="access_token"),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    ssm_id: str = Path(..., description="ssms id"),
-    fields: list = Query(default=["file_id"], description="fields (optional)"),
-    expand: list = Query(default=None, description="expand (optional)"),
-    access_token: Optional[Tuple[Any]] = Cookie(None),
 ):
-    results = await ssms_query(
+    results = await ssms_id_query(
         gen3_graphql_client=gen3_graphql_client,
         id=ssm_id,
         fields=fields,

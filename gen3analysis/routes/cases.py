@@ -1,7 +1,7 @@
-from typing import Dict, Optional, Tuple, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from typing import Dict, Optional, Tuple, Any, List
+from fastapi import APIRouter, Depends, Query, Path
 from fastapi import Cookie
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 from gen3analysis.dependencies.guppy_client import get_guppy_client
@@ -14,24 +14,26 @@ cases = APIRouter()
 
 
 class CasesRequest(BaseModel):
-    filters: Dict = Query(default=None, description="filter (optional)")
-    fields: list = Query(default=["case_id"], description="fields (optional)")
-    size: int = Query(
+    filters: Optional[Dict] = Field(default=None, description="filter (optional)")
+    fields: Optional[List[str]] = Field(
+        default=["case_id"], description="fields (optional)"
+    )
+    size: Optional[int] = Field(
         default=10,
         ge=1,
         le=MAX_CASES,
         description="number of cases to return (optional) default: 10",
     )
-    offset: int = Query(
+    offset: Optional[int] = Field(
         default=0, ge=0, le=MAX_CASES, description="offset (optional) default: 0"
     )
-    access_token: Optional[str] = None
 
 
 class CaseSummaryRequest(BaseModel):
-    id: str = Query(default=None, description="case id", required=True)
-    fields: list = Query(default=["case_id"], description="fields (optional)")
-    access_token: Optional[str] = None
+    id: str = Field(default=None, description="case id")
+    fields: Optional[List[str]] = Field(
+        default=["case_id"], description="fields (optional)"
+    )
 
 
 @cases.post(
@@ -56,13 +58,14 @@ class CaseSummaryRequest(BaseModel):
         },
     },
 )
-@cases.post(path="/")
-def query_cases(body: CasesRequest):
+def query_cases(
+    body: CasesRequest,
+    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    access_token: str | None = Cookie(default=None, alias="access_token"),
+):
     filters = body.filters
     size = body.size
     offset = body.offset
-    access_token: Optional[Tuple[Any]] = (Cookie(None),)
-    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client)
 
     gql_filters = parse_gql_filter(filters)
 

@@ -50,7 +50,7 @@ class CohortQueryRequest(BaseModel):
 )
 async def cohort_query(
     body: CohortQueryRequest,
-    access_token: Optional[str] = Cookie(None),
+    access_token: str | None = Cookie(default=None, alias="access_token"),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:

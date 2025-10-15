@@ -5,8 +5,8 @@ from elasticsearch import Elasticsearch
 from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette import status
 from starlette.responses import JSONResponse
-import json
-from pydantic import BaseModel
+from gen3analysis.config import logger
+from pydantic import BaseModel, Field
 from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 from gen3analysis.query_builders.genomic.ssm import ssm_table_query
 
@@ -39,11 +39,38 @@ def _build_agg_body(
       - composite agg 'by_gene' over TOP_GENES_GENE_ID_FIELD
       - nested sub-agg to cardinality count distinct cases
     """
+    # Validate inputs
+    if not pit_id or not isinstance(pit_id, str):
+        raise ValueError("pit_id must be a non-empty string")
+
+    if not isinstance(size, int) or size < 1 or size > 10000:
+        raise ValueError("size must be an integer between 1 and 10000")
+
+    # Validate required settings exist
+    required_settings = [
+        "TOP_GENES_GENE_ID_FIELD",
+        "TOP_GENES_CASE_NESTED_PATH",
+        "TOP_GENES_CASE_ID_FIELD",
+        "ES_PIT_KEEP_ALIVE",
+    ]
+    for setting in required_settings:
+        if not hasattr(settings, setting) or getattr(settings, setting) is None:
+            raise ValueError(f"Required setting '{setting}' is not configured")
+
     filters = project_filter(project)
+
+    # Ensure filters is a list
+    if filters is None:
+        filters = []
+    elif not isinstance(filters, list):
+        raise TypeError(f"project_filter must return a list, got {type(filters)}")
+
+    # Build query - use bool filter even if empty for consistency
+    query = {"bool": {"filter": filters}} if filters else {"match_all": {}}
 
     body: Dict[str, Any] = {
         "size": 0,
-        "query": {"bool": {"filter": filters}} if filters else {"match_all": {}},
+        "query": query,
         "aggs": {
             "by_gene": {
                 "composite": {
@@ -92,56 +119,60 @@ def fetch_top_genes_page(
     items: list of {gene_id, case_count, doc_count}
     next_cursor: opaque cursor with pit_id + after_key or None if last page
     """
-    if cursor:
-        decoded = decode_cursor(cursor)
-        pit_id = decoded["pit_id"]
-        after_key = decoded.get("after_key")
-    else:
-        pit_id = open_pit(
-            settings.TOP_GENES_INDEX, keep_alive_override or settings.ES_PIT_KEEP_ALIVE
+    try:
+        if cursor:
+            decoded = decode_cursor(cursor)
+            pit_id = decoded.get("pit_id")
+            if not pit_id:
+                raise ValueError("Decoded cursor missing 'pit_id'")
+            after_key = decoded.get("after_key")
+        else:
+            pit_id = open_pit(
+                settings.TOP_GENES_INDEX,
+                keep_alive_override or settings.ES_PIT_KEEP_ALIVE,
+            )
+            after_key = None
+
+        body = _build_agg_body(
+            size=size, after_key=after_key, project=project, pit_id=pit_id
         )
-        after_key = None
+        resp = es.search(body=body)
 
-    body = _build_agg_body(
-        size=size, after_key=after_key, project=project, pit_id=pit_id
-    )
+        # Validate response structure
+        if "aggregations" not in resp or "by_gene" not in resp["aggregations"]:
+            raise ValueError("Unexpected Elasticsearch response structure")
 
-    json_query = json.dumps(body)
-    # write the query to a file
-    with open(
-        f"./logs/es_query.json",
-        "w",
-    ) as f:
-        f.write(json_query)
+        buckets = resp["aggregations"]["by_gene"].get("buckets", [])
+        next_after = resp["aggregations"]["by_gene"].get("after_key")
 
-    resp = es.search(body=body)
+        items: List[Dict[str, Any]] = []
+        for b in buckets:
+            try:
+                gene_id = b["key"]["gene_id"]
+                doc_count = b["doc_count"]
+                case_count = b["case_nested"]["unique_cases"]["value"]
+                items.append(
+                    {
+                        "gene_id": gene_id,
+                        "case_count": int(case_count),
+                        "doc_count": int(doc_count),
+                    }
+                )
+            except (KeyError, TypeError) as e:
+                logger.warning(f"Skipping malformed bucket: {e}")
+                continue
 
-    json_resp = json.dumps(resp)
-    print(json_resp)
+        if next_after:
+            next_cursor = encode_cursor(pit_id, next_after)
+        else:
+            # No more pages; PIT will expire naturally
+            next_cursor = None
 
-    buckets = resp["aggregations"]["by_gene"]["buckets"]
-    next_after = resp["aggregations"]["by_gene"].get("after_key")
+        return items, next_cursor
 
-    items: List[Dict[str, Any]] = []
-    for b in buckets:
-        gene_id = b["key"]["gene_id"]
-        doc_count = b["doc_count"]
-        case_count = b["case_nested"]["unique_cases"]["value"]
-        items.append(
-            {
-                "gene_id": gene_id,
-                "case_count": int(case_count),
-                "doc_count": int(doc_count),
-            }
-        )
-
-    if next_after:
-        next_cursor = encode_cursor(pit_id, next_after)
-    else:
-        # No more pages; let PIT expire naturally (or you can explicitly close here if you prefer stateful tracking)
-        next_cursor = None
-
-    return items, next_cursor
+    except Exception as e:
+        logger.error(f"Error fetching top genes page: {e}", exc_info=True)
+        raise
 
 
 @genomic.post(
@@ -189,17 +220,17 @@ def top_genes(
 
 
 class TopGeneChartRequest(BaseModel):
-    cohort_filter: Optional[Dict[str, Any]] = Query(
+    cohort_filter: Optional[Dict[str, Any]] = Field(
         default=None, description="Case filter (optional)"
     )
-    gene_filter: Optional[Dict[str, Any]] = Query(
+    gene_filter: Optional[Dict[str, Any]] = Field(
         default=None, description="Gene filter (optional)"
     )
-    ssm_filter: Optional[Dict[str, Any]] = Query(
+    ssm_filter: Optional[Dict[str, Any]] = Field(
         default=None, description="Mutation filter (optional)"
     )
-    size: int = Query(default=20, ge=1, le=1000)
-    offset: int = Query(default=0, ge=0)
+    size: Optional[int] = Field(default=20, ge=1, le=1000)
+    offset: Optional[int] = Field(default=0, ge=0)
     search: Optional[str] = Query(default=".*.*", description="Search term (optional)")
 
 

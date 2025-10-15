@@ -22,7 +22,7 @@ async def files_query(
         fields = ["file_id"]
     query = f"""
     query filesQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: File_Accessibility)) {{
-    File_file(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
+    {settings.FILE_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
             {build_fields_query_body(fields)}
    }}"""
 

@@ -286,6 +286,7 @@ DEFAULT_FIELDS = [
     "genomic_dna_change",
     "tumor_allele",
     "end_position",
+    "ssm_id",
 ]
 
 
@@ -296,36 +297,50 @@ def process_item_fields(fields):
     return results
 
 
-def cases_query(
+async def ssms_query(
     gen3_graphql_client: GuppyGQLClient,
-    filter: GQLFilter,
+    filter=None,
     fields=None,
+    expand=None,
     size=1,
-    offset=0,
+    start=0,
     access_token: Optional[str] = None,
 ):
-    if fields is not None:
-        fields = ["case_id"]
+    if filter is None:
+        filter = {}
+    field_snippets: List[str] = []
+
+    if not fields:
+        field_snippets.extend(DEFAULT_FIELDS)
+
+    if expand:
+        for field in expand:
+            expand_fields = get_subfields(EXPANDABLE_FIELDS, field)
+            for f in expand_fields:
+                field_snippets.append(dot_notation_to_graphql(f))
+
+    seen = set()
+    query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
     query = f"""
-    query ssmsQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: CaseCentric_Accessibility)) {{
+    query ssmsQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
     {settings.SSM_CENTRIC_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
-            {DEFAULT_FIELDS}
+            {query_fields}
             }}
    }}"""
 
-    return gen3_graphql_client.execute(
+    return await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
         variables={
             "filter": filter,
             "size": size,
-            "offset": offset,
+            "offset": start,
             "accessibility": "accessible",
         },
     )
 
 
-async def ssms_query(
+async def ssms_id_query(
     gen3_graphql_client: GuppyGQLClient,
     id: str,
     fields: Optional[List[str]] = None,
@@ -356,8 +371,8 @@ async def ssms_query(
     index_name = settings.SSM_CENTRIC_INDEX
 
     query = f"""
-     query ssmsQuery($filter: JSON) {{
-     {index_name}(filter:$filter, first:1, offset:0, accessibility:accessible) {{
+     query ssmsQuery($filter: JSON, $accessibility: Accessibility) {{
+     {index_name}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
              {query_fields}
              }}
     }}"""

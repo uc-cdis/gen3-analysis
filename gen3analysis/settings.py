@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     FILE_INDEX: Optional[str] = "file"
     PROJECT_INDEX: Optional[str] = "project"
     GENE_INDEX: Optional[str] = "gene_centric"
-    SSM_CENTRIC_INDEX: Optional[str] = "ssm_centric"
+    SSM_CENTRIC_INDEX: Optional[str] = "SsmCentric_ssm_centric"
 
     class Config:
         env_file = ".env"

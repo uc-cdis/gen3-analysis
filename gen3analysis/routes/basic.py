@@ -13,12 +13,14 @@ basic_router = APIRouter()
     "/",
     description="Directs client to the docs",
     summary="Get swagger docs",
+    response_class=RedirectResponse,
+    status_code=307,
 )
-async def redirect_to_docs():
+def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
     """
-    return RedirectResponse(url="/docs")
+    return RedirectResponse(url="/docs", status_code=307)
 
 
 @basic_router.get(

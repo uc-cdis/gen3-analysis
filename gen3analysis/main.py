@@ -3,9 +3,12 @@ from contextlib import asynccontextmanager
 from importlib.metadata import version, files
 
 from cdislogging import get_logger
+from fastapi.exceptions import RequestValidationError
 from gen3authz.client.arborist.async_client import ArboristClient
 import fastapi
 from fastapi import FastAPI, APIRouter
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from gen3analysis.auth import Gen3SdkAuth
 from gen3analysis.gen3.es_client import get_nested_registry
@@ -156,3 +159,13 @@ class ClientDisconnectMiddleware:
 
 
 app_instance = get_app()
+
+
+@app_instance.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for err in exc.errors():
+        # err["loc"] like ("body", "filter", 0, "name")
+        path = ".".join(str(p) for p in err["loc"])
+        errors.append({"path": path, "msg": err["msg"], "type": err["type"]})
+    return JSONResponse(status_code=422, content={"detail": errors})

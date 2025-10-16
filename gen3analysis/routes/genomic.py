@@ -231,7 +231,7 @@ class TopGeneChartRequest(BaseModel):
     )
     size: Optional[int] = Field(default=20, ge=1, le=1000)
     offset: Optional[int] = Field(default=0, ge=0)
-    search: Optional[str] = Query(default=".*.*", description="Search term (optional)")
+    search: Optional[str] = Field(default=".*.*", description="Search term (optional)")
 
 
 @genomic.post(

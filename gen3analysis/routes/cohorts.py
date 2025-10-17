@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Cookie
 from glom import glom
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 
@@ -18,12 +18,16 @@ cohorts = APIRouter()
 
 
 class CohortQueryRequest(BaseModel):
-    cohort_filters: Dict
-    filters: Dict = {}
-    query: str = ""
-    case_index: str = ""
-    cohort_item_field: str = ""
-    limit: int = 10000
+    cohort_filter: Optional[Dict] = Field(
+        default=None, description="case filter (optional)"
+    )
+    filter: Optional[Dict] = Field(default=None, description="query filter (optional)")
+    query: Optional[str] = Field(default="", description="query (optional)")
+    case_index: str = Field(description="case index to query")
+    cohort_item_field: str = Field(description="identity field for the case")
+    limit: Optional[int] = Field(
+        default=10000, description="set the number of responses (optional)"
+    )
 
 
 @cohorts.post(
@@ -54,20 +58,20 @@ async def cohort_query(
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
-    cohort_filters = body.cohort_filters
+    cohort_filter = body.cohort_filter
     case_index = body.case_index
     cohort_item_field = body.cohort_item_field
     limit = body.limit
     query = body.query
-    filters = body.filters
+    query_filter = body.filter
 
-    if cohort_filters is None == 0:
+    if cohort_filter is None == 0:
         raise HTTPException(status_code=400, detail="Must have the cohort_query filter")
 
-    if filters is None or len(filters) == 0:
+    if query_filter is None or len(query_filter) == 0:
         raise HTTPException(status_code=400, detail="Must have the query filter")
 
-    if query is None or len(filters) == 0:
+    if query is None or len(query_filter) == 0:
         raise HTTPException(status_code=400, detail="Must have the query")
 
     try:
@@ -76,18 +80,13 @@ async def cohort_query(
             case_index=case_index,
             cohort_item_field=cohort_item_field,
             query=query,
-            cohort_filters=cohort_filters,
-            filters=filters,
+            cohort_filter=cohort_filter,
+            filter=query_filter,
             limit=limit,
             access_token=access_token,
         )
 
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                "results": data,
-            },
-        )
+        return JSONResponse(status_code=status.HTTP_200_OK, content=data)
     except Exception as e:
         logger.error(f"Error while processing cohort query: {e}")
         raise HTTPException(status_code=500, detail="Error with cohort query")

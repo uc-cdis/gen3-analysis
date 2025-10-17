@@ -6,8 +6,6 @@ from gen3analysis.filters.gen3GQLFilters import (
 )
 from gen3analysis.utils.group import build_fields_query_body
 from gen3analysis.query_builders.files.summary_fields import file_metadata_fields
-from glom import glom
-import json
 
 
 async def files_query(

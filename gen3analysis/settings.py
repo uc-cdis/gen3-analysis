@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     ES_VERIFY_SSL: bool = False
     ES_CA_CERT: Optional[str] = None
 
+    MAX_CASES: int = 10000
     CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
     CASE_INDEX: Optional[str] = "case"
     FILE_INDEX: Optional[str] = "file"

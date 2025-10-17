@@ -1,7 +1,7 @@
 from typing import Dict, Optional, List, Any
 
 from glom import glom
-
+import json
 from gen3analysis.config import logger
 from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
@@ -55,8 +55,8 @@ async def cohort_query(
     gen3_graphql_client: GuppyGQLClient,
     case_index: str,
     cohort_item_field: str,
-    cohort_filters: Dict,
-    filters: Dict,
+    cohort_filter: Dict,
+    filter: Dict,
     query: str,
     access_token: Optional[str] = None,
     limit=10000,
@@ -71,7 +71,7 @@ async def cohort_query(
         case_index (str): The index of the case or entity to be queried.
         cohort_item_field (str): The field of the cohort items from which ids will
             be extracted.
-        cohort_filters (Dict): Filters to apply when retrieving the initial cohort
+        cohort_filter (Dict): Filters to apply when retrieving the initial cohort
             items.
         filters (Dict): Additional filters to merge with the cohort item-related
             ids for the final query.
@@ -90,31 +90,56 @@ async def cohort_query(
         None
     """
     # Get the cohort items by id
-    cohort_query = f"""query objectIds ($cohort_filters: JSON) {{
-            {case_index}(first:{limit}, filter:$cohort_filters) {{
-                          {dot_notation_to_graphql(cohort_item_field)}
-              }}
-    }}"""
-    data = await gen3_graphql_client.execute(
-        access_token=access_token,
-        query=cohort_query,
-        variables={"cohort_filters": cohort_filters},
-    )
 
-    if (data.get("data") is None) or (data.get("data").get(case_index) is None):
-        return {"hits": [], "total": 0}
-    case_ids = [glom(x, cohort_item_field) for x in glom(data, f"data.{case_index}")]
+    try:
+        max_cases = settings.MAX_CASES
 
-    # build a filter containing the cohort ids and merge with the other filters
-    ids = case_ids
+        cohort_query = f"""query objectIds ($cohort_filters: JSON) {{
+                {case_index}(first:{max_cases}, filter:$cohort_filters) {{
+                              {dot_notation_to_graphql(cohort_item_field)}
+                  }}
+        }}"""
 
-    update_filters_with_object_ids(filters, "case_id", ids)
+        q = {
+            "query": cohort_query.replace("\n", "").replace("\r", ""),
+            "variables": {"cohort_filters": cohort_filter},
+        }
+        with open("./logs/first_query.json", "w") as f:
+            f.write(json.dumps(q, indent=2))
 
-    return await gen3_graphql_client.execute(
-        access_token=access_token,
-        query=query,
-        variables=filters,
-    )
+        data = await gen3_graphql_client.execute(
+            access_token=access_token,
+            query=cohort_query,
+            variables={"cohort_filters": cohort_filter},
+        )
+
+        if (data.get("data") is None) or (data.get("data").get(case_index) is None):
+            return {"hits": [], "total": 0}
+        case_ids = [
+            glom(x, cohort_item_field) for x in glom(data, f"data.{case_index}")
+        ]
+
+        # build a filter containing the cohort ids and merge with the other filters
+        ids = case_ids
+
+        update_filters_with_object_ids(filter, f"cases.{cohort_item_field}", ids)
+
+        q = {
+            "query": query.replace("\n", "").replace("\r", ""),
+            "variables": {"filter": filter},
+        }
+
+        with open("./logs/second_query.json", "w") as f:
+            f.write(json.dumps(q, indent=2))
+
+        return await gen3_graphql_client.execute(
+            access_token=access_token,
+            query=query,
+            variables={"filter": filter},
+        )
+    except Exception as e:
+        logger.error(f"Error while processing cohort query: {e}")
+        raise e
 
 
 def cases_query(
@@ -128,8 +153,8 @@ def cases_query(
     if fields is None:
         fields = ["case_id"]
     query = f"""
-    query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: CaseCentric_Accessibility)) {{
-    {settings.CASE_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility)) {{
+    {settings.CASE_CENTRIC_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {build_fields_query_body(fields)}
             }}
    }}"""

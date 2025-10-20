@@ -255,7 +255,6 @@ class TopGeneChartRequest(BaseModel):
         },
     },
 )
-@genomic.post(path="/gene_frequency_chart")
 def gene_frequency_chart(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)
@@ -284,19 +283,6 @@ def gene_frequency_chart(body: TopGeneChartRequest):
         },
     },
 )
-@genomic.post(path="/gene_table")
-def gene_table(body: TopGeneChartRequest):
-    cohort_filter = parse_gql_filter(body.cohort_filter)
-    gene_filter = parse_gql_filter(body.gene_filter)
-    ssm_filter = parse_gql_filter(body.ssm_filter)
-    size = body.size
-    offset = body.offset
-
-    table_data = gene_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
-
-    return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)
-
-
 @genomic.post(
     path="/gene_table",
     status_code=status.HTTP_200_OK,
@@ -309,6 +295,18 @@ def gene_table(body: TopGeneChartRequest):
         },
     },
 )
+def gene_table(body: TopGeneChartRequest):
+    cohort_filter = parse_gql_filter(body.cohort_filter)
+    gene_filter = parse_gql_filter(body.gene_filter)
+    ssm_filter = parse_gql_filter(body.ssm_filter)
+    size = body.size
+    offset = body.offset
+
+    table_data = gene_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)
+
+
 @genomic.post(path="/ssm_table")
 def ssm_table(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)

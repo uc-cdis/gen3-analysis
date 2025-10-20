@@ -57,6 +57,7 @@ async def cohort_query(
     cohort_item_field: str,
     cohort_filter: Dict,
     filter: Dict,
+    case_ids_filter_path: str,
     query: str,
     access_token: Optional[str] = None,
     limit=10000,
@@ -122,7 +123,10 @@ async def cohort_query(
         # build a filter containing the cohort ids and merge with the other filters
         ids = case_ids
 
-        update_filters_with_object_ids(filter, f"cases.{cohort_item_field}", ids)
+        if "and" in filter:
+            filter["and"].append({"in": {case_ids_filter_path: ids}})
+        else:
+            filter["and"] = [{"in": {case_ids_filter_path: ids}}]
 
         q = {
             "query": query.replace("\n", "").replace("\r", ""),

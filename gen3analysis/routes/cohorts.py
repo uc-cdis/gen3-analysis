@@ -21,6 +21,7 @@ class CohortQueryRequest(BaseModel):
     cohort_filter: Optional[Dict] = Field(
         default=None, description="case filter (optional)"
     )
+    case_ids_filter_path: str = Field(description="path for the case ids in the query")
     filter: Optional[Dict] = Field(default=None, description="query filter (optional)")
     query: Optional[str] = Field(default="", description="query (optional)")
     case_index: str = Field(description="case index to query")
@@ -64,12 +65,16 @@ async def cohort_query(
     limit = body.limit
     query = body.query
     query_filter = body.filter
+    case_ids_filter_path = body.case_ids_filter_path
 
     if cohort_filter is None == 0:
         raise HTTPException(status_code=400, detail="Must have the cohort_query filter")
 
     if query_filter is None or len(query_filter) == 0:
         raise HTTPException(status_code=400, detail="Must have the query filter")
+
+    if case_ids_filter_path is None or len(query_filter) == 0:
+        raise HTTPException(status_code=400, detail="Must have the case_ids_filter")
 
     if query is None or len(query_filter) == 0:
         raise HTTPException(status_code=400, detail="Must have the query")
@@ -82,6 +87,7 @@ async def cohort_query(
             query=query,
             cohort_filter=cohort_filter,
             filter=query_filter,
+            case_ids_filter_path=case_ids_filter_path,
             limit=limit,
             access_token=access_token,
         )

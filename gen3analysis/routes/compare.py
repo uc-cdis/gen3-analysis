@@ -1,11 +1,12 @@
 import json
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Cookie
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
 from gen3analysis.config import logger
+from gen3analysis.settings import settings
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 
@@ -14,7 +15,7 @@ compare = APIRouter()
 
 
 class FacetComparisonRequest(BaseModel):
-    doc_type: str
+    doc_type: Optional[str] = Field(default="case_centric")
     cohort1: dict
     cohort2: dict
     facets: list
@@ -98,10 +99,10 @@ async def compare_facets(
 
     # apply this query to each of the 2 cohorts
     query = f"""query ($cohort1: JSON, $cohort2: JSON){{
-        cohort1: Case__aggregation {{
+        cohort1: {settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX} {{
             {body.doc_type} (filter: $cohort1, accessibility: accessible) {{ {facets_query} }}
         }}
-        cohort2: Case__aggregation {{
+        cohort2: {settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX} {{
             {body.doc_type} (filter: $cohort2, accessibility: accessible) {{ {facets_query} }}
         }}
     }}"""
@@ -133,7 +134,7 @@ async def compare_facets(
 
 
 class IntersectionRequest(BaseModel):
-    doc_type: str
+    doc_type: Optional[str] = Field(default="case_centric")
     cohort1: dict
     cohort2: dict
     # the default precision threshold is 3000 according to
@@ -169,17 +170,17 @@ async def get_cohort_intersection(
     # Build the GraphQL query: query the number of documents in each cohort and in their
     # intersection.
     query = f"""query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {{
-        cohort1: Case__aggregation {{
+        cohort1: {settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX} {{
             {body.doc_type} (filter: $cohort1, accessibility: accessible) {{
                 _totalCount
             }}
         }}
-        cohort2: Case__aggregation {{
+        cohort2: {settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX} {{
             {body.doc_type} (filter: $cohort2, accessibility: accessible) {{
                 _totalCount
             }}
         }}
-        intersection: Case__aggregation {{
+        intersection: {settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX} {{
             {body.doc_type} (filter: $intersection, accessibility: accessible) {{
                 _totalCount
             }}

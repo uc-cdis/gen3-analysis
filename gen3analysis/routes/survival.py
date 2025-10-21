@@ -1,26 +1,26 @@
 from typing import List, Dict, Optional
+
 import pandas as pd
-from fastapi import Cookie
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Cookie
 from glom import glom
 from lifelines import KaplanMeierFitter
 from lifelines.statistics import multivariate_logrank_test
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3analysis.auth import Auth
+from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases import cases
-from gen3analysis.config import logger
-
-MAX_CASES = 10000
+from gen3analysis.settings import settings
 
 survival = APIRouter()
 
-Gen3GraphQLQuery = f"""query ($filter: JSON) {{
-    Case_case(accessibility: accessible, offset: 0, first: {MAX_CASES}, filter: $filter) {{
+Gen3GraphQLQuery = f"""query SurvivalCaseQuery($filter: JSON) {{
+    {settings.GRAPHQL_CASE_CENTRIC_INDEX}(accessibility: accessible, offset: 0, first: {settings.MAX_CASES}, filter: $filter) {{
         submitter_id
         case_id
         project {{
@@ -34,8 +34,8 @@ Gen3GraphQLQuery = f"""query ($filter: JSON) {{
             days_to_last_follow_up
         }}
     }}
-    Case__aggregation {{
-        case(filter: $filter, accessibility: accessible) {{
+    {settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX} {{
+        case_centric(filter: $filter, accessibility: accessible) {{
             _totalCount
         }}
     }}
@@ -83,16 +83,10 @@ async def get_curve(filters, gen3_graphql_client, access_token=None):
             {
                 "or": [
                     {
-                        "nested": {
-                            ">": {"days_to_death": 0},
-                            "path": "demographic",
-                        }
+                        ">": {"demographic.days_to_death": 0},
                     },
                     {
-                        "nested": {
-                            ">": {"days_to_last_follow_up": 0},
-                            "path": "diagnoses",
-                        }
+                        ">": {"diagnoses.days_to_last_follow_up": 0},
                     },
                 ]
             },
@@ -105,9 +99,16 @@ async def get_curve(filters, gen3_graphql_client, access_token=None):
         retry_count=1,
     )
 
-    if glom(data, "data.Case__aggregation.case._totalCount", default=0) == 0:
+    if (
+        glom(
+            data,
+            f"data.{settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX}.case_centric._totalCount",
+            default=0,
+        )
+        == 0
+    ):
         return None
-    data_root = glom(data, "data.Case_case", default={})
+    data_root = glom(data, f"data.{settings.GRAPHQL_CASE_CENTRIC_INDEX}", default={})
     df = transform(data_root)
     if df.empty:
         return None
@@ -298,9 +299,11 @@ async def plot(
 # Define a Pydantic model for the request body
 class CompareSurvivalRequest(BaseModel):
     filters: List[Dict]
-    doc_type: str
+    doc_type: Optional[str] = Field(
+        default="case_centric", description="set the index for case queries"
+    )
     field: str
-    limit: int = MAX_CASES
+    limit: int = settings.MAX_CASES
 
 
 @survival.post(

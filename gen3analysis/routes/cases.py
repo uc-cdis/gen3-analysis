@@ -8,7 +8,7 @@ from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.filters.gen3GQLFilters import GQLFilter, parse_gql_filter
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases.cases import cases_query, case_summary_query
-from gen3analysis.routes.survival import MAX_CASES
+from gen3analysis.settings import settings
 
 cases = APIRouter()
 
@@ -21,11 +21,14 @@ class CasesRequest(BaseModel):
     size: Optional[int] = Field(
         default=10,
         ge=1,
-        le=MAX_CASES,
+        le=settings.MAX_CASES,
         description="number of cases to return (optional) default: 10",
     )
     offset: Optional[int] = Field(
-        default=0, ge=0, le=MAX_CASES, description="offset (optional) default: 0"
+        default=0,
+        ge=0,
+        le=settings.MAX_CASES,
+        description="offset (optional) default: 0",
     )
 
 

@@ -9,10 +9,7 @@ from gen3analysis.filters.gen3GQLFilters import (
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases.summary_fields import case_metadata_fields
 from gen3analysis.settings import settings
-from gen3analysis.utils.filterEdit import (
-    dot_notation_to_graphql,
-    update_filters_with_object_ids,
-)
+from gen3analysis.utils.filterEdit import dot_notation_to_graphql
 from gen3analysis.utils.group import build_fields_query_body
 
 
@@ -158,7 +155,7 @@ def cases_query(
         fields = ["case_id"]
     query = f"""
     query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility)) {{
-    {settings.CASE_CENTRIC_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    {settings.GRAPHQL_CASE_CENTRIC_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {build_fields_query_body(fields)}
             }}
    }}"""

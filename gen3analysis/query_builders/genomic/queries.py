@@ -11,7 +11,7 @@ from gen3analysis.filters.gen3GQLFilters import (
     GQLIncludes,
 )
 from gen3analysis.gen3.es_client import get_es, get_nested_registry
-from gen3analysis.routes.survival import MAX_CASES
+from gen3analysis.settings import settings
 import json
 from glom import glom, Path
 
@@ -483,7 +483,7 @@ def query_case_ids(case_filter: GQLFilter) -> List[str]:
         filters = convert_gql_to_elastic_search(case_filter)
     else:
         filters = Q("match_all")
-    s = s[0:MAX_CASES]  # Get all cases
+    s = s[0 : settings.MAX_CASES]  # Get all cases
     s = s.source(False)
     s = s.query(filters)
 
@@ -505,7 +505,7 @@ def query_top_genes(
         filters = convert_gql_to_elastic_search(case_filter)
     else:
         filters = Q("match_all")
-    s = s[0:MAX_CASES]  # Get all cases
+    s = s[0 : settings.MAX_CASES]  # Get all cases
     s = s.source(False)
     s = s.query(filters)
     results = s.execute()

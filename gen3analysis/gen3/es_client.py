@@ -5,6 +5,7 @@ from gen3analysis.settings import settings
 from functools import lru_cache
 from typing import Optional, Dict, List
 from elasticsearch_dsl import connections
+from gen3analysis.settings import settings
 
 hosts = [h.strip() for h in settings.ES_HOSTS.split(",") if h.strip()]
 connections.create_connection(hosts=hosts, timeout=45, use_ssl=settings.ES_VERIFY_SSL)
@@ -20,7 +21,7 @@ def get_es() -> Elasticsearch:
 @lru_cache
 def get_nested_registry() -> dict:
     fieldsByIndex = {
-        "gene_centric": [
+        f"{settings.ES_GENE_CENTRIC_INDEX}": [
             "case.ssm.consequence.transcript.annotation.vep_impact",
             "case.ssm.consequence.transcript.annotation.sift_impact",
             "case.ssm.consequence.transcript.annotation.polyphen_impact",

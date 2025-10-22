@@ -34,8 +34,8 @@ Gen3GraphQLQuery = f"""query SurvivalCaseQuery($filter: JSON) {{
             days_to_last_follow_up
         }}
     }}
-    {settings.case_centric_gql}(accessibility: accessible, offset: 0, first: 0) {{
-        case_centric(filter: $filter, accessibility: accessible) {{
+    {settings.case_centric_agg_gql} {{
+        {settings.CASE_CENTRIC_INDEX}(filter: $filter, accessibility: accessible) {{
             _totalCount
         }}
     }}

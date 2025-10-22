@@ -99,10 +99,10 @@ async def compare_facets(
 
     # apply this query to each of the 2 cohorts
     query = f"""query ($cohort1: JSON, $cohort2: JSON){{
-        cohort1: {settings.case_centric_gql}(accessibility: accessible, offset: 0, first: 0) {{
+        cohort1: {settings.case_centric_agg_gql} {{
             {body.doc_type} (filter: $cohort1, accessibility: accessible) {{ {facets_query} }}
         }}
-        cohort2: {settings.case_centric_gql} {{
+        cohort2: {settings.case_centric_agg_gql} {{
             {body.doc_type} (filter: $cohort2, accessibility: accessible) {{ {facets_query} }}
         }}
     }}"""
@@ -170,18 +170,18 @@ async def get_cohort_intersection(
     # Build the GraphQL query: query the number of documents in each cohort and in their
     # intersection.
     query = f"""query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {{
-        cohort1: {settings.case_centric_gql} {{
-            {body.doc_type} (filter: $cohort1, accessibility: accessible) {{
+        cohort1: {settings.case_centric_agg_gql} {{
+            {settings.CASE_CENTRIC_INDEX} (filter: $cohort1, accessibility: accessible) {{
                 _totalCount
             }}
         }}
-        cohort2: {settings.case_centric_gql} {{
-            {body.doc_type} (filter: $cohort2, accessibility: accessible) {{
+        cohort2: {settings.case_centric_agg_gql} {{
+            {settings.CASE_CENTRIC_INDEX} (filter: $cohort2, accessibility: accessible) {{
                 _totalCount
             }}
         }}
-        intersection: {settings.case_centric_gql} {{
-            {body.doc_type} (filter: $intersection, accessibility: accessible) {{
+        intersection: {settings.case_centric_agg_gql} {{
+            {settings.CASE_CENTRIC_INDEX} (filter: $intersection, accessibility: accessible) {{
                 _totalCount
             }}
         }}

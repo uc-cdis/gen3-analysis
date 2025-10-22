@@ -22,6 +22,7 @@ from gen3analysis.routes.genomic import genomic
 from gen3analysis.routes.cases import cases
 from gen3analysis.routes.files import files
 from gen3analysis.routes.ssms import ssms
+from gen3analysis.routes.ssm_occurrence import ssms_occurrence
 from gen3analysis import config
 
 from gen3analysis.routes.basic import basic_router
@@ -38,6 +39,7 @@ route_definitions = [
     (cases, "/cases", ["Cases"]),
     (files, "/files", ["Files"]),
     (ssms, "/ssms", ["SSMS"]),
+    (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
 ]
 
 for router, prefix, tags in route_definitions:

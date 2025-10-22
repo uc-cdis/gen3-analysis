@@ -15,21 +15,43 @@ def get_index_properties(es: Elasticsearch, index: str) -> Dict:
     return m[idx]["mappings"].get("properties", {})
 
 
-def _descend(node: Dict, segment: str) -> Tuple[Dict, str]:
-    """
-    Move one step down the mapping. Handles multi-fields:
-    e.g., if previous node was {"type": "text", "fields": {"keyword": {"type": "keyword"}}}
-    and the segment is "keyword", descend into node["fields"]["keyword"].
-    Returns (child_node, how_we_got_there) where second is "properties" or "fields".
-    """
-    if "properties" in node and segment in node["properties"]:
-        return node["properties"][segment], "properties"
-    # multi-field branch
-    if "fields" in node and segment in node["fields"]:
-        return node["fields"][segment], "fields"
+def _descend(node: Dict, segment: str) -> Dict:
+    # Prefer properties (objects/nested), else multi-fields (fields)
+    props = node.get("properties", {})
+    if segment in props:
+        return props[segment]
+    fields = node.get("fields", {})
+    if segment in fields:
+        return fields[segment]
     raise KeyError(
-        f"Path segment '{segment}' not found in mapping; node keys={list(node.keys())}"
+        f"Path segment '{segment}' not found at node. "
+        f"Available properties={list(props.keys())}, fields={list(fields.keys())}"
     )
+
+
+def _get_all_field_paths(root_props: Dict, prefix: str = "") -> List[str]:
+    """
+    Recursively extract all field paths from the mapping properties.
+    Returns a list of dot-notation field paths.
+    """
+    paths: List[str] = []
+    for key, value in root_props.items():
+        current_path = f"{prefix}.{key}" if prefix else key
+
+        # If it has properties, it's an object or nested type - recurse
+        if "properties" in value:
+            paths.extend(_get_all_field_paths(value["properties"], current_path))
+
+        # If it has fields (multi-fields), recurse into those too
+        if "fields" in value:
+            for field_key in value["fields"].keys():
+                paths.append(f"{current_path}.{field_key}")
+
+        # Always add the current path if it's a leaf or has a type
+        if "type" in value:
+            paths.append(current_path)
+
+    return paths
 
 
 def analyze_field_path(es: Elasticsearch, index: str, field_path: str) -> Dict:

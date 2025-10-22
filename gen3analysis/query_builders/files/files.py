@@ -1,4 +1,5 @@
-from typing import Dict, Optional, List
+from typing import Optional
+from glom import glom
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.settings import settings
 from gen3analysis.filters.gen3GQLFilters import (
@@ -20,11 +21,15 @@ async def files_query(
         fields = ["file_id"]
     query = f"""
     query filesQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: File_Accessibility)) {{
-    {settings.FILE_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
+    {settings.file_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
             {build_fields_query_body(fields)}
+    }}
+    {settings.file_agg_gql} {{ {settings.FILE_INDEX}(filter:$filter, accessibility:$accessibility) {{
+            _totalCount
+    }}
    }}"""
 
-    return await gen3_graphql_client.execute(
+    data = await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
         variables={
@@ -35,6 +40,15 @@ async def files_query(
         },
     )
 
+    hits = glom(data, f"data.{settings.file_gql}.{settings.FILE_INDEX}.hits")
+    total = glom(
+        data, f"data.{settings.file_agg_gql}.{settings.FILE_INDEX}._totalCount"
+    )
+    return {
+        "data": hits,
+        "pagination": {"total": total, "size": size, "offset": offset},
+    }
+
 
 async def file_summary_query(
     gen3_graphql_client: GuppyGQLClient,
@@ -43,7 +57,7 @@ async def file_summary_query(
 ):
     query = f"""
      query filesQuery($filter: JSON) {{
-     {settings.FILE_INDEX}(filter:$filter, first:1, offset:0, accessibility:accessible ) {{
+     {settings.file_gql}(filter:$filter, first:1, offset:0, accessibility:accessible ) {{
              {build_fields_query_body(file_metadata_fields)}
              }}
     }}"""

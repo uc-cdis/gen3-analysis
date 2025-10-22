@@ -10,32 +10,29 @@ from gen3analysis.settings import settings
 hosts = [h.strip() for h in settings.ES_HOSTS.split(",") if h.strip()]
 connections.create_connection(hosts=hosts, timeout=45, use_ssl=settings.ES_VERIFY_SSL)
 
+INDEX_LIST = [
+    settings.ES_GENE_CENTRIC_INDEX,
+    settings.ES_CASE_CENTRIC_INDEX,
+    settings.ES_CASE_INDEX,
+    settings.ES_FILE_INDEX,
+    settings.ES_PROJECT_INDEX,
+    settings.ES_SSM_CENTRIC_INDEX,
+    settings.ES_SSM_OCCURRENCE_INDEX,
+]
+
 
 @lru_cache
 def get_es() -> Elasticsearch:
-
     kwargs = {"hosts": hosts, "use_ssl": settings.ES_VERIFY_SSL, "request_timeout": 45}
     return Elasticsearch(**kwargs)
 
 
 @lru_cache
 def get_nested_registry() -> dict:
-    fieldsByIndex = {
-        f"{settings.ES_GENE_CENTRIC_INDEX}": [
-            "case.ssm.consequence.transcript.annotation.vep_impact",
-            "case.ssm.consequence.transcript.annotation.sift_impact",
-            "case.ssm.consequence.transcript.annotation.polyphen_impact",
-            "case.ssm.consequence.transcript.consequence_type",
-            "case.ssm.mutation_subtype",
-            "case.ssm.observation.observation_id",
-            "case.cnv.cnv_change_5_category",
-        ]
-    }
     es = get_es()
     registry = {}
-    for index in fieldsByIndex.keys():
-        fields = fieldsByIndex[index]
-        registry[index] = NestingRegistry.build(es, index, fields)
+    for index in INDEX_LIST:
+        registry[index] = NestingRegistry.build(es, index)
 
     return registry
 

@@ -1,6 +1,17 @@
-from pydantic import BaseModel, Field
+from Cython.Build.BuildExecutable import ccompile
+from pydantic import BaseModel, Field, computed_field
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+
+def snake_to_pascal(snake_case_string):
+    """
+    Converts a snake_case string to PascalCase.
+    """
+    # Replace underscores with spaces, capitalize the first letter of each word,
+    # then remove all spaces.
+    pascal_case_string = snake_case_string.replace("_", " ").title().replace(" ", "")
+    return pascal_case_string
 
 
 class Settings(BaseSettings):
@@ -15,6 +26,104 @@ class Settings(BaseSettings):
     ES_CA_CERT: Optional[str] = None
 
     MAX_CASES: Optional[int] = 10000
+
+    CASE_INDEX: Optional[str] = "case"
+    FILE_INDEX: Optional[str] = "file"
+    PROJECT_INDEX: Optional[str] = "project"
+    GENE_CENTRIC_INDEX: Optional[str] = "gene_centric"
+    SSM_CENTRIC_INDEX: Optional[str] = "ssm_centric"
+    SSM_OCCURRENCE_CENTRIC_INDEX: Optional[str] = "ssm_occurrence_centric"
+    CNV_CENTRIC_INDEX: Optional[str] = "cnv_centric"
+    CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
+    CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
+
+    @classmethod
+    def compute_gql_index(cls, index: str) -> str:
+        return f"{snake_to_pascal(index)}_{index}"
+
+    @classmethod
+    def compute_gql_agg_index(cls, index: str) -> str:
+        return f"{snake_to_pascal(index)}__aggregation"
+
+    @computed_field
+    @property
+    def case_gql(self) -> str:
+        return Settings.compute_gql_index(self.CASE_INDEX)
+
+    @computed_field
+    @property
+    def case_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.CASE_INDEX)
+
+    @computed_field
+    @property
+    def file_gql(self) -> str:
+        return Settings.compute_gql_index(self.FILE_INDEX)
+
+    @computed_field
+    @property
+    def file_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.FILE_INDEX)
+
+    @computed_field
+    @property
+    def project_gql(self) -> str:
+        return Settings.compute_gql_index(self.PROJECT_INDEX)
+
+    @computed_field
+    @property
+    def project_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.PROJECT_INDEX)
+
+    @computed_field
+    @property
+    def gene_centric_gql(self) -> str:
+        return Settings.compute_gql_index(self.GENE_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def gene_centric_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.GENE_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def ssm_centric_gql(self) -> str:
+        return Settings.compute_gql_index(self.SSM_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def ssm_centric_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.SSM_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def ssm_occurrence_centric_gql(self) -> str:
+        return Settings.compute_gql_index(self.SSM_OCCURRENCE_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def ssm_occurrence_centric_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.SSM_OCCURRENCE_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def cnv_centric_gql(self) -> str:
+        return Settings.compute_gql_index(self.CNV_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def cnv_centric_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.CNV_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def case_centric_gql(self) -> str:
+        return Settings.compute_gql_index(self.CASE_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def case_centric_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
 
     GRAPHQL_CASE_INDEX: Optional[str] = "Case_case"
     GRAPHQL_FILE_INDEX: Optional[str] = "File_file"
@@ -34,7 +143,10 @@ class Settings(BaseSettings):
     ES_PROJECT_INDEX: Optional[str] = "ia24-20251017_project"
     ES_GENE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__gene_centric"
     ES_SSM_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__ssm_centric"
-    ES_CNV_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__cnv_centric"
+    ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
+        "mmrf-commpass-ia14_viz_open_1__ssm_centric"
+    )
+    # ES_CNV_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__cnv_centric"
 
     class Config:
         env_file = ".env"

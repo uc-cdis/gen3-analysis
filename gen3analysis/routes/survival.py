@@ -20,7 +20,7 @@ from gen3analysis.settings import settings
 survival = APIRouter()
 
 Gen3GraphQLQuery = f"""query SurvivalCaseQuery($filter: JSON) {{
-    {settings.GRAPHQL_CASE_CENTRIC_INDEX}(accessibility: accessible, offset: 0, first: {settings.MAX_CASES}, filter: $filter) {{
+    {settings.case_centric_gql}(accessibility: accessible, offset: 0, first: {settings.MAX_CASES}, filter: $filter) {{
         submitter_id
         case_id
         project {{
@@ -34,7 +34,7 @@ Gen3GraphQLQuery = f"""query SurvivalCaseQuery($filter: JSON) {{
             days_to_last_follow_up
         }}
     }}
-    {settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX} {{
+    {settings.case_centric_gql}(accessibility: accessible, offset: 0, first: 0) {{
         case_centric(filter: $filter, accessibility: accessible) {{
             _totalCount
         }}
@@ -102,7 +102,7 @@ async def get_curve(filters, gen3_graphql_client, access_token=None):
     if (
         glom(
             data,
-            f"data.{settings.GRAPHQL_CASE_CENTRIC_AGGREGATION_INDEX}.case_centric._totalCount",
+            f"data.{settings.case_centric_agg_gql}.{settings.CASE_CENTRIC_INDEX}._totalCount",
             default=0,
         )
         == 0

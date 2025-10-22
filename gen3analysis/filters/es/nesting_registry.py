@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Literal
 import json
 import threading
 from elasticsearch import Elasticsearch
+from gen3analysis.filters.es.es_nested_path import _get_all_field_paths
 
 Kind = Literal["term", "terms", "range", "exists", "neq"]
 
@@ -86,12 +87,18 @@ class NestingRegistry:
         cls,
         es: Elasticsearch,
         index: str,
-        fields: Iterable[str],
+        fields: Optional[Iterable[str]] = None,
         *,
         include_caps: bool = True,
     ) -> "NestingRegistry":
         reg = cls(index)
         reg._refresh_from_es(es)
+
+        # If fields is None, extract all fields from the mapping
+        if fields is None:
+            assert reg._root_props is not None
+            fields = _get_all_field_paths(reg._root_props)
+
         reg._prime(es, fields, include_caps=include_caps)
         return reg
 

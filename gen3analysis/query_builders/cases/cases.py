@@ -1,16 +1,20 @@
+import json
 from typing import Dict, Optional, List, Any
 
 from glom import glom
-import json
+
 from gen3analysis.config import logger
 from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
 )
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases.summary_fields import case_metadata_fields
+from gen3analysis.query_builders.ssm_occurrence.ssms_occurrence import DEFAULT_FIELDS
 from gen3analysis.settings import settings
 from gen3analysis.utils.filterEdit import dot_notation_to_graphql
 from gen3analysis.utils.group import build_fields_query_body
+
+DEFAULT_FIELDS = ["case_id"]
 
 
 def process_item_fields(fields):
@@ -143,7 +147,7 @@ async def cohort_query(
         raise e
 
 
-def cases_query(
+async def cases_query(
     gen3_graphql_client: GuppyGQLClient,
     filter: GQLFilter,
     fields=None,
@@ -151,16 +155,26 @@ def cases_query(
     offset=0,
     access_token: Optional[str] = None,
 ):
-    if fields is None:
-        fields = ["case_id"]
+    field_snippets: List[str] = []
+    if not fields:
+        # Ensure DEFAULT_FIELDS is defined/imported appropriately
+        field_snippets.extend(DEFAULT_FIELDS)
+    else:
+        # Convert each requested field
+        for f in fields:
+            field_snippets.append(dot_notation_to_graphql(f))
+
     query = f"""
     query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility)) {{
-    {settings.GRAPHQL_CASE_CENTRIC_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    {settings.case_centric_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {build_fields_query_body(fields)}
             }}
+    {settings.case_centric_agg_gql} {{ {settings.CASE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+            _totalCount
+    }}
    }}"""
 
-    return gen3_graphql_client.execute(
+    data = await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
         variables={
@@ -170,6 +184,16 @@ def cases_query(
             "accessibility": "accessible",
         },
     )
+    hits = glom(
+        data, f"data.{settings.case_centric_gql}.{settings.CASE_CENTRIC_INDEX}.hits"
+    )
+    total = glom(
+        data, f"data.{settings.case_agg_gql}.{settings.CASE_CENTRIC_INDEX}._totalCount"
+    )
+    return {
+        "data": hits,
+        "pagination": {"total": total, "size": size, "offset": offset},
+    }
 
 
 async def case_summary_query(
@@ -179,13 +203,14 @@ async def case_summary_query(
 ) -> Dict[str, Any]:
     query = f"""
      query caseSummaryQuery($filter: JSON) {{
-     {settings.CASE_INDEX}(filter:$filter, first:1, offset:0, accessibility:accessible) {{
+     {settings.case_centric_gql}(filter:$filter, first:1, offset:0, accessibility:accessible) {{
              {build_fields_query_body(case_metadata_fields)}
              }}
     }}"""
 
-    return await gen3_graphql_client.execute(
+    data = await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
         variables={"filter": {"in": {"case_id": [id]}}},
     )
+    return data

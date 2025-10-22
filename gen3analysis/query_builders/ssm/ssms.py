@@ -1,7 +1,5 @@
 from typing import Dict, Optional, List, Any
-from gen3analysis.filters.gen3GQLFilters import (
-    GQLFilter,
-)
+from glom import glom
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.settings import settings
 from gen3analysis.utils.filterEdit import (
@@ -303,7 +301,7 @@ async def ssms_query(
     fields=None,
     expand=None,
     size=1,
-    start=0,
+    offset=0,
     access_token: Optional[str] = None,
 ):
     if filter is None:
@@ -323,21 +321,35 @@ async def ssms_query(
     query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
     query = f"""
     query ssmsQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.SSM_CENTRIC_INDEX}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    {settings.ssm_centric_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
+    {settings.ssm_centric_agg_gql} {{ {settings.SSM_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+            _totalCount
+    }}
    }}"""
 
-    return await gen3_graphql_client.execute(
+    data = await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
         variables={
             "filter": filter,
             "size": size,
-            "offset": start,
+            "offset": offset,
             "accessibility": "accessible",
         },
     )
+
+    hits = glom(
+        data, f"data.{settings.ssm_centric_gql}.{settings.SSM_CENTRIC_INDEX}.hits"
+    )
+    total = glom(
+        data, f"data.{settings.file_agg_gql}.{settings.SSM_CENTRIC_INDEX}._totalCount"
+    )
+    return {
+        "data": hits,
+        "pagination": {"total": total, "size": size, "offset": offset},
+    }
 
 
 async def ssms_id_query(
@@ -371,10 +383,10 @@ async def ssms_id_query(
     index_name = settings.SSM_CENTRIC_INDEX
 
     query = f"""
-     query ssmsQuery($filter: JSON, $accessibility: Accessibility) {{
-     {index_name}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
-             {query_fields}
-             }}
+    query ssmsQuery($filter: JSON, $accessibility: Accessibility) {{
+    {settings.ssm_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
+         {query_fields}
+         }}
     }}"""
 
     return await gen3_graphql_client.execute(

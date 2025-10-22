@@ -36,9 +36,10 @@ class GuppyGQLClient:
                     headers["Authorization"] = f"Bearer {access_token}"
 
                 payload = {"query": query, "variables": variables or {}}
-                with open("./logs/query.json", "w") as f:
-                    f.write(query)
-                    f.write(json.dumps(variables, indent=2))
+                # TODO remove
+                # with open("./logs/query.json", "w") as f:
+                #     f.write(query)
+                #     f.write(json.dumps(variables, indent=2))
 
                 async with httpx.AsyncClient() as client:
                     response = await client.post(

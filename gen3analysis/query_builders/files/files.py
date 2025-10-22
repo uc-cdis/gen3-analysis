@@ -20,12 +20,13 @@ async def files_query(
     if fields is None:
         fields = ["file_id"]
     query = f"""
-    query filesQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: File_Accessibility)) {{
+    query filesQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
     {settings.file_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
             {build_fields_query_body(fields)}
     }}
     {settings.file_agg_gql} {{ {settings.FILE_INDEX}(filter:$filter, accessibility:$accessibility) {{
             _totalCount
+        }}
     }}
    }}"""
 
@@ -40,7 +41,7 @@ async def files_query(
         },
     )
 
-    hits = glom(data, f"data.{settings.file_gql}.{settings.FILE_INDEX}.hits")
+    hits = glom(data, f"data.{settings.file_gql}")
     total = glom(
         data, f"data.{settings.file_agg_gql}.{settings.FILE_INDEX}._totalCount"
     )

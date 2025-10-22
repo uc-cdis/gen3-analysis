@@ -108,7 +108,7 @@ async def get_curve(filters, gen3_graphql_client, access_token=None):
         == 0
     ):
         return None
-    data_root = glom(data, f"data.{settings.GRAPHQL_CASE_CENTRIC_INDEX}", default={})
+    data_root = glom(data, f"data.{settings.case_centric_gql}", default={})
     df = transform(data_root)
     if df.empty:
         return None

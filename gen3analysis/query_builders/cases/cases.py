@@ -106,8 +106,9 @@ async def cohort_query(
             "query": cohort_query.replace("\n", "").replace("\r", ""),
             "variables": {"cohort_filters": cohort_filter},
         }
-        with open("./logs/first_query.json", "w") as f:
-            f.write(json.dumps(q, indent=2))
+        # TODO remove this
+        # with open("./logs/first_query.json", "w") as f:
+        #     f.write(json.dumps(q, indent=2))
 
         data = await gen3_graphql_client.execute(
             access_token=access_token,
@@ -134,8 +135,9 @@ async def cohort_query(
             "variables": {"filter": filter},
         }
 
-        with open("./logs/second_query.json", "w") as f:
-            f.write(json.dumps(q, indent=2))
+        # TODO remove this
+        # with open("./logs/second_query.json", "w") as f:
+        #     f.write(json.dumps(q, indent=2))
 
         return await gen3_graphql_client.execute(
             access_token=access_token,
@@ -165,12 +167,13 @@ async def cases_query(
             field_snippets.append(dot_notation_to_graphql(f))
 
     query = f"""
-    query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility)) {{
+    query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
     {settings.case_centric_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {build_fields_query_body(fields)}
             }}
     {settings.case_centric_agg_gql} {{ {settings.CASE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
             _totalCount
+            }}
     }}
    }}"""
 
@@ -184,11 +187,10 @@ async def cases_query(
             "accessibility": "accessible",
         },
     )
-    hits = glom(
-        data, f"data.{settings.case_centric_gql}.{settings.CASE_CENTRIC_INDEX}.hits"
-    )
+    hits = glom(data, f"data.{settings.case_centric_gql}")
     total = glom(
-        data, f"data.{settings.case_agg_gql}.{settings.CASE_CENTRIC_INDEX}._totalCount"
+        data,
+        f"data.{settings.case_centric_agg_gql}.{settings.CASE_CENTRIC_INDEX}._totalCount",
     )
     return {
         "data": hits,

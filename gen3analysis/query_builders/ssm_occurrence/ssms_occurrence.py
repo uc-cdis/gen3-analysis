@@ -67,6 +67,7 @@ async def ssms_occurrence_query(
             }}
     {settings.ssm_occurrence_centric_agg_gql} {{ {settings.SSM_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
         _totalCount
+        }}
     }}
    }}"""
 
@@ -83,11 +84,11 @@ async def ssms_occurrence_query(
 
     hits = glom(
         data,
-        f"data.{settings.ssm_occurrence_centric_gql}.{settings.SSM_OCCURRENCE_CENTRIC_INDEX}.hits",
+        f"data.{settings.ssm_occurrence_centric_gql}",
     )
     total = glom(
         data,
-        f"data.{settings.file_agg_gql}.{settings.SSM_OCCURRENCE_CENTRIC_INDEX}._totalCount",
+        f"data.{settings.ssm_occurrence_centric_agg_gql}.{settings.SSM_OCCURRENCE_CENTRIC_INDEX}._totalCount",
     )
     return {
         "data": hits,

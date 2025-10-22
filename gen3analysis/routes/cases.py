@@ -61,7 +61,7 @@ class CaseSummaryRequest(BaseModel):
         },
     },
 )
-def query_cases(
+async def query_cases(
     body: CasesRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     access_token: str | None = Cookie(default=None, alias="access_token"),
@@ -72,7 +72,7 @@ def query_cases(
 
     gql_filters = parse_gql_filter(filters)
 
-    results = cases_query(
+    results = await cases_query(
         gen3_graphql_client, gql_filters, body.fields, size, offset, access_token
     )
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

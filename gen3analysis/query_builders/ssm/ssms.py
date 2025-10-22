@@ -326,6 +326,7 @@ async def ssms_query(
             }}
     {settings.ssm_centric_agg_gql} {{ {settings.SSM_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
             _totalCount
+         }}
     }}
    }}"""
 
@@ -340,11 +341,10 @@ async def ssms_query(
         },
     )
 
-    hits = glom(
-        data, f"data.{settings.ssm_centric_gql}.{settings.SSM_CENTRIC_INDEX}.hits"
-    )
+    hits = glom(data, f"data.{settings.ssm_centric_gql}")
     total = glom(
-        data, f"data.{settings.file_agg_gql}.{settings.SSM_CENTRIC_INDEX}._totalCount"
+        data,
+        f"data.{settings.ssm_centric_agg_gql}.{settings.SSM_CENTRIC_INDEX}._totalCount",
     )
     return {
         "data": hits,

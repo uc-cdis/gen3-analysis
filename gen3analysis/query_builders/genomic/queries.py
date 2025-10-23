@@ -621,7 +621,6 @@ def query_top_genes(
     gene_info = []
     for hit in hits:
         info = dict(hit.get("_source", {}))
-        info.update(hit)
         info["case_count"] = hit.get("_score", -1)
         gene_info.append(info)
     return {

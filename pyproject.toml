@@ -12,7 +12,7 @@ readme = "README.md"
 packages = [{ include = "gen3analysis" }]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4"
+python = ">=3.9,<3.10"
 asgi-lifespan = "^2.1.0,<3"
 authutils = "<8"
 fastapi = ">=0.115.8,<1"

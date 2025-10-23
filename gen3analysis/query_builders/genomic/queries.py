@@ -1,6 +1,8 @@
 import json
 from typing import Optional, List, Dict, Any, Iterable
+
 from elasticsearch_dsl import Q, A, Search
+from glom import glom, Path
 
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
@@ -13,7 +15,6 @@ from gen3analysis.filters.gen3GQLFilters import (
 )
 from gen3analysis.gen3.es_client import get_es, get_nested_registry
 from gen3analysis.settings import settings
-from glom import glom, Path
 
 
 def build_gen3_es_query(

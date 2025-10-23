@@ -1,18 +1,18 @@
-from typing import Optional, List, Dict, Any, Iterable
-from elasticsearch_dsl import Q, A, Search
+from typing import Optional, List, Dict, Any
+
+from elasticsearch_dsl import Q, Search
+from glom import glom, flatten
 
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
 )
-
 from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
     get_gql_filter_contents,
     GQLIncludes,
 )
-from gen3analysis.gen3.es_client import get_es, get_nested_registry
+from gen3analysis.gen3.es_client import get_es
 from gen3analysis.query_builders.genomic.queries import query_case_ids, query_case_count
-from glom import glom, flatten
 
 
 def get_ssm_total_count_for_data_commons(

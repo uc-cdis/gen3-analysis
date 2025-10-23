@@ -62,6 +62,39 @@ known_first_party = ["gen3analysis"]
 profile = "black"
 line_length = 88
 
+[tool.pylint.main]
+ignore = [".venv", ".git", "__pycache__", "logs", "_coverage", "bin", "docs"]
+jobs = 0
+py-version = "3.9"
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-instance-attributes",
+    "fixme",
+    "import-error",
+    "no-name-in-module",
+    "broad-except",
+    "logging-fstring-interpolation",
+    "duplicate-code",
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_", "id", "db"]
+
+[tool.pylint.design]
+max-args = 10
+max-attributes = 10
+max-locals = 15
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

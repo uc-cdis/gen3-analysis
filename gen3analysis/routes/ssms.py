@@ -54,7 +54,7 @@ class SSMSIDRequest(SSMSRBaseRequest):
 async def get_ssms(
     body: SSMSRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    access_token: str | None = Cookie(default=None, alias="access_token"),
+    access_token: Optional[str] = Cookie(default=None, alias="access_token"),
 ):
     fltr = body.filter
     expand = body.expand
@@ -101,7 +101,7 @@ async def get_ssms_by_id(
     ssm_id: str = Path(..., description="SSM identifier"),
     fields: Optional[List[str]] = Query(default=None, description="fields (optional)"),
     expand: Optional[List[str]] = Query(default=None, description="expand (optional)"),
-    access_token: str | None = Cookie(default=None, alias="access_token"),
+    access_token: Optional[str] = Cookie(default=None, alias="access_token"),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ):
     results = await ssms_id_query(

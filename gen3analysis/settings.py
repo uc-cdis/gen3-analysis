@@ -1,7 +1,6 @@
-from Cython.Build.BuildExecutable import ccompile
-from pydantic import BaseModel, Field, computed_field
-from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import computed_field
+from pydantic_settings import BaseSettings
 
 
 def snake_to_pascal(snake_case_string):

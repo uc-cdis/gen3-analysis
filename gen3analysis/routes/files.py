@@ -66,7 +66,7 @@ class FilesSummaryRequest(BaseModel):
 async def query_files(
     body: FilesRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    access_token: str | None = Cookie(default=None, alias="access_token"),
+    access_token: Optional[str] = Cookie(default=None, alias="access_token"),
 ):
     filters = body.filters
     size = body.size
@@ -103,7 +103,7 @@ async def query_files(
 )
 async def get_file_by_id(
     file_id: str = Path(..., description="file id"),
-    access_token: str | None = Cookie(default=None, alias="access_token"),
+    access_token: Optional[str] = Cookie(default=None, alias="access_token"),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ):
     results = await file_summary_query(gen3_graphql_client, file_id, access_token)

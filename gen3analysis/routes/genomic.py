@@ -1,28 +1,28 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
+
 from elasticsearch import Elasticsearch
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Query
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
-from gen3analysis.config import logger
-from pydantic import BaseModel, Field
-from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
-from gen3analysis.query_builders.genomic.ssm import ssm_table_query
 
-from gen3analysis.settings import settings
-from gen3analysis.gen3.es_client import open_pit, get_es
+from gen3analysis.config import logger
+from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 from gen3analysis.gen3.cursor import encode_cursor, decode_cursor
-from gen3analysis.utils.filters import project_filter
+from gen3analysis.gen3.es_client import open_pit, get_es
 from gen3analysis.models.genes import (
     TopGenesResponse,
     GeneBucket,
 )
-
 from gen3analysis.query_builders.genomic.queries import (
     query_top_genes,
     gene_table_query,
 )
+from gen3analysis.query_builders.genomic.ssm import ssm_table_query
+from gen3analysis.settings import settings
+from gen3analysis.utils.filters import project_filter
 
 genomic = APIRouter()
 

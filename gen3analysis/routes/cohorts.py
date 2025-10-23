@@ -23,7 +23,10 @@ class CohortQueryRequest(BaseModel):
     )
     case_ids_filter_path: str = Field(description="path for the case ids in the query")
     filter: Optional[Dict] = Field(default=None, description="query filter (optional)")
-    query: Optional[str] = Field(default="", description="query (optional)")
+    query: Optional[str] = Field(
+        default="",
+        description="the query to execute using the case ids found using the cohort_filter(optional)",
+    )
     case_index: str = Field(description="case index to query")
     cohort_item_field: str = Field(description="identity field for the case")
     limit: Optional[int] = Field(

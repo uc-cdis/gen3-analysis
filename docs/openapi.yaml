@@ -79,7 +79,11 @@ components:
           - type: string
           - type: 'null'
           default: ''
+<<<<<<< Updated upstream
           description: the query to execute using the case ids found using the cohort_filter(optional)
+=======
+          description: query (optional)
+>>>>>>> Stashed changes
           title: Query
       required:
       - case_ids_filter_path

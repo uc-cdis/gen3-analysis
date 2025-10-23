@@ -616,8 +616,16 @@ def query_top_genes(
     gene_s = gene_s[offset:size]
     gene_s = gene_s.extra(track_scores=True)
     results = gene_s.execute()
+
+    hits = results["hits"]["hits"]._l_
+    gene_info = []
+    for hit in hits:
+        info = dict(hit.get("_source", {}))
+        info.update(hit)
+        info["case_count"] = hit.get("_score", -1)
+        gene_info.append(info)
     return {
-        "data": results["hits"]["hits"]._l_,
+        "data": gene_info,
         "total": results["hits"]["total"]["value"],
     }
 

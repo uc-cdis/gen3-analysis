@@ -16,6 +16,8 @@ def snake_to_pascal(snake_case_string):
 
 class Settings(BaseSettings):
     # ES connection
+
+    ES_HOSTS: Optional[str] = "http://gen3-elasticsearch-master:9200"
     ES_USERNAME: Optional[str] = None
     ES_PASSWORD: Optional[str] = None
     ES_API_KEY: Optional[str] = (

@@ -1,8 +1,4 @@
 import os
-from json import JSONDecodeError, load
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
-from typing import Optional
 from cdislogging import get_logger
 from starlette.config import Config
 
@@ -20,6 +16,8 @@ DEBUG = config("DEBUG", cast=bool, default=True)
 logger = get_logger("gen3-analysis", log_level="debug" if DEBUG else "debug")
 
 HOSTNAME = config("HOSTNAME", default="")
+
+ES_HOSTS = config("ES_HOSTS", cast=str, default="http://gen3-elasticsearch-master:9200")
 
 # gunicorn setting for the number of workers to spawn, see https://docs.gunicorn.org/en/stable/settings.html#workers
 GUNICORN_WORKERS = config("GUNICORN_WORKERS", default=1)

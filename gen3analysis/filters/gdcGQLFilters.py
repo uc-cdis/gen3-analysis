@@ -317,29 +317,29 @@ def parse_gql_operation(data: Dict[str, Any]) -> Optional[GqlOperation]:
 
     if op == "=":
         return GqlEquals.from_dict(data)
-    elif op == "!=":
+    if op == "!=":
         return GqlNotEquals.from_dict(data)
-    elif op == "<":
+    if op == "<":
         return GqlLessThan.from_dict(data)
-    elif op == "<=":
+    if op == "<=":
         return GqlLessThanOrEquals.from_dict(data)
-    elif op == ">":
+    if op == ">":
         return GqlGreaterThan.from_dict(data)
-    elif op == ">=":
+    if op == ">=":
         return GqlGreaterThanOrEquals.from_dict(data)
-    elif op == "is":
+    if op == "is":
         return GqlMissing.from_dict(data)
-    elif op == "not":
+    if op == "not":
         return GqlExists.from_dict(data)
-    elif op == "in":
+    if op == "in":
         return GqlIncludes.from_dict(data)
-    elif op == "exclude":
+    if op == "exclude":
         return GqlExcludes.from_dict(data)
-    elif op == "excludeifany":
+    if op == "excludeifany":
         return GqlExcludeIfAny.from_dict(data)
-    elif op == "and":
+    if op == "and":
         return GqlIntersection.from_dict(data)
-    elif op == "or":
+    if op == "or":
         return GqlUnion.from_dict(data)
-    else:
-        return None
+
+    return None

@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +13,6 @@ from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases import cases
-import json
 
 cohorts = APIRouter()
 
@@ -58,7 +58,7 @@ class CohortQueryRequest(BaseModel):
 )
 async def cohort_query(
     body: CohortQueryRequest,
-    access_token: str | None = Cookie(default=None, alias="access_token"),
+    access_token: Optional[str] = Cookie(default=None, alias="access_token"),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
@@ -70,7 +70,7 @@ async def cohort_query(
     query_filter = body.filter
     case_ids_filter_path = body.case_ids_filter_path
 
-    if cohort_filter is None == 0:
+    if cohort_filter is None or len(cohort_filter) == 0:
         raise HTTPException(status_code=400, detail="Must have the cohort_query filter")
 
     if query_filter is None or len(query_filter) == 0:

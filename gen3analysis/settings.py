@@ -1,7 +1,6 @@
-from Cython.Build.BuildExecutable import ccompile
-from pydantic import BaseModel, Field, computed_field
-from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import computed_field
+from pydantic_settings import BaseSettings
 
 
 def snake_to_pascal(snake_case_string):
@@ -16,7 +15,8 @@ def snake_to_pascal(snake_case_string):
 
 class Settings(BaseSettings):
     # ES connection
-    ES_HOSTS: str = Field(..., description="Comma-separated list of hosts")
+
+    ES_HOSTS: Optional[str] = "http://gen3-elasticsearch-master:9200"
     ES_USERNAME: Optional[str] = None
     ES_PASSWORD: Optional[str] = None
     ES_API_KEY: Optional[str] = (
@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     CNV_CENTRIC_INDEX: Optional[str] = "cnv_centric"
     CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
     CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
+
+    ES_CASE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__case_centric"
+    ES_CASE_INDEX: Optional[str] = "ia24-20251017_case"
+    ES_FILE_INDEX: Optional[str] = "ia24-20251017_file"
+    ES_PROJECT_INDEX: Optional[str] = "ia24-20251017_project"
+    ES_GENE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__gene_centric"
+    ES_SSM_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__ssm_centric"
+    ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
+        "mmrf-commpass-ia14_viz_open_1__ssm_centric"
+    )
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:
@@ -125,15 +135,6 @@ class Settings(BaseSettings):
     def case_centric_agg_gql(self) -> str:
         return Settings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
 
-    ES_CASE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__case_centric"
-    ES_CASE_INDEX: Optional[str] = "ia24-20251017_case"
-    ES_FILE_INDEX: Optional[str] = "ia24-20251017_file"
-    ES_PROJECT_INDEX: Optional[str] = "ia24-20251017_project"
-    ES_GENE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__gene_centric"
-    ES_SSM_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__ssm_centric"
-    ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
-        "mmrf-commpass-ia14_viz_open_1__ssm_centric"
-    )
     # ES_CNV_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__cnv_centric"
 
     class Config:

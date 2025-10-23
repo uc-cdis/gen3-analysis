@@ -12,7 +12,7 @@ readme = "README.md"
 packages = [{ include = "gen3analysis" }]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4"
+python = ">=3.9,<3.10"
 asgi-lifespan = "^2.1.0,<3"
 authutils = "<8"
 fastapi = ">=0.115.8,<1"
@@ -32,6 +32,7 @@ tenacity = ">=8.0.0,<9"
 elasticsearch = "7.17.12"
 elasticsearch-dsl = "7.2.1"
 cython = "^3.1.6"
+pydantic-settings = "^2.11.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest-asyncio = ">=0.23.8"
@@ -60,6 +61,39 @@ asyncio_default_fixture_loop_scope = "function"
 known_first_party = ["gen3analysis"]
 profile = "black"
 line_length = 88
+
+[tool.pylint.main]
+ignore = [".venv", ".git", "__pycache__", "logs", "_coverage", "bin", "docs"]
+jobs = 0
+py-version = "3.9"
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-instance-attributes",
+    "fixme",
+    "import-error",
+    "no-name-in-module",
+    "broad-except",
+    "logging-fstring-interpolation",
+    "duplicate-code",
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_", "id", "db"]
+
+[tool.pylint.design]
+max-args = 10
+max-attributes = 10
+max-locals = 15
 
 [build-system]
 requires = ["poetry-core"]

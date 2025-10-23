@@ -1,31 +1,29 @@
 import asyncio
 from contextlib import asynccontextmanager
-from importlib.metadata import version, files
+from importlib.metadata import version
 
+import fastapi
 from cdislogging import get_logger
+from fastapi import FastAPI, APIRouter
 from fastapi.exceptions import RequestValidationError
 from gen3authz.client.arborist.async_client import ArboristClient
-import fastapi
-from fastapi import FastAPI, APIRouter
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from gen3analysis import config
 from gen3analysis.auth import Gen3SdkAuth
+from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.gen3.es_client import get_nested_registry
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.gdc.graphqlQuery import GDCGQLClient
-from gen3analysis.routes.compare import compare
-
-from gen3analysis.routes.survival import survival
-from gen3analysis.routes.cohorts import cohorts
-from gen3analysis.routes.genomic import genomic
-from gen3analysis.routes.cases import cases
-from gen3analysis.routes.files import files
-from gen3analysis.routes.ssms import ssms
-from gen3analysis.routes.ssm_occurrence import ssms_occurrence
-from gen3analysis import config
-
 from gen3analysis.routes.basic import basic_router
+from gen3analysis.routes.cases import cases
+from gen3analysis.routes.cohorts import cohorts
+from gen3analysis.routes.compare import compare
+from gen3analysis.routes.files import files
+from gen3analysis.routes.genomic import genomic
+from gen3analysis.routes.ssm_occurrence import ssms_occurrence
+from gen3analysis.routes.ssms import ssms
+from gen3analysis.routes.survival import survival
 
 route_aggregator = APIRouter()
 

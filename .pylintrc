@@ -1,0 +1,114 @@
+[MAIN]
+# Python code to execute, usually for sys.path manipulation
+init-hook='import sys; sys.path.append(".")'
+
+# Files or directories to be skipped
+ignore=.venv,.git,__pycache__,logs,_coverage,bin,docs
+ignore-patterns=test_.*?\.py,conftest\.py
+
+# Use multiple processes to speed up Pylint
+jobs=0
+
+# Pickle collected data for later comparisons
+persistent=yes
+
+# Minimum Python version to use for version dependent checks
+py-version=3.9
+
+[MESSAGES CONTROL]
+# Disable specific warnings/errors that are common in FastAPI projects
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-locals,
+    too-many-instance-attributes,
+    fixme,
+    import-error,
+    no-name-in-module,
+    broad-except,
+    logging-fstring-interpolation,
+    duplicate-code
+
+[REPORTS]
+# Set the output format
+output-format=colorized
+
+# Tells whether to display a full report or only the messages
+reports=no
+
+# Template used to display messages
+msg-template={path}:{line}:{column}: [{msg_id}({symbol}), {obj}] {msg}
+
+[BASIC]
+# Good variable names which should always be accepted
+good-names=i,j,k,ex,Run,_,id,db
+
+# Regular expression matching correct argument names
+argument-rgx=[a-z_][a-z0-9_]{0,30}$
+
+# Regular expression matching correct attribute names
+attr-rgx=[a-z_][a-z0-9_]{0,30}$
+
+# Regular expression matching correct constant names
+const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+
+# Regular expression matching correct method names
+method-rgx=[a-z_][a-z0-9_]{2,30}$
+
+# Regular expression matching correct variable names
+variable-rgx=[a-z_][a-z0-9_]{0,30}$
+
+[FORMAT]
+# Maximum number of characters on a single line
+max-line-length=120
+
+# Maximum number of lines in a module
+max-module-lines=1000
+
+# String used as indentation unit
+indent-string='    '
+
+# Expected format of line ending
+expected-line-ending-format=LF
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=10
+
+# Maximum number of attributes for a class
+max-attributes=10
+
+# Maximum number of boolean expressions in an if statement
+max-bool-expr=5
+
+# Maximum number of branch for function / method body
+max-branches=12
+
+# Maximum number of locals for function / method body
+max-locals=15
+
+# Maximum number of parents for a class
+max-parents=7
+
+# Maximum number of public methods for a class
+max-public-methods=20
+
+# Maximum number of return / yield for function / method body
+max-returns=6
+
+# Maximum number of statements in function / method body
+max-statements=50
+
+# Minimum number of public methods for a class
+min-public-methods=0
+
+[IMPORTS]
+# Allow wildcard imports from modules listed in this option
+allow-wildcard-with-all=no
+
+[EXCEPTIONS]
+# Exceptions that will emit a warning when caught
+overgeneral-exceptions=builtins.BaseException,builtins.Exception

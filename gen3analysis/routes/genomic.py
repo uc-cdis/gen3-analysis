@@ -1,28 +1,28 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
+
 from elasticsearch import Elasticsearch
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Query
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
-from gen3analysis.config import logger
-from pydantic import BaseModel, Field
-from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
-from gen3analysis.query_builders.genomic.ssm import ssm_table_query
 
-from gen3analysis.settings import settings
-from gen3analysis.gen3.es_client import open_pit, get_es
+from gen3analysis.config import logger
+from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 from gen3analysis.gen3.cursor import encode_cursor, decode_cursor
-from gen3analysis.utils.filters import project_filter
+from gen3analysis.gen3.es_client import open_pit, get_es
 from gen3analysis.models.genes import (
     TopGenesResponse,
     GeneBucket,
 )
-
 from gen3analysis.query_builders.genomic.queries import (
     query_top_genes,
     gene_table_query,
 )
+from gen3analysis.query_builders.genomic.ssm import ssm_table_query
+from gen3analysis.settings import settings
+from gen3analysis.utils.filters import project_filter
 
 genomic = APIRouter()
 
@@ -197,10 +197,12 @@ def fetch_top_genes_page(
     },
 )
 def top_genes(
-    project: str | None = Query(default=None, description="Project filter (optional)"),
+    project: Optional[str] = Query(
+        default=None, description="Project filter (optional)"
+    ),
     size: int = Query(default=20, ge=1, le=1000),
-    cursor: str | None = Query(default=None),
-    keep_alive: str | None = Query(
+    cursor: Optional[str] = Query(default=None),
+    keep_alive: Optional[str] = Query(
         default=None, description="Override PIT keep_alive (e.g., '2m')"
     ),
 ):
@@ -271,18 +273,6 @@ def gene_frequency_chart(body: TopGeneChartRequest):
     )
 
 
-@genomic.post(
-    path="/gene_table",
-    status_code=status.HTTP_200_OK,
-    description="Returns pages gene frequency table filtered by cohort, gene, and ssm filters",
-    summary="Mutation Frequency: Gene Table",
-    responses={
-        status.HTTP_200_OK: {"description": "Successfully processed the table query"},
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "The request body is missing required fields or has invalid values."
-        },
-    },
-)
 @genomic.post(
     path="/gene_table",
     status_code=status.HTTP_200_OK,

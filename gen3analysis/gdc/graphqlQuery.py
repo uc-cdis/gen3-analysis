@@ -32,4 +32,3 @@ class GDCGQLClient:
             except Exception as e:
                 if attempt == retry_count:
                     raise
-                    sleep(0.1 * (2**attempt))

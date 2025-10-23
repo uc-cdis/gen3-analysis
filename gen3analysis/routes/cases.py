@@ -64,7 +64,7 @@ class CaseSummaryRequest(BaseModel):
 async def query_cases(
     body: CasesRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    access_token: str | None = Cookie(default=None, alias="access_token"),
+    access_token: Optional[str] = Cookie(default=None, alias="access_token"),
 ):
     filters = body.filters
     size = body.size

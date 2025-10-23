@@ -1,13 +1,13 @@
 from elasticsearch import Elasticsearch
 
 from gen3analysis.filters.es.nesting_registry import NestingRegistry
-from gen3analysis.settings import settings
 from functools import lru_cache
 from typing import Optional, Dict, List
 from elasticsearch_dsl import connections
 from gen3analysis.settings import settings
+from gen3analysis import config
 
-hosts = [h.strip() for h in settings.ES_HOSTS.split(",") if h.strip()]
+hosts = [h.strip() for h in config.ES_HOSTS.split(",") if h.strip()]
 connections.create_connection(hosts=hosts, timeout=45, use_ssl=settings.ES_VERIFY_SSL)
 
 INDEX_LIST = [

@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
-from importlib.metadata import version, files
+from importlib.metadata import version
 
 from cdislogging import get_logger
 from fastapi.exceptions import RequestValidationError

@@ -16,7 +16,6 @@ def snake_to_pascal(snake_case_string):
 
 class Settings(BaseSettings):
     # ES connection
-    ES_HOSTS: str = Field(..., description="Comma-separated list of hosts")
     ES_USERNAME: Optional[str] = None
     ES_PASSWORD: Optional[str] = None
     ES_API_KEY: Optional[str] = (

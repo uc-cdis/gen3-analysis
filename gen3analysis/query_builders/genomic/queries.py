@@ -12,7 +12,6 @@ from gen3analysis.filters.gen3GQLFilters import (
 )
 from gen3analysis.gen3.es_client import get_es, get_nested_registry
 from gen3analysis.settings import settings
-import json
 from glom import glom, Path
 
 
@@ -253,9 +252,10 @@ def build_ssm_gene_mutations(
 
     # reverse_nested sub-agg
     terms_agg.bucket("rn", "reverse_nested")
+    # TODO remove this
     # save query to file
-    with open("./logs/ssm_mutations_query.json", "w") as f:
-        json.dump(s.to_dict(), f, indent=2)
+    # with open("./logs/ssm_mutations_query.json", "w") as f:
+    #     json.dump(s.to_dict(), f, indent=2)
     results = s.execute()
 
     data_path = Path(
@@ -287,10 +287,12 @@ def build_cnv_case_total_query(cohort_filter: GQLFilter, case_ids: List[str]):
 def query_case_count(case_filters: List[GQLFilter]) -> int:
     must_query = []
     for x in case_filters:
-        must_query.append(convert_gql_to_elastic_search(x, "case_centric", boost=0))
+        must_query.append(
+            convert_gql_to_elastic_search(x, settings.ES_CASE_CENTRIC_INDEX, boost=0)
+        )
 
     case_filters_cnv = Q("bool", must=must_query)
-    cnv_cases_s = Search(using=get_es(), index="case_centric")
+    cnv_cases_s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     cnv_cases_s = cnv_cases_s.source(False)
     cnv_cases_s = cnv_cases_s[:0]
     cnv_cases_s = cnv_cases_s.extra(track_total_hits=True)
@@ -478,7 +480,7 @@ def build_gene_query(
 
 
 def query_case_ids(case_filter: GQLFilter) -> List[str]:
-    s = Search(using=get_es(), index="case_centric")
+    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     if case_filter:
         filters = convert_gql_to_elastic_search(case_filter)
     else:
@@ -500,7 +502,7 @@ def query_top_genes(
     size: int = 20,
     offset: int = 0,
 ) -> Dict[str, Any]:
-    s = Search(using=get_es(), index="case_centric")
+    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     if case_filter:
         filters = convert_gql_to_elastic_search(case_filter)
     else:
@@ -518,14 +520,16 @@ def query_top_genes(
     gene_filter_contents = get_gql_filter_contents(gene_filter)
     gene_es_filters = []
     for x in gene_filter_contents:
-        gene_query = convert_gql_to_elastic_search(x, index="gene_centric", boost=0)
+        gene_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_GENE_CENTRIC_INDEX, boost=0
+        )
         gene_es_filters.append(gene_query)
 
     ssm_filter_contents = get_gql_filter_contents(ssm_filter)
     ssm_es_filters = []
     for x in ssm_filter_contents:
         ssm_query = convert_gql_to_elastic_search(
-            x, index="gene_centric", start_path_index=1, boost=0
+            x, index=settings.ES_GENE_CENTRIC_INDEX, start_path_index=1, boost=0
         )
         ssm_es_filters.append(ssm_query)
 
@@ -603,7 +607,7 @@ def query_top_genes(
 
     # given case ids, get 20 top genes
 
-    gene_s = Search(using=get_es(), index="gene_centric")
+    gene_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
     gene_s = gene_s.source(
         ["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"]
     )
@@ -627,7 +631,7 @@ def gene_table_query(
 
     # set up the nesting registry
     nested_registry = get_nested_registry()
-    gene_nested_registry = nested_registry.get("gene_centric")
+    #    gene_nested_registry = nested_registry.get(settings.ES_GENE_CENTRIC_INDEX)
 
     # first get the case using the cohort filter
 
@@ -639,10 +643,12 @@ def gene_table_query(
     case_filter_contents.append(GQLIncludes({"available_variation_data": ["cnv"]}))
     must_query = []
     for x in case_filter_contents:
-        must_query.append(convert_gql_to_elastic_search(x, "case_centric", boost=0))
+        must_query.append(
+            convert_gql_to_elastic_search(x, settings.ES_CASE_CENTRIC_INDEX, boost=0)
+        )
 
     case_filters_cnv = Q("bool", must=must_query)
-    cnv_cases_s = Search(using=get_es(), index="case_centric")
+    cnv_cases_s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     cnv_cases_s = cnv_cases_s.source(False)
     cnv_cases_s = cnv_cases_s[:0]
     cnv_cases_s = cnv_cases_s.extra(track_total_hits=True)
@@ -657,19 +663,21 @@ def gene_table_query(
     gene_filter_contents = get_gql_filter_contents(gene_filter)
     gene_es_filters = []
     for x in gene_filter_contents:
-        gene_query = convert_gql_to_elastic_search(x, index="gene_centric", boost=0)
+        gene_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_GENE_CENTRIC_INDEX, boost=0
+        )
         gene_es_filters.append(gene_query)
 
     ssm_filter_contents = get_gql_filter_contents(ssm_filter)
     ssm_es_filters = []
     for x in ssm_filter_contents:
         ssm_query = convert_gql_to_elastic_search(
-            x, index="gene_centric", start_path_index=1, boost=0
+            x, index=settings.ES_GENE_CENTRIC_INDEX, start_path_index=1, boost=0
         )
         ssm_es_filters.append(ssm_query)
 
     # then get the top genes
-    gene_cases_s = Search(using=get_es(), index="gene_centric")
+    gene_cases_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
     gene_cases_s = gene_cases_s.source(
         [
             "score",
@@ -703,7 +711,7 @@ def gene_table_query(
         gene_ids.append(x._id)
 
     for gene_id in gene_ids:
-        gene_all_cases_s = Search(using=get_es(), index="gene_centric")
+        gene_all_cases_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
         gene_all_cases_s = gene_all_cases_s[:1]
         gene_all_cases_s = gene_all_cases_s.extra(track_scores=False)
         gene_all_cases_s = gene_all_cases_s.source(False)
@@ -716,7 +724,7 @@ def gene_table_query(
 
         # get the cnv count for each change type
         for change in ["Gain", "Loss", "Amplification", "Homozygous Deletion"]:
-            cnv_s = Search(using=get_es(), index="gene_centric")
+            cnv_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
             cnv_s = cnv_s[:1]
             cnv_s = cnv_s.extra(track_scores=False)
             cnv_s = cnv_s.source(False)
@@ -732,7 +740,7 @@ def gene_table_query(
                 total = glom(base_array, "inner_hits.case.hits.total.value", default=0)
                 gene_information[gene_id][f"cnv_count_{change}"] = total
 
-    # get teh ssm mutations and counts
+    # get the ssm mutations and counts
     # build the filters from the gene and ssm filter list
     filters = {}
     for gf in gene_filter_contents:

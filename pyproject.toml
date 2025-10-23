@@ -1,6 +1,6 @@
 [project]
 name = "gen3analysis"
-version = "1.0.1"
+version = "1.0.3"
 
 [tool.poetry]
 name = "gen3analysis"

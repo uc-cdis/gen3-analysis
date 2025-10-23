@@ -189,6 +189,9 @@ class GQLIntersection:
     def to_dict(self) -> Dict[str, Any]:
         return {"and": [x.to_dict() for x in self.and_op]}
 
+    def search(self, s: str) -> bool:
+        return False
+
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
@@ -216,6 +219,9 @@ class GQLUnion:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLUnion":
         return GQLUnion.from_payload(data)
+
+    def search(self, s: str) -> bool:
+        return False
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)

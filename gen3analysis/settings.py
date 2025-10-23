@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
     CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
 
+    ES_CASE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__case_centric"
+    ES_CASE_INDEX: Optional[str] = "ia24-20251017_case"
+    ES_FILE_INDEX: Optional[str] = "ia24-20251017_file"
+    ES_PROJECT_INDEX: Optional[str] = "ia24-20251017_project"
+    ES_GENE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__gene_centric"
+    ES_SSM_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__ssm_centric"
+    ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
+        "mmrf-commpass-ia14_viz_open_1__ssm_centric"
+    )
+
     @classmethod
     def compute_gql_index(cls, index: str) -> str:
         return f"{snake_to_pascal(index)}_{index}"
@@ -124,15 +134,6 @@ class Settings(BaseSettings):
     def case_centric_agg_gql(self) -> str:
         return Settings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
 
-    ES_CASE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__case_centric"
-    ES_CASE_INDEX: Optional[str] = "ia24-20251017_case"
-    ES_FILE_INDEX: Optional[str] = "ia24-20251017_file"
-    ES_PROJECT_INDEX: Optional[str] = "ia24-20251017_project"
-    ES_GENE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__gene_centric"
-    ES_SSM_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__ssm_centric"
-    ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
-        "mmrf-commpass-ia14_viz_open_1__ssm_centric"
-    )
     # ES_CNV_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__cnv_centric"
 
     class Config:

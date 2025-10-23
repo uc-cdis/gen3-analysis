@@ -283,18 +283,6 @@ def gene_frequency_chart(body: TopGeneChartRequest):
         },
     },
 )
-@genomic.post(
-    path="/gene_table",
-    status_code=status.HTTP_200_OK,
-    description="Returns pages gene frequency table filtered by cohort, gene, and ssm filters",
-    summary="Mutation Frequency: Gene Table",
-    responses={
-        status.HTTP_200_OK: {"description": "Successfully processed the table query"},
-        status.HTTP_400_BAD_REQUEST: {
-            "description": "The request body is missing required fields or has invalid values."
-        },
-    },
-)
 def gene_table(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)

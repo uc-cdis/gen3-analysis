@@ -1,3 +1,4 @@
+import json
 from typing import Optional, List, Dict, Any, Iterable
 from elasticsearch_dsl import Q, A, Search
 
@@ -200,7 +201,7 @@ def build_ssm_gene_mutations(
         )
 
     # ---- build the Search ----
-    s = Search(using=get_es(), index="ssm_centric")
+    s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
 
     # _source: false and size: 0
     s = s.source(False)
@@ -694,6 +695,9 @@ def gene_table_query(
     gene_cases_s = gene_cases_s.query(genes_by_cases_query)
     gene_cases_s = gene_cases_s[offset:size]
     gene_cases_s = gene_cases_s.extra(track_scores=True)
+    # write the results to a json file
+    with open("./logs/gene_table_query_genes_by_cases_query.json", "w") as f:
+        json.dump(gene_cases_s.to_dict(), f, indent=4)
 
     results = gene_cases_s.execute()
 

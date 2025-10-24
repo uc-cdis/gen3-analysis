@@ -37,10 +37,10 @@ class Settings(BaseSettings):
     CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
     CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
 
-    ES_CASE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__case_centric"
-    ES_CASE_INDEX: Optional[str] = "ia24-20251017_case"
-    ES_FILE_INDEX: Optional[str] = "ia24-20251017_file"
-    ES_PROJECT_INDEX: Optional[str] = "ia24-20251017_project"
+    ES_CASE_CENTRIC_INDEX: Optional[str] = "ia24-20251023_case"
+    ES_CASE_INDEX: Optional[str] = "ia24-20251023_case"
+    ES_FILE_INDEX: Optional[str] = "ia24-20251023_file"
+    ES_PROJECT_INDEX: Optional[str] = "ia24-20251023_project"
     ES_GENE_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__gene_centric"
     ES_SSM_CENTRIC_INDEX: Optional[str] = "mmrf-commpass-ia14_viz_open_1__ssm_centric"
     ES_SSM_OCCURRENCE_INDEX: Optional[str] = (

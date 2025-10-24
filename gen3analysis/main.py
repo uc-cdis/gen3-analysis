@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from gen3authz.client.arborist.async_client import ArboristClient
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
 
 from gen3analysis import config
 from gen3analysis.auth import Gen3SdkAuth
@@ -118,6 +119,20 @@ def get_app() -> fastapi.FastAPI:
     )
     fastapi_app.include_router(route_aggregator)
     fastapi_app.add_middleware(ClientDisconnectMiddleware)
+
+    API_CORS_ORIGINS = [
+        "http://localhost:300",
+        "https://localhost",
+        "https://localhost:3010",
+        "https://localhost:8000",
+    ]
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[API_CORS_ORIGINS],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     return fastapi_app
 

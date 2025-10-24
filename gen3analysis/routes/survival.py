@@ -400,3 +400,10 @@ async def compare(
         access_token,
         gen3_graphql_client,
     )
+
+
+@survival.options(path="/compare")
+async def options_root():
+    allowed_methods = ["POST", "OPTIONS"]
+    headers = {"Allow": ", ".join(allowed_methods)}
+    return JSONResponse(content=None, headers=headers)

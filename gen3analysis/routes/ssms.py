@@ -31,7 +31,6 @@ class SSMSIDRequest(SSMSRBaseRequest):
 
 @ssms.post(
     path="/",
-    # remove dependencies here if you want the value in the handler
     status_code=status.HTTP_200_OK,
     description="Query the ssms metadata",
     summary="Query ssms metadata",

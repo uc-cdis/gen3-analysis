@@ -54,8 +54,12 @@ def transform(data) -> pd.DataFrame:
 
         demo = demographic
         days_to_death = demo.get("days_to_death")
-        diagnoses = case.get("diagnoses", [{}])[0]
-        days_to_follow_up = diagnoses.get("days_to_last_follow_up")
+        diag = case.get("diagnoses")
+        if diag is None:
+            days_to_follow_up = None
+        else:
+            diagnoses = case.get("diagnoses", [None])[0]
+            days_to_follow_up = diagnoses.get("days_to_last_follow_up")
 
         # Use days_to_death if available, otherwise use days_to_follow_up
         duration = days_to_death if days_to_death is not None else days_to_follow_up

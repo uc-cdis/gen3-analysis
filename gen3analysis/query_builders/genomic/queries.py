@@ -622,11 +622,12 @@ def query_top_genes(
     gene_info = []
     for hit in hits:
         info = dict(hit.get("_source", {}))
-        info["case_count"] = hit.get("_score", -1)
+        info["numCases"] = hit.get("_score", -1)
         gene_info.append(info)
     return {
+        "filteredCases": len(case_ids),
         "data": gene_info,
-        "total": results["hits"]["total"]["value"],
+        "genesTotal": glom(results, "hits.total.value", default=-1),
     }
 
 
@@ -677,6 +678,7 @@ def gene_table_query(
         )
         gene_es_filters.append(gene_query)
 
+    # add case.ssm to the ssm filters
     ssm_filter_contents = get_gql_filter_contents(ssm_filter)
     ssm_es_filters = []
     for x in ssm_filter_contents:

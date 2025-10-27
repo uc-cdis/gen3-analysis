@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
         "mmrf-commpass-ia14_viz_open_1__ssm_centric"
     )
+    # root path for the documentation
+    DOCS_ROOT: Optional[str] = "/analysis/v0"
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:

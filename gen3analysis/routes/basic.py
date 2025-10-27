@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from starlette import status
 from starlette.responses import JSONResponse
+from gen3analysis.settings import settings
 
 basic_router = APIRouter()
 
@@ -20,7 +21,7 @@ def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
     """
-    return RedirectResponse(url="/docs", status_code=307)
+    return RedirectResponse(url=f"{settings.DOC_ROOT}docs", status_code=307)
 
 
 @basic_router.get(

@@ -647,7 +647,27 @@ def gene_table_query(
 
     case_ids = query_case_ids(case_filter)
 
-    # get CNV cases
+    # get SSM cases
+    case_filter_contents = get_gql_filter_contents(case_filter)
+
+    case_filter_contents.append(GQLIncludes({"available_variation_data": ["ssm"]}))
+    must_query = []
+    for x in case_filter_contents:
+        must_query.append(
+            convert_gql_to_elastic_search(x, settings.ES_CASE_CENTRIC_INDEX, boost=0)
+        )
+
+    case_filters_ssm = Q("bool", must=must_query)
+    ssm_cases_s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
+    ssm_cases_s = ssm_cases_s.source(False)
+    ssm_cases_s = ssm_cases_s[:0]
+    ssm_cases_s = ssm_cases_s.extra(track_total_hits=True)
+    ssm_cases_s = ssm_cases_s.query(case_filters_ssm)
+    results = ssm_cases_s.execute()
+
+    ssm_case_total = glom(results, "hits.total.value", default=0)
+
+    # get CNV cases, apply the cohort filters, gene and ssm filters
     case_filter_contents = get_gql_filter_contents(case_filter)
 
     case_filter_contents.append(GQLIncludes({"available_variation_data": ["cnv"]}))
@@ -705,20 +725,21 @@ def gene_table_query(
     gene_cases_s = gene_cases_s.query(genes_by_cases_query)
     gene_cases_s = gene_cases_s[offset:size]
     gene_cases_s = gene_cases_s.extra(track_scores=True)
+    gene_cases_s = gene_cases_s.extra(track_total_hits=True)
     # write the results to a json file
     with open("./logs/gene_table_query_genes_by_cases_query.json", "w") as f:
         json.dump(gene_cases_s.to_dict(), f, indent=4)
 
     results = gene_cases_s.execute()
 
+    total_genes_count = glom(results, "hits.total.value", default=0)
     # now we have the list of genes, create multiple queries for each gene for cnv and ssm counts
-    gene_information = {
-        "cnv_case_total": cnv_case_total,
-    }
+    gene_information = {}
     gene_ids = []
     for x in results["hits"]["hits"]:
         gene_information[x._id] = {
             "gene_id": x._id,
+            "id": x._id,  # to be compatible with GDC response
             "case_count": x._score,
             **(x._source.to_dict()),
         }
@@ -748,11 +769,11 @@ def gene_table_query(
             results = cnv_s.execute()
             base = glom(results, "hits.hits", default=[{"novalue": True}])
             if len(base) == 0:
-                gene_information[gene_id][f"cnv_count_{change}"] = 0
+                gene_information[gene_id][f"cnv_count_{change.lower()}"] = 0
             else:
                 base_array = base[0]
                 total = glom(base_array, "inner_hits.case.hits.total.value", default=0)
-                gene_information[gene_id][f"cnv_count_{change}"] = total
+                gene_information[gene_id][f"cnv_count_{change.lower()}"] = total
 
     # get the ssm mutations and counts
     # build the filters from the gene and ssm filter list
@@ -775,4 +796,10 @@ def gene_table_query(
     for key in ssm_counts:
         if key in gene_information:
             gene_information[key]["ssm_count"] = ssm_counts[key]
-    return gene_information
+    return {
+        "cnvCases": cnv_case_total,
+        "filteredCases": len(case_ids),
+        "cases": ssm_case_total,
+        "genesTotal": total_genes_count,
+        "genes": [x for x in gene_information.values()],
+    }

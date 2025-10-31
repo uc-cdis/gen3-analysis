@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     DEBUG: Optional[bool] = False
 
     # Root of the documentation
-    DOCS_ROOT: Optional[str] = "/analysis/v0/"
+    URL_PREFIX: Optional[str] = "/analysis/v0"
 
     # ES connection
     ES_HOSTS: Optional[str] = "http://gen3-elasticsearch-master:9200"

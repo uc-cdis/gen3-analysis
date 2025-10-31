@@ -5,7 +5,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from starlette import status
 from starlette.responses import JSONResponse
-from gen3analysis.settings import settings
 
 basic_router = APIRouter()
 

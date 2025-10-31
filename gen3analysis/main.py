@@ -24,6 +24,7 @@ from gen3analysis.routes.genomic import genomic
 from gen3analysis.routes.ssm_occurrence import ssms_occurrence
 from gen3analysis.routes.ssms import ssms
 from gen3analysis.routes.survival import survival
+from gen3analysis.settings import settings
 
 route_aggregator = APIRouter()
 
@@ -112,8 +113,8 @@ def get_app() -> fastapi.FastAPI:
     fastapi_app = FastAPI(
         title="Gen3 Analysis Service",
         version=version("gen3analysis"),
-        debug=config.DEBUG,
-        root_path=config.URL_PREFIX,
+        debug=settings.DEBUG,
+        root_path=settings.URL_PREFIX,
         lifespan=lifespan,
     )
     fastapi_app.include_router(route_aggregator)

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     ES_API_KEY: Optional[str] = (
         None  # base64, or "id:api_key" (the client supports either)
     )
-    ES_VERIFY_SSL: bool = False
+    ES_VERIFY_SSL: Optional[bool] = False
     ES_CA_CERT: Optional[str] = None
 
     MAX_CASES: Optional[int] = 10000
@@ -52,8 +52,6 @@ class Settings(BaseSettings):
     ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
         "mmrf-commpass-ia14_viz_open_1__ssm_centric"
     )
-    # root path for the documentation
-    DOCS_ROOT: Optional[str] = "/analysis/v0"
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:

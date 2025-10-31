@@ -9,7 +9,7 @@ from gen3analysis.settings import settings
 
 hosts = [h.strip() for h in settings.GEN3_ES_ENDPOINT.split(",") if h.strip()]
 
-connections.create_connection(hosts=hosts, timeout=45)
+# connections.create_connection(hosts=hosts, timeout=45)
 
 INDEX_LIST = [
     settings.ES_GENE_CENTRIC_INDEX,
@@ -24,8 +24,10 @@ INDEX_LIST = [
 
 @lru_cache
 def get_es() -> Elasticsearch:
-    logger.info(f"Setting up connection to ES: {hosts}")
-    kwargs = {"hosts": hosts, "use_ssl": settings.ES_VERIFY_SSL, "request_timeout": 45}
+    logger.info(
+        f"Setting up connection to ES: {hosts}. using ssl: {settings.ES_VERIFY_SSL}"
+    )
+    kwargs = {"hosts": hosts, "request_timeout": 45}
     return Elasticsearch(**kwargs)
 
 

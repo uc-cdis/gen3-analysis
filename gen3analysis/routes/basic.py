@@ -21,7 +21,7 @@ def redirect_to_docs():
     """
     Redirects to the API docs if they hit the base endpoint.
     """
-    return RedirectResponse(url=f"{settings.DOCS_ROOT}docs", status_code=307)
+    return RedirectResponse(url=f"/docs", status_code=307)
 
 
 @basic_router.get(

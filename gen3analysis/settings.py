@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     URL_PREFIX: Optional[str] = "/analysis/v0"
 
     # ES connection
-    ES_HOSTS: Optional[str] = "http://gen3-elasticsearch-master:9200"
+    GEN3_ES_ENDPOINT: Optional[str] = "http://gen3-elasticsearch-master:9200"
     ES_USERNAME: Optional[str] = None
     ES_PASSWORD: Optional[str] = None
     ES_API_KEY: Optional[str] = (

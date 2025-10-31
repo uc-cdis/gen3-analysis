@@ -2,12 +2,12 @@ from elasticsearch import Elasticsearch
 
 from gen3analysis.filters.es.nesting_registry import NestingRegistry
 from functools import lru_cache
-from typing import Optional, Dict, List
+from typing import Optional
 from elasticsearch_dsl import connections
+from gen3analysis.config import logger
 from gen3analysis.settings import settings
-from gen3analysis import config
 
-hosts = [h.strip() for h in settings.ES_HOSTS.split(",") if h.strip()]
+hosts = [h.strip() for h in settings.GEN3_ES_ENDPOINT.split(",") if h.strip()]
 
 connections.create_connection(hosts=hosts, timeout=45, use_ssl=settings.ES_VERIFY_SSL)
 
@@ -24,6 +24,7 @@ INDEX_LIST = [
 
 @lru_cache
 def get_es() -> Elasticsearch:
+    logger.info(f"Setting up connection to ES: {hosts}")
     kwargs = {"hosts": hosts, "use_ssl": settings.ES_VERIFY_SSL, "request_timeout": 45}
     return Elasticsearch(**kwargs)
 

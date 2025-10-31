@@ -14,8 +14,14 @@ def snake_to_pascal(snake_case_string):
 
 
 class Settings(BaseSettings):
-    # ES connection
+    GUNICORN_WORKERS = Optional[int] = 1
+    HOSTNAME = Optional[str] = ""
+    DEBUG: Optional[bool] = False
 
+    # Root of the documentation
+    DOCS_ROOT: Optional[str] = "/analysis/v0"
+
+    # ES connection
     ES_HOSTS: Optional[str] = "http://gen3-elasticsearch-master:9200"
     ES_USERNAME: Optional[str] = None
     ES_PASSWORD: Optional[str] = None

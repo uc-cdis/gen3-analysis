@@ -13,6 +13,7 @@ from gen3analysis.filters.gen3GQLFilters import (
 )
 from gen3analysis.gen3.es_client import get_es
 from gen3analysis.query_builders.genomic.queries import query_case_ids, query_case_count
+from gen3analysis.settings import settings
 
 
 def get_ssm_total_count_for_data_commons(
@@ -27,7 +28,7 @@ def get_ssm_total_count_for_data_commons(
       - nested inner_hits with includes on occurrence.occurrence_id (size:0, from:0)
     """
 
-    s = Search(using=get_es(), index="ssm_centric")
+    s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
     s = s.source(False)  # "_source": false
     s = s.extra(track_scores=False)
     s = s[:1]  # size: 1
@@ -73,7 +74,7 @@ def ssm_canonical_information_query(
     - inner_hits on the nested path with selected fields
     """
 
-    s = Search(using=get_es(), index="ssm_centric")
+    s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
     s = s.source(False)  # "_source": false
     s = s.extra(track_scores=False)
     s = s[:1]  # size: 1 (from defaults to 0)
@@ -254,10 +255,19 @@ def query_ssm_ids(
             )
         )
 
-    s = Search(using=get_es(), index="ssm_centric")
+    s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
 
     # _source includes + track_scores + pagination (from/size)
-    s = s.source(["id", "score", "genomic_dna_change", "mutation_subtype", "ssm_id"])
+    s = s.source(
+        [
+            "id",
+            "score",
+            "genomic_dna_change",
+            "mutation_subtype",
+            "ssm_id",
+            "consequence",
+        ]
+    )
 
     s = s.extra(track_scores=True)
     s = s[offset:size]  # from: 0, size: 10
@@ -393,6 +403,7 @@ def query_ssm_ids(
     ssm_ids = []
     data_root = glom(results, "hits.hits._l_", default=[])
     for ssm in data_root:
+        consequence = glom(ssm, "_source.consequence", default=[])
         ssm_ids.append(
             {
                 "ssm_id": ssm["_id"],
@@ -401,9 +412,10 @@ def query_ssm_ids(
                 "genomic_dna_change": glom(
                     ssm, "_source.genomic_dna_change", default=""
                 ),
+                "consequence": consequence[:1],
             }
         )
-    return {"total": total, "ssm_ids": ssm_ids}
+    return {"ssmsTotal": total, "ssm_ids": ssm_ids}
 
 
 def ssm_table_query(
@@ -429,7 +441,9 @@ def ssm_table_query(
     gene_es_filters = []
     ssm_ids_filters = {}
     for gf in gene_filter_contents:
-        gene_query = convert_gql_to_elastic_search(gf, index="gene_centric", boost=0)
+        gene_query = convert_gql_to_elastic_search(
+            gf, index=settings.ES_GENE_CENTRIC_INDEX, boost=0
+        )
         gene_es_filters.append(gene_query)
         for gene_filter_key in ["is_cancer_gene_census", "biotype", "vep_impact"]:
             if gf.search(gene_filter_key):
@@ -439,7 +453,7 @@ def ssm_table_query(
     ssm_es_filters = []
     for sf in ssm_filter_contents:
         ssm_query = convert_gql_to_elastic_search(
-            sf, index="gene_centric", start_path_index=1, boost=0
+            sf, index=settings.ES_GENE_CENTRIC_INDEX, start_path_index=1, boost=0
         )
         ssm_es_filters.append(ssm_query)
         for ssm_filter_key in [
@@ -470,4 +484,9 @@ def ssm_table_query(
         ssm_total_count_commons = get_ssm_total_count_for_data_commons(ssm_id)
         results.append({**ssm, **ssm_info[0], "total_commons": ssm_total_count_commons})
 
-    return {"total": ssm_total, "ssms": results}
+    return {
+        "filteredCases": ssm_total,
+        "cases": len(case_ids),
+        "ssmsTotal": ssm_total,
+        "ssms": results,
+    }

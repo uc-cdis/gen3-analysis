@@ -256,8 +256,8 @@ def build_ssm_gene_mutations(
     terms_agg.bucket("rn", "reverse_nested")
     # TODO remove this
     # save query to file
-    # with open("./logs/ssm_mutations_query.json", "w") as f:
-    #     json.dump(s.to_dict(), f, indent=2)
+    with open("./logs/ssm_mutations_query.json", "w") as f:
+        json.dump(s.to_dict(), f, indent=2)
     results = s.execute()
 
     data_path = Path(
@@ -779,11 +779,12 @@ def gene_table_query(
     # build the filters from the gene and ssm filter list
     filters = {}
     for gf in gene_filter_contents:
-        for gene_filter_key in ["is_cancer_gene_census", "biotype", "vep_impact"]:
+        for gene_filter_key in ["is_cancer_gene_census", "biotype"]:
             if gf.search(gene_filter_key):
                 filters[gene_filter_key] = gf.get_values()
     for sf in ssm_filter_contents:
         for ssm_filter_key in [
+            "vep_impact",
             "consequence_type",
             "sift_impact",
             "polyphen_impact",
@@ -798,8 +799,8 @@ def gene_table_query(
             gene_information[key]["ssm_count"] = ssm_counts[key]
     return {
         "cnvCases": cnv_case_total,
-        "filteredCases": len(case_ids),
-        "cases": ssm_case_total,
+        "totalCases": len(case_ids),
+        "ssmCases": ssm_case_total,
         "genesTotal": total_genes_count,
         "genes": [x for x in gene_information.values()],
     }

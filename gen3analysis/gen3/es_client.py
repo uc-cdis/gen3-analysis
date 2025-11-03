@@ -4,35 +4,6 @@ from gen3analysis.filters.es.nesting_registry import NestingRegistry
 from functools import lru_cache
 from gen3analysis.config import logger
 from gen3analysis.settings import settings
-import socket
-from urllib.parse import urlparse
-
-
-def get_ip_address_form_of_es_host(url):
-    """
-    Get the IP address of a URL
-
-    Args:
-        url: The URL (e.g., 'https://www.google.com' or 'google.com')
-
-    Returns:
-        IP address as a string
-    """
-    # Parse the URL to extract the hostname
-    parsed_url = urlparse(url)
-    hostname = parsed_url.netloc if parsed_url.netloc else parsed_url.path
-
-    # Remove port if present
-    hostname = hostname.split(":")[0]
-    port = parsed_url.port
-
-    try:
-        # Get the IP address
-        ip_address = socket.gethostbyname(hostname)
-        return f"http://{ip_address}:{port}"
-    except socket.gaierror as e:
-        return f"Error: Could not resolve hostname - {e}"
-
 
 hosts = [h.strip() for h in settings.GEN3_ES_ENDPOINT.split(",") if h.strip()]
 
@@ -50,11 +21,7 @@ INDEX_LIST = [
 @lru_cache
 def get_es() -> Elasticsearch:
     logger.info(f"Setting up connection to ES: {hosts}")
-    # resolve the hostname to its ip address
-    resolved_hosts = get_ip_address_form_of_es_host(hosts[0])
-    logger.info(f"Resolved IP address for {hosts[0]} to {resolved_hosts}")
-
-    kwargs = {"hosts": [resolved_hosts], "request_timeout": 45}
+    kwargs = {"hosts": hosts, "use_ssl": settings.ES_VERIFY_SSL, "request_timeout": 45}
     return Elasticsearch(**kwargs)
 
 

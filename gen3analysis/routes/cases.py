@@ -14,7 +14,7 @@ cases = APIRouter()
 
 
 class CasesRequest(BaseModel):
-    filters: Optional[Dict] = Field(default=None, description="filter (optional)")
+    filter: Optional[Dict] = Field(default=None, description="filter (optional)")
     fields: Optional[List[str]] = Field(
         default=["case_id"], description="fields (optional)"
     )
@@ -66,11 +66,9 @@ async def query_cases(
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     access_token: Optional[str] = Cookie(default=None, alias="access_token"),
 ):
-    filters = body.filters
+    gql_filters = body.filter
     size = body.size
     offset = body.offset
-
-    gql_filters = parse_gql_filter(filters)
 
     results = await cases_query(
         gen3_graphql_client, gql_filters, body.fields, size, offset, access_token

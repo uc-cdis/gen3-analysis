@@ -35,7 +35,7 @@ async def files_query(
         query=query,
         variables={
             "filter": filter,
-            "size": size,
+            "first": size,
             "offset": offset,
             "accessibility": "accessible",
         },

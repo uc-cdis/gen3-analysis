@@ -151,7 +151,7 @@ async def cohort_query(
 
 async def cases_query(
     gen3_graphql_client: GuppyGQLClient,
-    filter: GQLFilter,
+    filter: Dict,
     fields=None,
     size=1,
     offset=0,
@@ -182,7 +182,7 @@ async def cases_query(
         query=query,
         variables={
             "filter": filter,
-            "size": size,
+            "first": size,
             "offset": offset,
             "accessibility": "accessible",
         },

@@ -2,6 +2,7 @@ from typing import Optional, List, Dict, Any
 
 from elasticsearch_dsl import Q, Search
 from glom import glom, flatten
+import json
 
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
@@ -396,6 +397,9 @@ def query_ssm_ids(
         {"_score": {"order": "desc"}},
         {"_id": {"order": "asc", "mode": "min", "missing": "_last"}},
     )
+
+    with open(f"./logs/ssm_ids_for_table.json", "w") as f:
+        json.dump(s.to_dict(), f, indent=4)
 
     results = s.execute()
 

@@ -256,8 +256,8 @@ def build_ssm_gene_mutations(
     terms_agg.bucket("rn", "reverse_nested")
     # TODO remove this
     # save query to file
-    with open("./logs/ssm_mutations_query.json", "w") as f:
-        json.dump(s.to_dict(), f, indent=2)
+    # with open("./logs/ssm_mutations_query.json", "w") as f:
+    #     json.dump(s.to_dict(), f, indent=2)
     results = s.execute()
 
     data_path = Path(
@@ -627,6 +627,136 @@ def query_top_genes(
     return {
         "filteredCases": len(case_ids),
         "data": gene_info,
+        "genesTotal": glom(results, "hits.total.value", default=-1),
+    }
+
+
+def query_top_ssm(
+    case_filter: GQLFilter,
+    gene_filter: GQLFilter,
+    ssm_filter: GQLFilter,
+    size: int = 20,
+    offset: int = 0,
+) -> Dict[str, Any]:
+    # get all the cases in the cohort
+    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
+    if case_filter:
+        filters = convert_gql_to_elastic_search(case_filter)
+    else:
+        filters = Q("match_all")
+    s = s[0 : settings.MAX_CASES]  # Get all cases
+    s = s.source(False)
+    s = s.query(filters)
+    results = s.execute()
+
+    case_ids = [x._id for x in results["hits"]["hits"]]
+
+    if len(case_ids) == 0:
+        return {"data": [], "total": 0}
+
+    gene_filter_contents = get_gql_filter_contents(gene_filter)
+    gene_es_filters = []
+    for x in gene_filter_contents:
+        gene_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_SSM_CENTRIC_INDEX, boost=0
+        )
+        gene_es_filters.append(gene_query)
+
+    ssm_filter_contents = get_gql_filter_contents(ssm_filter)
+    ssm_es_filters = []
+    for x in ssm_filter_contents:
+        ssm_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_SSM_CENTRIC_INDEX, start_path_index=1, boost=0
+        )
+        ssm_es_filters.append(ssm_query)
+
+    # Build must-clauses conditionally
+    must_clauses = [
+        Q(
+            "nested",
+            path="occurrence",
+            ignore_unmapped=True,
+            query=Q(
+                "bool",
+                must=[Q("terms", occurrence__case__case_id=case_ids, boost=0)],
+            ),
+        ),
+        Q(
+            "nested",
+            path="consequence",
+            ignore_unmapped=True,
+            query=Q(
+                "bool",
+                must=[*ssm_es_filters, *gene_es_filters],
+            ),
+        ),
+    ]
+
+    top_ssm_query = Q(
+        "bool",
+        must=must_clauses,
+        should=[
+            Q(
+                "bool",
+                must=[
+                    Q(
+                        "nested",
+                        path="occurrence",
+                        score_mode="sum",
+                        query=Q(
+                            "constant_score",
+                            boost=1.0,
+                            filter=Q(
+                                "bool",
+                                must=[
+                                    Q(
+                                        "bool",
+                                        must=[
+                                            Q(
+                                                "terms",
+                                                occurrence__case__case_id=case_ids,
+                                                boost=0,
+                                            ),
+                                        ],
+                                    ),
+                                    Q(
+                                        "exists",
+                                        field="occurrence.case.project.project_id",
+                                    ),
+                                ],
+                                must_not=Q(
+                                    "term", occurrence__case__project__project_id=""
+                                ),
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+            Q("bool", boost=0, must=Q("match_all")),
+        ],
+    )
+
+    # given case ids, get 20 top ssm
+
+    ssm_s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
+    ssm_s = ssm_s.source(
+        ["id", "score", "genomic_dna_change", "mutation_subtype", "ssm_id"]
+    )
+    ssm_s = ssm_s.query(top_ssm_query)
+    ssm_s = ssm_s[offset:size]
+    ssm_s = ssm_s.extra(track_scores=True)
+
+    results = ssm_s.execute()
+
+    hits = results["hits"]["hits"]._l_
+    ssm_info = []
+    for hit in hits:
+        info = dict(hit.get("_source", {}))
+        info["numCases"] = hit.get("_score", -1)
+        ssm_info.append(info)
+    return {
+        "filteredCases": len(case_ids),
+        "data": ssm_info,
         "genesTotal": glom(results, "hits.total.value", default=-1),
     }
 

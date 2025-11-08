@@ -218,6 +218,8 @@ def gene_frequency_chart(body: TopGeneChartRequest):
         case_filter=cohort_filter,
         gene_filter=gene_filter,
         ssm_filter=ssm_filter,
+        size=body.size,
+        offset=body.offset,
     )
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -255,6 +257,8 @@ def ssm_frequency_chart(body: TopGeneChartRequest):
         case_filter=cohort_filter,
         gene_filter=gene_filter,
         ssm_filter=ssm_filter,
+        size=body.size,
+        offset=body.offset,
     )
     return JSONResponse(
         status_code=status.HTTP_200_OK,

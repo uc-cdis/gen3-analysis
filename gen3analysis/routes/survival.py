@@ -1,3 +1,4 @@
+import json
 from typing import List, Dict, Optional
 
 import pandas as pd
@@ -13,8 +14,15 @@ from starlette.responses import JSONResponse
 from gen3analysis.auth import Auth
 from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
+from gen3analysis.filters.gen3GQLFilters import (
+    get_gql_filter_contents,
+    parse_gql_filter,
+)
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases import cases
+from gen3analysis.query_builders.genomic.survival import (
+    genomic_survival_comparison_query,
+)
 from gen3analysis.settings import settings
 
 survival = APIRouter()
@@ -304,10 +312,14 @@ async def plot(
 class CompareSurvivalRequest(BaseModel):
     filters: List[Dict]
     doc_type: Optional[str] = Field(
-        default="case_centric", description="set the index for case queries"
+        default=settings.case_centric_gql, description="set the index for case queries"
     )
     field: str
     limit: int = settings.MAX_CASES
+    mode: Optional[str] = Field(
+        default="intersection",
+        description="set the mode for the plot. modes are: intersection, compare, s0_minus_s1, s1_minus_s0",
+    )
 
 
 @survival.post(
@@ -339,9 +351,10 @@ async def compare(
     auth: Auth = Depends(Auth),
 ) -> JSONResponse:
     filters = request.filters
-    doc_type = request.doc_type
     field = request.field
     limit = request.limit
+    doc_type = request.doc_type
+    mode = request.mode
 
     if len(filters) != 2:
         raise HTTPException(
@@ -352,16 +365,16 @@ async def compare(
     plot_items_0 = await cases.get_item_ids(
         gen3_graphql_client,
         doc_type,
-        field,
+        [field],
         filters[0],
-        limit=limit,
+        limit=min(limit, settings.MAX_CASES),
         access_token=access_token,
     )
 
     plot_items_1 = await cases.get_item_ids(
         gen3_graphql_client,
         doc_type,
-        field,
+        [field],
         filters[1],
         limit=limit,
         access_token=access_token,
@@ -384,9 +397,38 @@ async def compare(
     ids = glom(plot_items_1, f"data.{doc_type}", default=[])
     ids_1 = [x[field] for x in ids if x.get(field) is not None]
 
-    # Fastest approach: Convert to sets once and reuse
+    # covert to sets
     set0 = set(ids_0)
     set1 = set(ids_1)
+
+    if mode == "compare":
+        filter_0 = {"in": {field: ids_0}}
+        filter_1 = {"in": {field: ids_1}}
+        return await plot(
+            PlotRequest(filters=[filter_0, filter_1]),
+            access_token,
+            gen3_graphql_client,
+        )
+
+    if mode == "s0_minus_s1":
+        diff = list(set0 - set1)
+        filter_0 = {"in": {field: diff}}
+        filter_1 = {"in": {field: ids_1}}
+        return await plot(
+            PlotRequest(filters=[filter_0, filter_1]),
+            access_token,
+            gen3_graphql_client,
+        )
+
+    if mode == "s1_minus_s0":
+        diff = list(set1 - set0)
+        filter_0 = {"in": {field: ids_0}}
+        filter_1 = {"in": {field: diff}}
+        return await plot(
+            PlotRequest(filters=[filter_0, filter_1]),
+            access_token,
+            gen3_graphql_client,
+        )
 
     intersection = set0 & set1
 
@@ -404,3 +446,83 @@ async def compare(
         access_token,
         gen3_graphql_client,
     )
+
+
+class GenomicSurvivalRequest(BaseModel):
+    case_filter: Dict
+    filter: Dict
+    symbol: str = Field(description="symbol to compare")
+    limit: int = settings.MAX_CASES
+    type: Optional[str] = Field(
+        default="gene", description="set the type of plot gene or ssm"
+    )
+
+
+@survival.post(
+    path="/compare_genomic",
+    dependencies=[Depends(get_guppy_client)],
+    status_code=status.HTTP_200_OK,
+    description="Retrieves the comparison survival plot(s) for the given pair of filters.",
+    summary="Survival plot comparing two cohorts",
+    responses={
+        status.HTTP_200_OK: {"description": "Successfully processed the survival plot"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "The request body is missing required fields or has invalid values."
+        },
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "User unauthorized when accessing endpoint"
+        },
+        status.HTTP_403_FORBIDDEN: {
+            "description": "User does not have access to requested data"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Something went wrong internally when processing the request"
+        },
+    },
+)
+async def compare_genomic(
+    request: GenomicSurvivalRequest,
+    access_token: Optional[str] = Cookie(None),
+    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    auth: Auth = Depends(Auth),
+) -> JSONResponse:
+    case_filter = request.case_filter
+    fltr = request.filter
+    limit = request.limit
+    symbol = request.symbol
+
+    # get all cases
+    case_ids = await cases.get_item_ids(
+        gen3_graphql_client,
+        settings.case_centric_gql,
+        ["case_id"],
+        case_filter,
+        limit=min(limit, settings.MAX_CASES),
+        access_token=access_token,
+    )
+
+    logger.info(
+        f"filter0 case count: {len(case_ids['data']['CaseCentric_case_centric'])}"
+    )
+
+    case_id_list = list(
+        set(case["case_id"] for case in case_ids["data"]["CaseCentric_case_centric"])
+    )
+
+    genomic_filter = parse_gql_filter(fltr)
+
+    [with_gene_query, without_gene_query] = genomic_survival_comparison_query(
+        case_ids=case_id_list, genomic_filter=genomic_filter, gene_id=symbol
+    )
+    with open("./logs/with_gene_query.json", "w") as f:
+        f.write(json.dumps(with_gene_query.to_dict(), indent=2))
+    with open("./logs/without_gene_query.json", "w") as f:
+        f.write(json.dumps(without_gene_query.to_dict(), indent=2))
+
+    return []
+
+    # return await plot(
+    #     PlotRequest(filters=[filter_0, filter_1]),
+    #     access_token,
+    #     gen3_graphql_client,
+    # )

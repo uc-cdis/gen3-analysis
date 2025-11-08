@@ -96,7 +96,7 @@ def convert_gql_to_elastic_search(
         if ne is None:
             return q
         paths = ne.nested_paths
-        if paths is not None and (len(paths) - start_path_index) > 1:
+        if paths is not None and (len(paths) - start_path_index) >= 1:
             return build_wrapped_query_Q(q, paths[start_path_index:])
 
     return q

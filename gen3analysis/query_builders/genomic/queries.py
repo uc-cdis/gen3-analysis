@@ -1,7 +1,7 @@
 import json
 from typing import Optional, List, Dict, Any, Iterable
 
-from elasticsearch_dsl import Q, A, Search
+from elasticsearch_dsl import Q, A, Search, Nested
 from glom import glom, Path
 
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
@@ -15,6 +15,32 @@ from gen3analysis.filters.gen3GQLFilters import (
 )
 from gen3analysis.gen3.es_client import get_es, get_nested_registry
 from gen3analysis.settings import settings
+
+
+def combine_nested_queries(filters):
+    """Combine multiple nested queries on the same path into single nested queries"""
+    nested_by_path = {}
+    other_filters = []
+
+    for f in filters:
+        a = isinstance(f, Nested)
+        b = hasattr(f, "path")
+        if isinstance(f, Nested) and hasattr(f, "path"):
+            path = f.path
+            if path not in nested_by_path:
+                nested_by_path[path] = []
+            nested_by_path[path].append(f.query)
+        else:
+            other_filters.append(f)
+
+    # Create combined nested queries
+    for path, queries in nested_by_path.items():
+        combined = Q(
+            "nested", path=path, ignore_unmapped=True, query=Q("bool", must=queries)
+        )
+        other_filters.append(combined)
+
+    return other_filters
 
 
 def build_gen3_es_query(
@@ -740,7 +766,14 @@ def query_top_ssm(
 
     ssm_s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
     ssm_s = ssm_s.source(
-        ["id", "score", "genomic_dna_change", "mutation_subtype", "ssm_id"]
+        [
+            "id",
+            "score",
+            "genomic_dna_change",
+            "mutation_subtype",
+            "ssm_id",
+            "consequence",
+        ]
     )
     ssm_s = ssm_s.query(top_ssm_query)
     ssm_s = ssm_s[offset:size]
@@ -751,8 +784,11 @@ def query_top_ssm(
     hits = results["hits"]["hits"]._l_
     ssm_info = []
     for hit in hits:
+
         info = dict(hit.get("_source", {}))
         info["numCases"] = hit.get("_score", -1)
+        con = glom(info, "consequence", default=[{}])
+        info["consequence"] = con[0]
         ssm_info.append(info)
     return {
         "filteredCases": len(case_ids),

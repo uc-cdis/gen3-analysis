@@ -29,7 +29,7 @@ async def get_item_ids(
     doc_type: str,
     item_fields: List[str],
     guppy_filter: Dict,
-    limit=10000,
+    limit=settings.MAX_CASES,
     access_token: Optional[str] = None,
 ):
     graphql_query = f"""query objectId ($filter: JSON) {{
@@ -94,10 +94,8 @@ async def cohort_query(
     # Get the cohort items by id
 
     try:
-        max_cases = settings.MAX_CASES
-
         cohort_query = f"""query objectIds ($cohort_filters: JSON) {{
-                {case_index}(first:{max_cases}, filter:$cohort_filters) {{
+                {case_index}(first:{settings.MAX_CASES}, filter:$cohort_filters) {{
                               {dot_notation_to_graphql(cohort_item_field)}
                   }}
         }}"""

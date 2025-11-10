@@ -21,12 +21,16 @@ from gen3analysis.settings import settings
 
 def build_ssm_consequence_aggregation(
     case_ids: List[str],
-    filters: List[dict],
-    aggregation_fields: List[str],
-    size: int = 200,
+    filters: Optional[List[dict]],
+    size: int = 64,
 ) -> Dict[str, Any]:
-
     # Default aggregation fields
+    aggregation_fields = [
+        "consequence.transcript.consequence_type",
+        "consequence.transcript.annotation.sift_impact",
+        "consequence.transcript.annotation.polyphen_impact",
+        "consequence.transcript.annotation.vep_impact",
+    ]
 
     # Initialize the search object
     s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
@@ -42,6 +46,8 @@ def build_ssm_consequence_aggregation(
         query=Q("bool", must=[Q("terms", occurrence__case__case_id=case_ids)]),
     )
 
+    query_list = [occurrence_query]
+
     # # Build the combined nested query for consequence filters
     # # All filters must match on the SAME consequence object
     # consequence_must_clauses = []
@@ -55,8 +61,12 @@ def build_ssm_consequence_aggregation(
     #     query=Q('bool', must=consequence_must_clauses)
     # )
 
-    consequence_query = filters[0]
-    consequence_must_clauses = consequence_query.query.to_dict()["bool"]["must"]
+    consequence_must_clauses = []
+    if filters is not None and len(filters) > 0:
+        # TODO Fix hardcoded path
+        consequence_query = filters[0]  # all of these are nested
+        consequence_must_clauses = consequence_query.query.to_dict()["bool"]["must"]
+        query_list.append(consequence_query)
 
     # Build aggregations
     # We use a global aggregation approach similar to GDC
@@ -112,7 +122,7 @@ def build_ssm_consequence_aggregation(
     mutation_subtype_agg = A("terms", field="mutation_subtype", size=size)
     s.aggs.bucket("mutation_subtype", mutation_subtype_agg)
     # Combine both queries
-    s = s.query("bool", must=[occurrence_query, consequence_query])
+    s = s.query("bool", must=query_list)
 
     # write the results to a json file
     with open("./logs/build_ssm_consequence_aggregation2.json", "w") as f:
@@ -175,13 +185,6 @@ def extract_aggregation_results(
 
 def ssm_facet_query(case_ids: List[str], filters):
 
-    aggregation_fields = [
-        "consequence.transcript.consequence_type",
-        "consequence.transcript.annotation.sift_impact",
-        "consequence.transcript.annotation.polyphen_impact",
-        "consequence.transcript.annotation.vep_impact",
-    ]
-
     filter_contents = get_gql_filter_contents(filters)
 
     es_filters = [
@@ -192,10 +195,15 @@ def ssm_facet_query(case_ids: List[str], filters):
     # Combine nested queries to find a single gene that satisfies all filters.
     combined_filters = combine_nested_queries_simple(es_filters)
 
+    if len(case_ids) == 0:
+        return {"data": [], "total": 0}
+
+    if len(combined_filters) == 0:
+        combined_filters = None
+
     results = build_ssm_consequence_aggregation(
         case_ids=case_ids,
         filters=combined_filters,
-        aggregation_fields=aggregation_fields,
     )
 
     return results

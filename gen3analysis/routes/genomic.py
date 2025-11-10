@@ -23,7 +23,8 @@ from gen3analysis.gen3.cursor import encode_cursor, decode_cursor
 from gen3analysis.gen3.es_client import open_pit
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases import cases
-from gen3analysis.query_builders.genomic.aggregates import ssm_facet_query
+from gen3analysis.query_builders.genomic.ssm_facets import ssm_facet_query
+from gen3analysis.query_builders.genomic.gene_facets import gene_facet_query
 
 from gen3analysis.query_builders.genomic.queries import (
     query_top_genes,
@@ -348,4 +349,32 @@ async def ssm_facets(
     )
 
     results = ssm_facet_query(case_id_list, genomic_filters)
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=results)
+
+
+@genomic.post(path="/gene_facets")
+async def gene_facets(
+    body: FacetRequest,
+    access_token: Optional[str] = Cookie(None),
+    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    auth: Auth = Depends(Auth),
+):
+    case_filter = body.cohort_filter
+    genomic_filters = parse_gql_filter(body.genomic_filter)
+    case_ids = await cases.get_item_ids(
+        gen3_graphql_client,
+        settings.case_centric_gql,
+        ["case_id"],
+        case_filter,
+        limit=settings.MAX_CASES,
+        access_token=access_token,
+    )
+
+    case_id_list = list(
+        set(case["case_id"] for case in case_ids["data"][settings.case_centric_gql])
+    )
+
+    results = gene_facet_query(case_id_list, genomic_filters)
+
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

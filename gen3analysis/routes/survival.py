@@ -501,28 +501,22 @@ async def compare_genomic(
         access_token=access_token,
     )
 
-    logger.info(
-        f"filter0 case count: {len(case_ids['data']['CaseCentric_case_centric'])}"
-    )
-
     case_id_list = list(
-        set(case["case_id"] for case in case_ids["data"]["CaseCentric_case_centric"])
+        set(case["case_id"] for case in case_ids["data"][settings.case_centric_gql])
     )
 
     genomic_filter = parse_gql_filter(fltr)
-
     [with_gene_query, without_gene_query] = genomic_survival_comparison_query(
         case_ids=case_id_list, genomic_filter=genomic_filter, gene_id=symbol
     )
-    with open("./logs/with_gene_query.json", "w") as f:
-        f.write(json.dumps(with_gene_query.to_dict(), indent=2))
-    with open("./logs/without_gene_query.json", "w") as f:
-        f.write(json.dumps(without_gene_query.to_dict(), indent=2))
+    filter_0 = {"in": {"case_id": with_gene_query}}
+    filter_1 = {"in": {"case_id": without_gene_query}}
 
-    return []
-
-    # return await plot(
-    #     PlotRequest(filters=[filter_0, filter_1]),
-    #     access_token,
-    #     gen3_graphql_client,
-    # )
+    # TODO: the genomic_survival_comparison_query should be able to
+    #  get the information needed for the survival plot without
+    #  executing another query
+    return await plot(
+        PlotRequest(filters=[filter_0, filter_1]),
+        access_token,
+        gen3_graphql_client,
+    )

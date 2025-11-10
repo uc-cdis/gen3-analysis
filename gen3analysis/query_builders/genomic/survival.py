@@ -18,6 +18,7 @@ from gen3analysis.gen3.es_client import get_es
 from gen3analysis.query_builders.utils.combine_nested import (
     combine_nested_queries_simple,
 )
+from gen3analysis.query_builders.utils.extract_ids import extract_ids_from_hit
 from gen3analysis.settings import settings
 
 
@@ -121,7 +122,7 @@ def genomic_survival_comparison_query(
 
     s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     s = s.extra(track_total_hits=True)
-    s = s.source(["case_id"])
+    s = s.source(["_id"])
     s = s[0 : settings.MAX_CASES]
     excluded_query = s.query(
         build_gene_survival_query(genomic_filter_contents, gene_id, True, case_ids)
@@ -129,4 +130,9 @@ def genomic_survival_comparison_query(
     included_query = s.query(
         build_gene_survival_query(genomic_filter_contents, gene_id, False, case_ids)
     )
-    return [included_query, excluded_query]
+
+    included_results = included_query.execute()
+    excluded_results = excluded_query.execute()
+    included_case_ids = extract_ids_from_hit(included_results)
+    excluded_case_ids = extract_ids_from_hit(excluded_results)
+    return [included_case_ids, excluded_case_ids]

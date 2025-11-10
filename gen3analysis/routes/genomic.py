@@ -3,15 +3,27 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 from elasticsearch import Elasticsearch
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Cookie
+from fastapi.params import Depends
 from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 
+from gen3analysis.auth import Auth
 from gen3analysis.config import logger
-from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
+from gen3analysis.dependencies.guppy_client import get_guppy_client
+from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
+    convert_gql_to_elastic_search,
+)
+from gen3analysis.filters.gen3GQLFilters import (
+    parse_gql_filter,
+    get_gql_filter_contents,
+)
 from gen3analysis.gen3.cursor import encode_cursor, decode_cursor
 from gen3analysis.gen3.es_client import open_pit
+from gen3analysis.gen3.guppyQuery import GuppyGQLClient
+from gen3analysis.query_builders.cases import cases
+from gen3analysis.query_builders.genomic.aggregates import ssm_facet_query
 
 from gen3analysis.query_builders.genomic.queries import (
     query_top_genes,
@@ -302,3 +314,38 @@ def ssm_table(body: TopGeneChartRequest):
     table_data = ssm_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)
+
+
+class FacetRequest(BaseModel):
+    cohort_filter: Optional[Dict[str, Any]] = Field(
+        default=None, description="Case filter (optional)"
+    )
+    genomic_filter: Optional[Dict[str, Any]] = Field(
+        default=None, description="Genomic filters"
+    )
+
+
+@genomic.post(path="/ssm_facets")
+async def ssm_facets(
+    body: FacetRequest,
+    access_token: Optional[str] = Cookie(None),
+    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
+    auth: Auth = Depends(Auth),
+):
+    case_filter = body.cohort_filter
+    genomic_filters = parse_gql_filter(body.genomic_filter)
+    case_ids = await cases.get_item_ids(
+        gen3_graphql_client,
+        settings.case_centric_gql,
+        ["case_id"],
+        case_filter,
+        limit=settings.MAX_CASES,
+        access_token=access_token,
+    )
+
+    case_id_list = list(
+        set(case["case_id"] for case in case_ids["data"][settings.case_centric_gql])
+    )
+
+    results = ssm_facet_query(case_id_list, genomic_filters)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=results)

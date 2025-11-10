@@ -1,18 +1,14 @@
 import json
-from dataclasses import field
-from typing import Optional, List, Dict, Any, Iterable
+from typing import List
 
-from elasticsearch_dsl import Q, A, Search
-from glom import glom, Path
+from elasticsearch_dsl import Q, Search
 
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
 )
-from gen3analysis.filters.es.query_builder import ESQueryBuilder
 from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
     get_gql_filter_contents,
-    GQLIncludes,
 )
 from gen3analysis.gen3.es_client import get_es
 from gen3analysis.query_builders.utils.combine_nested import (
@@ -23,12 +19,24 @@ from gen3analysis.settings import settings
 
 
 def build_gene_survival_query(
-    genomic_filters, gene_id, exclude_gene, case_ids: List[str]
+    genomic_filters, genomic_id, exclude_gene, case_ids: List[str], mode: str = "gene"
 ):
     genomic_es_filters = [
         convert_gql_to_elastic_search(gf, index=settings.ES_CASE_CENTRIC_INDEX, boost=0)
         for gf in genomic_filters
     ]
+
+    symbol_query = Q("term", gene__symbol={"value": genomic_id, "boost": 0})
+    if mode == "ssm":
+        symbol_query = Q(
+            "nested",
+            path="gene.ssm",
+            ignore_unmapped=True,
+            query=Q(
+                "bool",
+                must=[Q("term", gene__ssm__ssm_id={"value": genomic_id, "boost": 0})],
+            ),
+        )
 
     if not exclude_gene:
         genomic_es_filters.append(
@@ -38,7 +46,7 @@ def build_gene_survival_query(
                 ignore_unmapped=True,
                 query=Q(
                     "bool",
-                    must=[Q("term", gene__symbol={"value": gene_id, "boost": 0})],
+                    must=[symbol_query],
                 ),
             )
         )
@@ -99,7 +107,10 @@ def build_gene_survival_query(
         ],
     )
     if exclude_gene:
-        q.must.append(Q("terms", available_variation_data=["ssm", "cnv"], boost=0))
+        if mode == "ssm":
+            q.must.append(Q("terms", available_variation_data=["ssm"], boost=0))
+        else:
+            q.must.append(Q("terms", available_variation_data=["ssm", "cnv"], boost=0))
         q.must_not = [
             Q(
                 "nested",
@@ -107,7 +118,7 @@ def build_gene_survival_query(
                 ignore_unmapped=True,
                 query=Q(
                     "bool",
-                    must=[Q("term", gene__symbol={"value": gene_id, "boost": 0})],
+                    must=[symbol_query],
                 ),
             )
         ]
@@ -116,7 +127,7 @@ def build_gene_survival_query(
 
 
 def genomic_survival_comparison_query(
-    case_ids: List[str], gene_id: str, genomic_filter: GQLFilter
+    case_ids: List[str], genomic_id: str, genomic_filter: GQLFilter, mode="gene"
 ):
     genomic_filter_contents = get_gql_filter_contents(genomic_filter)
 
@@ -125,11 +136,21 @@ def genomic_survival_comparison_query(
     s = s.source(["_id"])
     s = s[0 : settings.MAX_CASES]
     excluded_query = s.query(
-        build_gene_survival_query(genomic_filter_contents, gene_id, True, case_ids)
+        build_gene_survival_query(
+            genomic_filter_contents, genomic_id, True, case_ids, mode
+        )
     )
     included_query = s.query(
-        build_gene_survival_query(genomic_filter_contents, gene_id, False, case_ids)
+        build_gene_survival_query(
+            genomic_filter_contents, genomic_id, False, case_ids, mode
+        )
     )
+
+    # with open(f"./logs/{mode}_survival_query_excluded.json", "w") as f:
+    #     f.write(json.dumps(excluded_query.to_dict(), indent=2))
+    #
+    # with open(f"./logs/{mode}_survival_query_included.json", "w") as f:
+    #     f.write(json.dumps(included_query.to_dict(), indent=2))
 
     included_results = included_query.execute()
     excluded_results = excluded_query.execute()

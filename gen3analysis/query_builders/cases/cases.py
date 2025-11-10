@@ -105,8 +105,8 @@ async def cohort_query(
             "variables": {"cohort_filters": cohort_filter},
         }
         # TODO remove this
-        with open("./logs/first_query.json", "w") as f:
-            f.write(json.dumps(q, indent=2))
+        # with open("./logs/first_query.json", "w") as f:
+        #     f.write(json.dumps(q, indent=2))
 
         data = await gen3_graphql_client.execute(
             access_token=access_token,
@@ -134,8 +134,8 @@ async def cohort_query(
         }
 
         # TODO remove this
-        with open("./logs/second_query.json", "w") as f:
-            f.write(json.dumps(q, indent=2))
+        # with open("./logs/second_query.json", "w") as f:
+        #     f.write(json.dumps(q, indent=2))
 
         return await gen3_graphql_client.execute(
             access_token=access_token,

@@ -510,7 +510,9 @@ def build_gene_query(
 def query_case_ids(case_filter: GQLFilter) -> List[str]:
     s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     if case_filter:
-        filters = convert_gql_to_elastic_search(case_filter)
+        filters = convert_gql_to_elastic_search(
+            case_filter, settings.ES_CASE_CENTRIC_INDEX
+        )
     else:
         filters = Q("match_all")
     s = s[0 : settings.MAX_CASES]  # Get all cases
@@ -532,12 +534,18 @@ def query_top_genes(
 ) -> Dict[str, Any]:
     s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     if case_filter:
-        filters = convert_gql_to_elastic_search(case_filter)
+        filters = convert_gql_to_elastic_search(
+            case_filter, settings.ES_CASE_CENTRIC_INDEX
+        )
     else:
         filters = Q("match_all")
     s = s[0 : settings.MAX_CASES]  # Get all cases
     s = s.source(False)
     s = s.query(filters)
+
+    with open("./logs/query_top_genes_case_query.json", "w") as f:
+        json.dump(s.to_dict(), f, indent=2)
+
     results = s.execute()
 
     case_ids = [x._id for x in results["hits"]["hits"]]
@@ -667,7 +675,9 @@ def query_top_ssm(
     # get all the cases in the cohort
     s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
     if case_filter:
-        filters = convert_gql_to_elastic_search(case_filter)
+        filters = convert_gql_to_elastic_search(
+            case_filter, settings.ES_CASE_CENTRIC_INDEX
+        )
     else:
         filters = Q("match_all")
     s = s[0 : settings.MAX_CASES]  # Get all cases
@@ -684,7 +694,7 @@ def query_top_ssm(
     gene_es_filters = []
     for x in gene_filter_contents:
         gene_query = convert_gql_to_elastic_search(
-            x, index=settings.ES_SSM_CENTRIC_INDEX, boost=0
+            x, index=settings.ES_SSM_CENTRIC_INDEX, boost=0, start_path_index=1
         )
         gene_es_filters.append(gene_query)
 
@@ -793,7 +803,7 @@ def query_top_ssm(
     return {
         "filteredCases": len(case_ids),
         "data": ssm_info,
-        "genesTotal": glom(results, "hits.total.value", default=-1),
+        "mutationsTotal": glom(results, "hits.total.value", default=-1),
     }
 
 
@@ -804,12 +814,6 @@ def gene_table_query(
     size: int = 20,
     offset: int = 0,
 ) -> Dict[str, Any]:
-
-    # set up the nesting registry
-    nested_registry = get_nested_registry()
-    #    gene_nested_registry = nested_registry.get(settings.ES_GENE_CENTRIC_INDEX)
-
-    # first get the case using the cohort filter
 
     case_ids = query_case_ids(case_filter)
 
@@ -893,8 +897,8 @@ def gene_table_query(
     gene_cases_s = gene_cases_s.extra(track_scores=True)
     gene_cases_s = gene_cases_s.extra(track_total_hits=True)
     # write the results to a json file
-    with open("./logs/gene_table_query_genes_by_cases_query.json", "w") as f:
-        json.dump(gene_cases_s.to_dict(), f, indent=4)
+    # with open("./logs/gene_table_query_genes_by_cases_query.json", "w") as f:
+    #     json.dump(gene_cases_s.to_dict(), f, indent=4)
 
     results = gene_cases_s.execute()
 

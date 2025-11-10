@@ -1,7 +1,6 @@
-import json
+from typing import List, Dict, Any, Optional
 
 from elasticsearch_dsl import Search, Q, A
-from typing import List, Dict, Any, Optional
 
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
@@ -106,11 +105,108 @@ def extract_gene_filters(filters: List) -> tuple[List, List]:
     return matching_filters, non_matching_filters
 
 
+def extract_gene_aggregation_results(
+    response: Dict[str, Any], aggregation_field: str
+) -> List[Dict[str, Any]]:
+    """
+    Extract and format results from a specific gene aggregation field.
+
+    Args:
+        response: The Elasticsearch response dictionary
+        aggregation_field: The field to extract results for
+
+    Returns:
+        List of dictionaries containing bucket information
+    """
+    try:
+        agg_data = response["aggregations"][f"{aggregation_field}:global"][
+            f"{aggregation_field}:filtered"
+        ][aggregation_field]
+
+        buckets = agg_data.get("buckets", [])
+
+        results = []
+        for bucket in buckets:
+            result = {"key": bucket["key"], "doc_count": bucket["doc_count"]}
+            results.append(result)
+
+        return results
+
+    except KeyError as e:
+        raise ValueError(
+            f"Could not find aggregation data for field {aggregation_field}: {e}"
+        )
+
+
+def transform_to_graphql_response(
+    response: Dict[str, Any],
+    aggregation_fields: List[str],
+    max_histogram_items: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Transform Elasticsearch aggregation response to GDC GraphQL-style format.
+
+    Args:
+        response: The Elasticsearch response dictionary
+        aggregation_fields: List of fields that were aggregated
+        max_histogram_items: Optional limit on number of histogram items per field
+
+    Returns:
+        Dictionary in GraphQL format with nested structure
+    """
+    # Get total count from the first filtered aggregation
+    total_count = 0
+    if aggregation_fields and response.get("aggregations"):
+        first_field = aggregation_fields[0]
+        try:
+            total_count = response["aggregations"][f"{first_field}:global"][
+                f"{first_field}:filtered"
+            ]["doc_count"]
+        except KeyError:
+            # Fallback to hits total if aggregation structure is different
+            total_count = response.get("hits", {}).get("total", {}).get("value", 0)
+
+    # Build gene_centric object
+    gene_centric = {"_totalCount": total_count}
+
+    # Process each aggregation field
+    for field in aggregation_fields:
+        try:
+            buckets = extract_gene_aggregation_results(response, field)
+
+            # Limit histogram items if specified
+            if max_histogram_items is not None:
+                buckets = buckets[:max_histogram_items]
+
+            # Transform buckets to histogram format
+            histogram = []
+            for bucket in buckets:
+                # Convert key to string, handling boolean values
+                key = bucket["key"]
+                if isinstance(key, bool):
+                    key_str = "1" if key else "0"
+                elif isinstance(key, int):
+                    key_str = str(key)
+                else:
+                    key_str = str(key)
+
+                histogram.append({"key": key_str, "count": bucket["doc_count"]})
+
+            gene_centric[field] = {"histogram": histogram}
+
+        except (KeyError, ValueError):
+            # If aggregation field not found, include empty histogram
+            gene_centric[field] = {"histogram": []}
+
+    # Build final GraphQL response structure
+    graphql_response = {"data": gene_centric}
+
+    return graphql_response
+
+
 def build_gene_aggregation(
     case_ids: List[str],
-    consequence_filters: Optional[Dict[str, List[str]]] = None,
-    gene_filters: Optional[Dict[str, List[str]]] = None,
-    filters2: Optional[List[dict]] = [],
+    filters: Optional[List[dict]] = [],
     size: int = 200,
 ) -> Dict[str, Any]:
     """
@@ -125,14 +221,9 @@ def build_gene_aggregation(
     Args:
 
         case_ids: List of case IDs to filter by
-        consequence_filters: Dictionary of consequence field filters, e.g.:
+       filters: Dictionary of field filters, e.g.:
             {
                 "case.ssm.consequence.transcript.annotation.vep_impact": ["modifier"]
-            }
-        gene_filters: Dictionary of gene-level field filters, e.g.:
-            {
-                "is_cancer_gene_census": ["true"],
-                "biotype": ["protein_coding"]
             }
         size: Number of buckets to return in each aggregation (default: 200)
 
@@ -141,19 +232,6 @@ def build_gene_aggregation(
 
     """
     aggregation_fields = ["biotype", "is_cancer_gene_census"]
-
-    # Default consequence filters (modifier impact)
-    if consequence_filters is None:
-        consequence_filters = {
-            "case.ssm.consequence.transcript.annotation.vep_impact": ["modifier"]
-        }
-
-    # Default gene filters (cancer genes, protein coding)
-    if gene_filters is None:
-        gene_filters = {
-            "is_cancer_gene_census": ["true"],
-            "biotype": ["protein_coding"],
-        }
 
     # Initialize the search object
     s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
@@ -164,29 +242,6 @@ def build_gene_aggregation(
     # Build the nested query for case filtering
     case_query_clauses = [Q("terms", **{"case.case_id": case_ids})]
 
-    # Add nested consequence filters within the case.ssm.consequence path
-    if consequence_filters:
-        consequence_must_clauses = []
-        for field, values in consequence_filters.items():
-            consequence_must_clauses.append(Q("terms", **{field: values}))
-
-        consequence_query = Q(
-            "nested",
-            path="case.ssm.consequence",
-            ignore_unmapped=True,
-            query=Q("bool", must=consequence_must_clauses),
-        )
-
-        # Wrap consequence query in case.ssm nested query
-        ssm_query = Q(
-            "nested",
-            path="case.ssm",
-            ignore_unmapped=True,
-            query=Q("bool", must=[consequence_query]),
-        )
-
-        case_query_clauses.append(ssm_query)
-
     # Build the complete nested case query
     case_query = Q(
         "nested",
@@ -196,17 +251,11 @@ def build_gene_aggregation(
     )
 
     # Build the main query combining case query and gene filters
-    main_query_clauses = [case_query]
-
-    # Add gene-level filters (non-nested)
-    for field, values in gene_filters.items():
-        main_query_clauses.append(Q("terms", **{field: values}))
-
     all_filters = [case_query]
-    all_filters.extend(filters2)
-    main_query_clauses2 = combine_nested_queries_simple(all_filters)
-    gene_filter_q, case_and_ssm_filters_q = extract_gene_filters(all_filters)
-    gene_filter_values = extract_gene_filter_values(gene_filter_q)
+    all_filters.extend(filters)
+    main_query_clauses = combine_nested_queries_simple(all_filters)
+    gene_filter_q, case_and_ssm_filters_q = extract_gene_filters(main_query_clauses)
+    gene_filters = extract_gene_filter_values(gene_filter_q)
 
     # Apply the main query
     s = s.query("bool", must=main_query_clauses)
@@ -218,7 +267,7 @@ def build_gene_aggregation(
         s.aggs.bucket(f"{agg_field}:global", global_agg)
 
         # Build filter for this aggregation (case + ssm + consequence + other gene filters)
-        filter_clauses = [case_query]
+        filter_clauses = case_and_ssm_filters_q
 
         # Add all gene filters except the current one being aggregated
         for field, values in gene_filters.items():
@@ -235,10 +284,6 @@ def build_gene_aggregation(
             agg_field, terms_agg
         )
 
-    # write the results to a json file
-    with open("./logs/build_gene_facets.json", "w") as f:
-        json.dump(s.to_dict(), f, indent=4)
-
     # Execute the query
     response = s.execute()
 
@@ -247,7 +292,6 @@ def build_gene_aggregation(
 
 
 def gene_facet_query(case_ids: List[str], filters):
-
     filter_contents = get_gql_filter_contents(filters)
 
     es_filters = [
@@ -258,9 +302,17 @@ def gene_facet_query(case_ids: List[str], filters):
     # Combine nested queries to find a single gene that satisfies all filters.
     combined_filters = combine_nested_queries_simple(es_filters)
 
-    results = build_gene_aggregation(
+    response = build_gene_aggregation(
         case_ids=case_ids,
-        filters2=combined_filters,
+        filters=combined_filters,
     )
 
-    return results
+    aggregation_fields = ["biotype", "is_cancer_gene_census"]
+
+    graphql_response = transform_to_graphql_response(
+        response,
+        aggregation_fields,
+        max_histogram_items=10,  # Limit to top 10 for each field
+    )
+
+    return graphql_response

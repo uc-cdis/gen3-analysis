@@ -397,6 +397,7 @@ def query_ssm_ids(
         {"_score": {"order": "desc"}},
         {"_id": {"order": "asc", "mode": "min", "missing": "_last"}},
     )
+    s = s.extra(track_scores=True)
 
     with open(f"./logs/ssm_ids_for_table.json", "w") as f:
         json.dump(s.to_dict(), f, indent=4)
@@ -446,10 +447,10 @@ def ssm_table_query(
     ssm_ids_filters = {}
     for gf in gene_filter_contents:
         gene_query = convert_gql_to_elastic_search(
-            gf, index=settings.ES_GENE_CENTRIC_INDEX, boost=0
+            gf, index=settings.ES_SSM_CENTRIC_INDEX, boost=0
         )
         gene_es_filters.append(gene_query)
-        for gene_filter_key in ["is_cancer_gene_census", "biotype", "vep_impact"]:
+        for gene_filter_key in ["is_cancer_gene_census", "biotype"]:
             if gf.search(gene_filter_key):
                 ssm_ids_filters[gene_filter_key] = gf.get_values()
 
@@ -457,7 +458,7 @@ def ssm_table_query(
     ssm_es_filters = []
     for sf in ssm_filter_contents:
         ssm_query = convert_gql_to_elastic_search(
-            sf, index=settings.ES_GENE_CENTRIC_INDEX, start_path_index=1, boost=0
+            sf, index=settings.ES_SSM_CENTRIC_INDEX, start_path_index=0, boost=0
         )
         ssm_es_filters.append(ssm_query)
         for ssm_filter_key in [
@@ -465,6 +466,7 @@ def ssm_table_query(
             "sift_impact",
             "polyphen_impact",
             "subtype",
+            "vep_impact",
         ]:
             if sf.search(ssm_filter_key):
                 ssm_ids_filters[ssm_filter_key] = sf.get_values()
@@ -491,6 +493,6 @@ def ssm_table_query(
     return {
         "filteredCases": ssm_total,
         "cases": len(case_ids),
-        "ssmsTotal": ssm_total,
+        "ssmsTotal": ssm_ids.get("ssmsTotal", 0),
         "ssms": results,
     }

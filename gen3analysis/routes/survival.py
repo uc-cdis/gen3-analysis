@@ -490,6 +490,7 @@ async def compare_genomic(
     fltr = request.filter
     limit = request.limit
     symbol = request.symbol
+    plot_type = request.type
 
     # get all cases
     case_ids = await cases.get_item_ids(
@@ -507,16 +508,19 @@ async def compare_genomic(
 
     genomic_filter = parse_gql_filter(fltr)
     [with_gene_query, without_gene_query] = genomic_survival_comparison_query(
-        case_ids=case_id_list, genomic_filter=genomic_filter, gene_id=symbol
+        case_ids=case_id_list,
+        genomic_filter=genomic_filter,
+        genomic_id=symbol,
+        mode=plot_type,
     )
-    filter_0 = {"in": {"case_id": with_gene_query}}
-    filter_1 = {"in": {"case_id": without_gene_query}}
+    with_cases = {"in": {"case_id": with_gene_query}}
+    without_cases = {"in": {"case_id": without_gene_query}}
 
     # TODO: the genomic_survival_comparison_query should be able to
     #  get the information needed for the survival plot without
     #  executing another query
     return await plot(
-        PlotRequest(filters=[filter_0, filter_1]),
+        PlotRequest(filters=[without_cases, with_cases]),
         access_token,
         gen3_graphql_client,
     )

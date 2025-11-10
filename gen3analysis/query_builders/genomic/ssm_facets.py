@@ -3,10 +3,9 @@ This module provides functionality to build complex nested queries and aggregati
 for genomic data
 """
 
-import json
+from typing import List, Dict, Any, Optional
 
 from elasticsearch_dsl import Search, Q, A
-from typing import List, Dict, Any, Optional
 
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,
@@ -18,6 +17,142 @@ from gen3analysis.query_builders.utils.combine_nested import (
 )
 from gen3analysis.settings import settings
 
+aggregation_fields = [
+    "consequence.transcript.consequence_type",
+    "consequence.transcript.annotation.sift_impact",
+    "consequence.transcript.annotation.polyphen_impact",
+    "consequence.transcript.annotation.vep_impact",
+]
+
+
+def extract_aggregation_results(
+    response: Dict[str, Any], aggregation_field: str
+) -> List[Dict[str, Any]]:
+    """
+    Extract and format results from a specific aggregation field.
+
+    Args:
+        response: The Elasticsearch response dictionary
+        aggregation_field: The field to extract results for
+
+    Returns:
+        List of dictionaries containing bucket information
+    """
+    agg_name = f"{aggregation_field}:filtered"
+
+    try:
+        # Try the filtered path first (when consequence filters are applied)
+        try:
+            agg_data = response["aggregations"]["consequence:global"][
+                "consequence:filtered"
+            ]["consequence"][agg_name][aggregation_field]
+        except KeyError:
+            # Try the unfiltered path (when no consequence filters)
+            agg_data = response["aggregations"]["consequence:global"][
+                "consequence:filtered"
+            ]["consequence"][aggregation_field]
+
+        buckets = agg_data.get("buckets", [])
+
+        results = []
+        for bucket in buckets:
+            result = {
+                "key": bucket["key"],
+                "doc_count": bucket["doc_count"],
+                "parent_count": bucket.get("rn", {}).get("doc_count", 0),
+            }
+            results.append(result)
+
+        return results
+
+    except KeyError as e:
+        raise ValueError(
+            f"Could not find aggregation data for field {aggregation_field}: {e}"
+        )
+
+
+def transform_to_graphql_response(
+    response: Dict[str, Any],
+    aggregation_fields: List[str],
+) -> Dict[str, Any]:
+    """
+    Transform Elasticsearch aggregation response to GDC GraphQL format.
+
+    This function converts the ES response structure into the hierarchical format
+    used by GDC's GraphQL API, organizing aggregations by their field paths.
+
+    Args:
+        response: The Elasticsearch response dictionary from build_gdc_consequence_aggregation
+        aggregation_fields: List of fields that were aggregated on
+        entity_name: Name of the entity type (default: "ssm_centric")
+
+    Returns:
+        Dictionary in GDC GraphQL format with nested structure
+
+    """
+    # Get total count
+    total_count = response.get("hits", {}).get("total", {}).get("value", 0)
+
+    # Initialize the result structure
+    result = {
+        "data": {"_totalCount": total_count, "mutation_subtype": {"histogram": []}}
+    }
+
+    # Get shorthand reference to the entity
+    entity = result["data"]
+
+    # Add mutation_subtype aggregation (top-level, not nested)
+    if "mutation_subtype" in response.get("aggregations", {}):
+        for bucket in response["aggregations"]["mutation_subtype"]["buckets"]:
+            entity["mutation_subtype"]["histogram"].append(
+                {"key": bucket["key"], "count": bucket["doc_count"]}
+            )
+
+    # Process nested consequence aggregations
+    consequence_aggs = {}
+
+    for agg_field in aggregation_fields:
+        # Extract the field data
+        try:
+            buckets_data = extract_aggregation_results(response, agg_field)
+        except ValueError:
+            # Skip fields that don't have data
+            continue
+
+        # Parse the field path to build nested structure
+        # e.g., "consequence.transcript.annotation.vep_impact"
+        # becomes nested dict structure
+        parts = agg_field.split(".")
+
+        # Skip the first part if it's 'consequence' (we know it's nested)
+        if parts[0] == "consequence":
+            parts = parts[1:]
+
+        # Build the nested structure
+        current = consequence_aggs
+        for i, part in enumerate(parts[:-1]):
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+
+        # Add the histogram at the leaf level
+        field_name = parts[-1]
+        current[field_name] = {
+            "histogram": [
+                {
+                    "key": bucket["key"],
+                    "count": bucket["parent_count"],  # Use parent count (SSM count)
+                }
+                for bucket in buckets_data
+            ]
+        }
+
+    # Add the consequence structure to the entity
+    if consequence_aggs:
+        entity["consequence"] = consequence_aggs
+
+    return result
+
 
 def build_ssm_consequence_aggregation(
     case_ids: List[str],
@@ -25,12 +160,6 @@ def build_ssm_consequence_aggregation(
     size: int = 64,
 ) -> Dict[str, Any]:
     # Default aggregation fields
-    aggregation_fields = [
-        "consequence.transcript.consequence_type",
-        "consequence.transcript.annotation.sift_impact",
-        "consequence.transcript.annotation.polyphen_impact",
-        "consequence.transcript.annotation.vep_impact",
-    ]
 
     # Initialize the search object
     s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
@@ -47,20 +176,6 @@ def build_ssm_consequence_aggregation(
     )
 
     query_list = [occurrence_query]
-
-    # # Build the combined nested query for consequence filters
-    # # All filters must match on the SAME consequence object
-    # consequence_must_clauses = []
-    # for field, values in filters.items():
-    #     consequence_must_clauses.append(Q('terms', **{field: values}))
-    #
-    # consequence_query = Q(
-    #     'nested',
-    #     path='consequence',
-    #     ignore_unmapped=True,
-    #     query=Q('bool', must=consequence_must_clauses)
-    # )
-
     consequence_must_clauses = []
     if filters is not None and len(filters) > 0:
         # TODO Fix hardcoded path
@@ -124,63 +239,11 @@ def build_ssm_consequence_aggregation(
     # Combine both queries
     s = s.query("bool", must=query_list)
 
-    # write the results to a json file
-    with open("./logs/build_ssm_consequence_aggregation2.json", "w") as f:
-        json.dump(s.to_dict(), f, indent=4)
-
     # Execute the query
     response = s.execute()
 
     # Return the full response as a dictionary
     return response.to_dict()
-
-
-def extract_aggregation_results(
-    response: Dict[str, Any], aggregation_field: str
-) -> List[Dict[str, Any]]:
-    """
-    Extract and format results from a specific aggregation field.
-
-    Args:
-        response: The Elasticsearch response dictionary
-        aggregation_field: The field to extract results for
-
-    Returns:
-        List of dictionaries containing bucket information
-
-    Example:
-        >>> results = build_ssm_consequence_aggregation(...)
-        >>> consequence_types = extract_aggregation_results(
-        ...     results,
-        ...     "consequence.transcript.consequence_type"
-        ... )
-        >>> for bucket in consequence_types:
-        ...     print(f"{bucket['key']}: {bucket['doc_count']} consequences, "
-        ...           f"{bucket['parent_count']} SSMs")
-    """
-    agg_name = f"{aggregation_field}:filtered"
-
-    try:
-        agg_data = response["aggregations"]["consequence:global"][
-            "consequence:filtered"
-        ]["consequence"][agg_name][aggregation_field]
-
-        buckets = agg_data.get("buckets", [])
-
-        results = []
-        for bucket in buckets:
-            result = {
-                "key": bucket["key"],
-                "count": bucket["doc_count"],
-            }
-            results.append(result)
-
-        return results
-
-    except KeyError as e:
-        raise ValueError(
-            f"Could not find aggregation data for field {aggregation_field}: {e}"
-        )
 
 
 def ssm_facet_query(case_ids: List[str], filters):
@@ -201,9 +264,14 @@ def ssm_facet_query(case_ids: List[str], filters):
     if len(combined_filters) == 0:
         combined_filters = None
 
-    results = build_ssm_consequence_aggregation(
+    response = build_ssm_consequence_aggregation(
         case_ids=case_ids,
         filters=combined_filters,
     )
 
-    return results
+    graphql_response = transform_to_graphql_response(
+        response,
+        aggregation_fields,
+    )
+
+    return graphql_response

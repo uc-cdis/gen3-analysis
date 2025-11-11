@@ -650,6 +650,11 @@ def query_top_genes(
     gene_s = gene_s.query(top_gene_query)
     gene_s = gene_s[offset:size]
     gene_s = gene_s.extra(track_scores=True)
+    gene_s = gene_s.extra(track_total_hits=True)
+
+    with open("./logs/query_top_genes_query.json", "w") as f:
+        json.dump(s.to_dict(), f, indent=2)
+
     results = gene_s.execute()
 
     hits = results["hits"]["hits"]._l_
@@ -788,6 +793,7 @@ def query_top_ssm(
     ssm_s = ssm_s.query(top_ssm_query)
     ssm_s = ssm_s[offset:size]
     ssm_s = ssm_s.extra(track_scores=True)
+    ssm_s = ssm_s.extra(track_total_hits=True)
 
     results = ssm_s.execute()
 

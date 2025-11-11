@@ -329,52 +329,18 @@ class FacetRequest(BaseModel):
 @genomic.post(path="/ssm_facets")
 async def ssm_facets(
     body: FacetRequest,
-    access_token: Optional[str] = Cookie(None),
-    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    auth: Auth = Depends(Auth),
 ):
-    case_filter = body.cohort_filter
+    case_filter = parse_gql_filter(body.cohort_filter)
     genomic_filters = parse_gql_filter(body.genomic_filter)
-    case_ids = await cases.get_item_ids(
-        gen3_graphql_client,
-        settings.case_centric_gql,
-        ["case_id"],
-        case_filter,
-        limit=settings.MAX_CASES,
-        access_token=access_token,
-    )
-
-    case_id_list = list(
-        set(case["case_id"] for case in case_ids["data"][settings.case_centric_gql])
-    )
-
-    results = ssm_facet_query(case_id_list, genomic_filters)
+    results = ssm_facet_query(case_filter, genomic_filters)
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)
 
 
 @genomic.post(path="/gene_facets")
-async def gene_facets(
-    body: FacetRequest,
-    access_token: Optional[str] = Cookie(None),
-    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
-    auth: Auth = Depends(Auth),
-):
-    case_filter = body.cohort_filter
+async def gene_facets(body: FacetRequest):
+    case_filter = parse_gql_filter(body.cohort_filter)
     genomic_filters = parse_gql_filter(body.genomic_filter)
-    case_ids = await cases.get_item_ids(
-        gen3_graphql_client,
-        settings.case_centric_gql,
-        ["case_id"],
-        case_filter,
-        limit=settings.MAX_CASES,
-        access_token=access_token,
-    )
-
-    case_id_list = list(
-        set(case["case_id"] for case in case_ids["data"][settings.case_centric_gql])
-    )
-
-    results = gene_facet_query(case_id_list, genomic_filters)
+    results = gene_facet_query(case_filter, genomic_filters)
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

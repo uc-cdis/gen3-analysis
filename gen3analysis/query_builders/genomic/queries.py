@@ -543,8 +543,8 @@ def query_top_genes(
     s = s.source(False)
     s = s.query(filters)
 
-    with open("./logs/query_top_genes_case_query.json", "w") as f:
-        json.dump(s.to_dict(), f, indent=2)
+    # with open("./logs/query_top_genes_case_query.json", "w") as f:
+    #     json.dump(s.to_dict(), f, indent=2)
 
     results = s.execute()
 

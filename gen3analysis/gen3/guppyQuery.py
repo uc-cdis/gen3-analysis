@@ -23,7 +23,7 @@ class GuppyGQLClient:
         access_token: str,
         query: str,
         variables: Dict[str, Any] = None,
-        retry_count: int = 1,
+        retry_count: int = 3,
     ) -> Dict[str, Any]:
         for attempt in range(retry_count + 1):
             try:
@@ -41,7 +41,7 @@ class GuppyGQLClient:
                 #     f.write(query)
                 #     f.write(json.dumps(variables, indent=2))
 
-                async with httpx.AsyncClient() as client:
+                async with httpx.AsyncClient(timeout=45.0) as client:
                     response = await client.post(
                         self.graphql_url, json=payload, headers=headers
                     )
@@ -63,7 +63,7 @@ class GuppyGQLClient:
                             continue
 
                     if result.get("errors"):
-                        err_msg = f"GuppyGQLClient error: {result['errors']}"
+                        err_msg = f"GuppyGQLClient error: {result['errors']} for query: {query}"
                         logger.error(err_msg)
                         raise HTTPException(
                             status_code=HTTP_500_INTERNAL_SERVER_ERROR,

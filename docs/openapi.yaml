@@ -1,10 +1,101 @@
 components:
   schemas:
+    CasesRequest:
+      properties:
+        fields:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          default:
+          - case_id
+          description: fields (optional)
+          title: Fields
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: filter (optional)
+          title: Filter
+        offset:
+          anyOf:
+          - maximum: 10000.0
+            minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 0
+          description: 'offset (optional) default: 0'
+          title: Offset
+        size:
+          anyOf:
+          - maximum: 10000.0
+            minimum: 1.0
+            type: integer
+          - type: 'null'
+          default: 10
+          description: 'number of cases to return (optional) default: 10'
+          title: Size
+      title: CasesRequest
+      type: object
+    CohortQueryRequest:
+      properties:
+        case_ids_filter_path:
+          description: path for the case ids in the query
+          title: Case Ids Filter Path
+          type: string
+        case_index:
+          description: case index to query
+          title: Case Index
+          type: string
+        cohort_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: case filter (optional)
+          title: Cohort Filter
+        cohort_item_field:
+          description: identity field for the case
+          title: Cohort Item Field
+          type: string
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: query filter (optional)
+          title: Filter
+        limit:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: 10000
+          description: set the number of responses (optional)
+          title: Limit
+        query:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: ''
+          description: the query to execute using the case ids found using the cohort_filter(optional)
+          title: Query
+      required:
+      - case_ids_filter_path
+      - case_index
+      - cohort_item_field
+      title: CohortQueryRequest
+      type: object
     CompareSurvivalRequest:
       properties:
         doc_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: CaseCentric_case_centric
+          description: set the index for case queries
           title: Doc Type
-          type: string
         field:
           title: Field
           type: string
@@ -18,9 +109,16 @@ components:
           default: 10000
           title: Limit
           type: integer
+        mode:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: intersection
+          description: 'set the mode for the plot. modes are: intersection, compare,
+            s0_minus_s1, s1_minus_s0'
+          title: Mode
       required:
       - filters
-      - doc_type
       - field
       title: CompareSurvivalRequest
       type: object
@@ -35,8 +133,11 @@ components:
           title: Cohort2
           type: object
         doc_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: case_centric
           title: Doc Type
-          type: string
         facets:
           items: {}
           title: Facets
@@ -48,11 +149,96 @@ components:
           title: Interval
           type: object
       required:
-      - doc_type
       - cohort1
       - cohort2
       - facets
       title: FacetComparisonRequest
+      type: object
+    FacetRequest:
+      properties:
+        cohort_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Case filter (optional)
+          title: Cohort Filter
+        genomic_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Genomic filters
+          title: Genomic Filter
+      title: FacetRequest
+      type: object
+    FilesRequest:
+      properties:
+        fields:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          default:
+          - file_id
+          description: fields (optional)
+          title: Fields
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: filter (optional)
+          title: Filter
+        offset:
+          default: 0
+          description: 'offset (optional) default: 0'
+          maximum: 10000.0
+          minimum: 0.0
+          title: Offset
+          type: integer
+        size:
+          anyOf:
+          - maximum: 10000.0
+            minimum: 1.0
+            type: integer
+          - type: 'null'
+          default: 10
+          description: 'number of files to return (optional) default: 10'
+          title: Size
+      title: FilesRequest
+      type: object
+    GenomicSurvivalRequest:
+      properties:
+        case_filter:
+          additionalProperties: true
+          title: Case Filter
+          type: object
+        filter:
+          additionalProperties: true
+          title: Filter
+          type: object
+        limit:
+          default: 10000
+          title: Limit
+          type: integer
+        symbol:
+          description: symbol to compare
+          title: Symbol
+          type: string
+        type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: gene
+          description: set the type of plot gene or ssm
+          title: Type
+      required:
+      - case_filter
+      - filter
+      - symbol
+      title: GenomicSurvivalRequest
       type: object
     HTTPValidationError:
       properties:
@@ -74,14 +260,16 @@ components:
           title: Cohort2
           type: object
         doc_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: case_centric
           title: Doc Type
-          type: string
         precision_threshold:
           default: 3000
           title: Precision Threshold
           type: integer
       required:
-      - doc_type
       - cohort1
       - cohort2
       title: IntersectionRequest
@@ -97,6 +285,168 @@ components:
       required:
       - filters
       title: PlotRequest
+      type: object
+    SSMSOccurrenceRequest:
+      properties:
+        expand:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: which fields to expand (optional)
+          title: Expand
+        fields:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: filter (optional)
+          title: Filter
+        size:
+          anyOf:
+          - maximum: 1000.0
+            minimum: 1.0
+            type: integer
+          - type: 'null'
+          default: 10
+          description: page size
+          title: Size
+        start:
+          anyOf:
+          - maximum: 10000.0
+            minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 0
+          description: start index
+          title: Start
+      title: SSMSOccurrenceRequest
+      type: object
+    SSMSRequest:
+      properties:
+        expand:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: which fields to expand (optional)
+          title: Expand
+        fields:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: filter (optional)
+          title: Filter
+        size:
+          anyOf:
+          - maximum: 1000.0
+            minimum: 1.0
+            type: integer
+          - type: 'null'
+          default: 10
+          description: page size
+          title: Size
+        start:
+          anyOf:
+          - maximum: 10000.0
+            minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 0
+          description: start index
+          title: Start
+      title: SSMSRequest
+      type: object
+    TopGeneChartRequest:
+      properties:
+        cohort_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Case filter (optional)
+          title: Cohort Filter
+        gene_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Gene filter (optional)
+          title: Gene Filter
+        offset:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 0
+          title: Offset
+        search:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: .*.*
+          description: Search term (optional)
+          title: Search
+        size:
+          anyOf:
+          - maximum: 1000.0
+            minimum: 1.0
+            type: integer
+          - type: 'null'
+          default: 20
+          title: Size
+        ssm_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Mutation filter (optional)
+          title: Ssm Filter
+      title: TopGeneChartRequest
+      type: object
+    TopGenesChartRequest:
+      properties:
+        cohort_filters:
+          additionalProperties: true
+          default:
+            and: []
+          title: Cohort Filters
+          type: object
+        size:
+          default: 20
+          title: Size
+          type: integer
+        ssm_filters:
+          additionalProperties: true
+          default:
+            and:
+            - nested:
+                in:
+                  project_id:
+                  - MMRF-COMMPASS
+                path: case.project
+          title: Ssm Filters
+          type: object
+      title: TopGenesChartRequest
       type: object
     ValidationError:
       properties:
@@ -125,7 +475,7 @@ components:
       type: http
 info:
   title: Gen3 Analysis Service
-  version: 1.0.1
+  version: 1.0.3
 openapi: 3.1.0
 paths:
   /:
@@ -133,10 +483,7 @@ paths:
       description: Directs client to the docs
       operationId: redirect_to_docs__get
       responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
+        '307':
           description: Successful Response
       summary: Get swagger docs
       tags:
@@ -172,6 +519,179 @@ paths:
       summary: Get current version
       tags:
       - Basic
+  /cases/:
+    post:
+      description: Performs a cases query and returns case metadata for the matching
+        cases.
+      operationId: query_cases_cases__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CasesRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the cohort query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Query case metadata
+      tags:
+      - Cases
+  /cases/{case_id}:
+    get:
+      description: Performs a cases query and returns case metadata for case id
+      operationId: get_case_by_id_cases__case_id__get
+      parameters:
+      - description: case id
+        in: path
+        name: case_id
+        required: true
+        schema:
+          description: case id
+          title: Case Id
+          type: string
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - maxItems: 1
+            minItems: 1
+            prefixItems:
+            - {}
+            type: array
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the case query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Get case id metadata
+      tags:
+      - Cases
+  /cohorts/query:
+    post:
+      description: Performs a cohort query and return the query for all items matching
+        the ids.
+      operationId: cohort_query_cohorts_query_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CohortQueryRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the cohort query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      security:
+      - HTTPBearer: []
+      summary: Queries for cohort ids and uses those ids as the cohort in the second
+        query
+      tags:
+      - Cohorts
+  /cohorts/top_genes_in_cohort:
+    post:
+      operationId: top_genes_in_cohort_cohorts_top_genes_in_cohort_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopGenesChartRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Top Genes In Cohort
+      tags:
+      - Cohorts
   /compare/facets:
     post:
       description: "Compare facets between two cohorts.\n\nBody:\n- **doc_type**:\
@@ -271,6 +791,488 @@ paths:
       summary: Get Cohort Intersection
       tags:
       - Compare
+  /files/:
+    post:
+      description: Performs a files query and returns case metadata for the matching
+        files.
+      operationId: query_files_files__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilesRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the cohort query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Query case metadata
+      tags:
+      - Files
+  /files/{file_id}:
+    get:
+      description: Performs a files query and returns file metadata for file id
+      operationId: get_file_by_id_files__file_id__get
+      parameters:
+      - description: file id
+        in: path
+        name: file_id
+        required: true
+        schema:
+          description: file id
+          title: File Id
+          type: string
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the file query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Get file id metadata
+      tags:
+      - Files
+  /genomic/gene_facets:
+    post:
+      operationId: gene_facets_genomic_gene_facets_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacetRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Gene Facets
+      tags:
+      - Genomic
+  /genomic/gene_frequency_chart:
+    post:
+      description: Returns top genes filtered by cohort, gene, and ssm filters
+      operationId: gene_frequency_chart_genomic_gene_frequency_chart_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopGeneChartRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the chart query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Top Genes by Cohort, Gene, and SSM
+      tags:
+      - Genomic
+  /genomic/gene_table:
+    post:
+      description: Returns pages gene frequency table filtered by cohort, gene, and
+        ssm filters
+      operationId: gene_table_genomic_gene_table_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopGeneChartRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the table query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: 'Mutation Frequency: Gene Table'
+      tags:
+      - Genomic
+  /genomic/ssm_facets:
+    post:
+      operationId: ssm_facets_genomic_ssm_facets_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacetRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Ssm Facets
+      tags:
+      - Genomic
+  /genomic/ssm_frequency_chart:
+    post:
+      description: Returns top ssms filtered by cohort, gene, and ssm filters
+      operationId: ssm_frequency_chart_genomic_ssm_frequency_chart_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopGeneChartRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the chart query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Top SSMs by Cohort, Gene, and SSM
+      tags:
+      - Genomic
+  /genomic/ssm_table:
+    post:
+      operationId: ssm_table_genomic_ssm_table_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopGeneChartRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Ssm Table
+      tags:
+      - Genomic
+  /ssms/:
+    post:
+      description: Query the ssms metadata
+      operationId: get_ssms_ssms__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SSMSRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Query ssms metadata
+      tags:
+      - SSMS
+  /ssms/{ssm_id}:
+    get:
+      description: Query the ssms metadata for the ssms id
+      operationId: get_ssms_by_id_ssms__ssm_id__get
+      parameters:
+      - description: SSM identifier
+        in: path
+        name: ssm_id
+        required: true
+        schema:
+          description: SSM identifier
+          title: Ssm Id
+          type: string
+      - description: fields (optional)
+        in: query
+        name: fields
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+      - description: expand (optional)
+        in: query
+        name: expand
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: expand (optional)
+          title: Expand
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the ssms query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Get ssms metadata
+      tags:
+      - SSMS
+  /ssms_occurrence/:
+    post:
+      description: Query the ssms occurrence metadata
+      operationId: get_ssms_occurrence_ssms_occurrence__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SSMSOccurrenceRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Query ssms occurrence metadata
+      tags:
+      - SSMS Occurrence
+  /ssms_occurrence/{ssm_id}:
+    get:
+      description: Query the ssms occurrence metadata for the ssms id
+      operationId: get_ssms_occurrence_by_id_ssms_occurrence__ssm_id__get
+      parameters:
+      - description: SSM identifier
+        in: path
+        name: ssm_id
+        required: true
+        schema:
+          description: SSM identifier
+          title: Ssm Id
+          type: string
+      - description: fields (optional)
+        in: query
+        name: fields
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+      - description: expand (optional)
+        in: query
+        name: expand
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: expand (optional)
+          title: Expand
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the ssms query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Get ssms occurrence metadata
+      tags:
+      - SSMS Occurrence
   /survival/:
     post:
       description: Retrieves the survival plot(s) for the given filters. An array
@@ -336,6 +1338,52 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CompareSurvivalRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the survival plot
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      security:
+      - HTTPBearer: []
+      summary: Survival plot comparing two cohorts
+      tags:
+      - Survival
+  /survival/compare_genomic:
+    post:
+      description: Retrieves the comparison survival plot(s) for the given pair of
+        filters.
+      operationId: compare_genomic_survival_compare_genomic_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenomicSurvivalRequest'
         required: true
       responses:
         '200':

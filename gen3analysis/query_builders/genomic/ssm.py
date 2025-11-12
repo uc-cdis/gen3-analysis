@@ -400,9 +400,6 @@ def query_ssm_ids(
     s = s.extra(track_scores=True)
     s = s.extra(track_total_hits=True)
 
-    with open(f"./logs/ssm_ids_for_table.json", "w") as f:
-        json.dump(s.to_dict(), f, indent=4)
-
     results = s.execute()
 
     total = glom(results, "hits.total.value", default=0)

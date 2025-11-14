@@ -57,17 +57,17 @@ class Settings(BaseSettings):
     ES_CASE_CENTRIC_INDEX: Optional[str] = (
         "release-ia24-202511102-001-mi_viz_open_1__case_centric"
     )
-    ES_CASE_INDEX: Optional[str] = "release-ia24-20251031-001_case"
-    ES_FILE_INDEX: Optional[str] = "release-ia24-20251031-001_file"
-    ES_PROJECT_INDEX: Optional[str] = "ia24-20251023_project"
+    ES_CASE_INDEX: Optional[str] = "all-ia-20251113-002-nn_case"
+    ES_FILE_INDEX: Optional[str] = "all-ia-20251113-002-nn_file"
+    ES_PROJECT_INDEX: Optional[str] = "all-ia-20251113-002-nn_project"
     ES_GENE_CENTRIC_INDEX: Optional[str] = (
-        "release-ia24-202511102-001-mi_viz_open_1__gene_centric"
+        "all-ia-20251113-003-nn-mi_viz_open_1__gene_centric"
     )
     ES_SSM_CENTRIC_INDEX: Optional[str] = (
-        "release-ia24-202511102-001-mi_viz_open_1__ssm_centric"
+        "all-ia-20251113-003-nn-mi_viz_open_1__ssm_centric"
     )
     ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
-        "release-ia24-202511102-001-mi_viz_open_1__ssm_occurrence_centric"
+        "all-ia-20251113-003-nn-mi_viz_open_1__ssm_occurrence_centric"
     )
 
     @classmethod
@@ -157,8 +157,6 @@ class Settings(BaseSettings):
     @property
     def case_centric_agg_gql(self) -> str:
         return Settings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
-
-    # ES_CNV_CENTRIC_INDEX: Optional[str] = "release-ia24-202511102-001-mi_viz_open_1__cnv_centric"
 
     class Config:
         env_file = ".env"

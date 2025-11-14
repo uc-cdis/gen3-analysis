@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
 
     # IA14
-    # ES_CASE_CENTRIC_INDEX: Optional[str] = "release-ia24-202511102-001-mi_viz_open_1__case_centric"
+    # ES_CASE_CENTRIC_INDEX: Optional[str] = "all-ia-20251113-003-nn-mi_viz_open_1__case_centric"
     # ES_CASE_INDEX: Optional[str] = "ia14-20251017_case"
     # ES_FILE_INDEX: Optional[str] = "ia14-20251017_file"
     # ES_PROJECT_INDEX: Optional[str] = "ia14-20251017_project"
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     # )
 
     ES_CASE_CENTRIC_INDEX: Optional[str] = (
-        "release-ia24-202511102-001-mi_viz_open_1__case_centric"
+        "all-ia-20251113-003-nn-mi_viz_open_1__case_centric"
     )
     ES_CASE_INDEX: Optional[str] = "all-ia-20251113-002-nn_case"
     ES_FILE_INDEX: Optional[str] = "all-ia-20251113-002-nn_file"

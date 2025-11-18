@@ -13,6 +13,7 @@ from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases import cases
+from gen3analysis.settings import settings
 
 cohorts = APIRouter()
 
@@ -27,8 +28,12 @@ class CohortQueryRequest(BaseModel):
         default="",
         description="the query to execute using the case ids found using the cohort_filter(optional)",
     )
-    case_index: str = Field(description="case index to query")
-    cohort_item_field: str = Field(description="identity field for the case")
+    case_index: Optional[str] = Field(
+        default=settings.case_centric_gql, description="case index to query"
+    )
+    cohort_item_field: Optional[str] = Field(
+        default="case_id", description="identity field for the case"
+    )
     limit: Optional[int] = Field(
         default=10000, description="set the number of responses (optional)"
     )

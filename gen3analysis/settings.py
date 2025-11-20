@@ -58,7 +58,7 @@ class Settings(BaseSettings):
         "all-ia-20251113-003-nn-mi_viz_open_1__case_centric"
     )
     ES_CASE_INDEX: Optional[str] = "all-ia-20251113-002-nn_case"
-    ES_FILE_INDEX: Optional[str] = "all-ia-20251119-002-nn_file"
+    ES_FILE_INDEX: Optional[str] = "all-ia-20251119-001-nn_file"
     ES_PROJECT_INDEX: Optional[str] = "all-ia-20251113-002-nn_project"
     ES_GENE_CENTRIC_INDEX: Optional[str] = (
         "all-ia-20251113-003-nn-mi_viz_open_1__gene_centric"

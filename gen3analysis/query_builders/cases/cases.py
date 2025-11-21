@@ -128,15 +128,6 @@ async def cohort_query(
         else:
             filter["and"] = [{"in": {case_ids_filter_path: ids}}]
 
-        q = {
-            "query": query.replace("\n", "").replace("\r", ""),
-            "variables": {"filter": filter},
-        }
-
-        # TODO remove this
-        # with open("./logs/second_query.json", "w") as f:
-        #     f.write(json.dumps(q, indent=2))
-
         return await gen3_graphql_client.execute(
             access_token=access_token,
             query=query,

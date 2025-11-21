@@ -234,21 +234,6 @@ async def top_genes_in_cohort(
         for x in glom(gene_data, f"data.SsmOccurrence_ssm_occurrence")
     ]
 
-    # gene_ids = []
-    # for x in glom(gene_data, f"data.SsmOccurrence_ssm_occurrence"):
-    #     a = glom(x, 'ssm.consequence')[0]
-
-    # ssm_filters["and"].append({ "nested" : { "path": "occurrence", "nested" : { "path": "occurrence.case",  "in": {  "case_id": case_ids }}}})
-    # ssm_gene_data = await cases.get_item_ids(
-    #     gen3_graphql_client=gen3_graphql_client,
-    #     doc_type="Ssm_ssm",
-    #     item_field="occurrence.case.case_id",
-    #     guppy_filter=ssm_filters,
-    #     access_token=access_token,
-    # )
-
-    # ssm_gene_ids = [glom(x, "transcript.gene.gene_id") for x in glom(ssm_gene_data, f"data.Ssm_ssm.consequence")]
-
     case_set = set(case_ids)
     ssm_gene_set = set(genomic_case_ids)
     print("case_set ", len(list(case_set)))

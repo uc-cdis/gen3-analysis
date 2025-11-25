@@ -1106,6 +1106,18 @@ typing-inspect = ">=0.4.0"
 dev = ["flake8", "hypothesis", "ipython", "mypy (>=0.710)", "portray", "pytest (>=7.2.0)", "setuptools", "simplejson", "twine", "types-dataclasses ; python_version == \"3.6\"", "wheel"]
 
 [[package]]
+name = "defusedcsv"
+version = "3.0.0"
+description = "Drop-in replacement for Python's CSV library that tries to mitigate CSV injection attacks"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "defusedcsv-3.0.0-py3-none-any.whl", hash = "sha256:5e5f2e940cefb5ac60580c8009388bfb154b7853784d34a8f0ff3a52c6130e87"},
+    {file = "defusedcsv-3.0.0.tar.gz", hash = "sha256:018678533bc375f3bf2f70f9721e48daf3800a88320dc325c1dac67ee09e2a45"},
+]
+
+[[package]]
 name = "dictionaryutils"
 version = "3.5.1"
 description = "Python wrapper and metaschema for datadictionary."
@@ -3260,6 +3272,18 @@ typing_extensions = {version = "*", markers = "python_version < \"3.10\""}
 dev = ["backports.zoneinfo ; python_version < \"3.9\"", "black", "build", "freezegun", "mdx_truly_sane_lists", "mike", "mkdocs", "mkdocs-awesome-pages-plugin", "mkdocs-gen-files", "mkdocs-literate-nav", "mkdocs-material (>=8.5)", "mkdocstrings[python]", "msgspec ; implementation_name != \"pypy\"", "mypy", "orjson ; implementation_name != \"pypy\"", "pylint", "pytest", "tzdata", "validate-pyproject[all]"]
 
 [[package]]
+name = "python-multipart"
+version = "0.0.20"
+description = "A streaming multipart parser for Python"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "python_multipart-0.0.20-py3-none-any.whl", hash = "sha256:8a62d3a8335e06589fe01f2a3e178cdcc632f3fbe0d492ad9ee0ec35aab1f104"},
+    {file = "python_multipart-0.0.20.tar.gz", hash = "sha256:8dd0cab45b8e23064ae09147625994d090fa46f5b0d1e13af944c331a7fa9d13"},
+]
+
+[[package]]
 name = "pytz"
 version = "2025.2"
 description = "World timezone definitions, modern and historical"
@@ -4155,4 +4179,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.10"
-content-hash = "b7d4aed23551ad28231914ab2126ecadad84b4bfb52962c033e13953a6a3fc77"
+content-hash = "06ddbe9fe74aa4bde28e1ab86973c5ecd0da261f723861a289dc9c0be0b7a5f8"

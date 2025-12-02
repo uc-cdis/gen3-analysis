@@ -400,6 +400,9 @@ def query_ssm_ids(
     s = s.extra(track_scores=True)
     s = s.extra(track_total_hits=True)
 
+    # # TODO remove this
+    # with open("./logs/ssm_query.json", "w") as f:
+    #     f.write(json.dumps(s.to_dict(), indent=2))
     results = s.execute()
 
     total = glom(results, "hits.total.value", default=0)
@@ -410,7 +413,7 @@ def query_ssm_ids(
         ssm_ids.append(
             {
                 "ssm_id": ssm["_id"],
-                "score": ssm["_score"],
+                "score": max(ssm["_score"] - 1, 0),
                 "mutation_subtype": glom(ssm, "_source.mutation_subtype", default=""),
                 "genomic_dna_change": glom(
                     ssm, "_source.genomic_dna_change", default=""

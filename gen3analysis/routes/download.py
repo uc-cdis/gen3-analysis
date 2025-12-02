@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Dict, Optional, List
 
@@ -7,6 +8,8 @@ from glom import glom
 from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
+
+from pydantic import BaseModel, Field
 
 from gen3analysis.auth import Auth
 from gen3analysis.config import logger
@@ -19,8 +22,33 @@ from gen3analysis.settings import settings
 download = APIRouter()
 
 
+class BiospecimenRequest(BaseModel):
+    object_ids: Optional[List[str]] = Field(
+        default=None, description="filter (optional)"
+    )
+    object_type: Optional[str] = Field(default=None, description="filter (optional)")
+    compress: Optional[bool] = Field(
+        default=None, description="compress tar file .tar.gz (optional)"
+    )
+    fields: Optional[List[str]] = Field(
+        default=["case_id"], description="fields (optional)"
+    )
+    size: Optional[int] = Field(
+        default=10,
+        ge=1,
+        le=settings.MAX_CASES,
+        description="number of cases to return (optional) default: 10",
+    )
+    offset: Optional[int] = Field(
+        default=0,
+        ge=0,
+        le=settings.MAX_CASES,
+        description="offset (optional) default: 0",
+    )
+
+
 @download.post("/download/biospecimen")
-async def download_tar_post(
+async def download_tar(
     object_ids: Optional[List[str]] = None,
     object_type: Optional[str] = None,
     compress: bool = False,

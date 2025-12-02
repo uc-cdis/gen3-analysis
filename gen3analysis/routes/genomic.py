@@ -196,7 +196,7 @@ class TopGeneChartRequest(BaseModel):
     ssm_filter: Optional[Dict[str, Any]] = Field(
         default=None, description="Mutation filter (optional)"
     )
-    size: Optional[int] = Field(default=20, ge=1, le=1000)
+    size: Optional[int] = Field(default=20, ge=1, le=100000000)
     offset: Optional[int] = Field(default=0, ge=0)
     search: Optional[str] = Field(default=".*.*", description="Search term (optional)")
 

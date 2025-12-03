@@ -83,8 +83,7 @@ async def get_facets():
     )
     if data.get("error"):
         raise InternalError(data.get("error"))
-    dataRoot = data.get("data", {}).get("viewer", {}).get("explore", {})
-    return dataRoot
+    return data.get("data", {}).get("viewer", {}).get("explore", {})
 
 
 if __name__ == "__main__":

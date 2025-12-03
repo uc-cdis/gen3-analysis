@@ -44,6 +44,6 @@ def test_mix_leaf_types():
         "test.alpha.leaf2",
         "test.alpha.leaf3",
     ]
-    expected = "root { leaf } case file_id project { program { name },   }"
+    expected = "root { leaf } case file_id project { program { name } } test { alpha { leaf2 leaf3 } }"
     actual = build_fields_query_body(paths)
     assert actual == expected

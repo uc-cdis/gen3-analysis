@@ -236,11 +236,7 @@ async def top_genes_in_cohort(
 
     case_set = set(case_ids)
     ssm_gene_set = set(genomic_case_ids)
-    print("case_set ", len(list(case_set)))
     filtered_case_ids = case_set.intersection(ssm_gene_set)
-
-    print("filtered case ids", len(list(filtered_case_ids)))
-    print("ssm_gene_set", len(list(ssm_gene_set)))
 
     top_cases_query = """
    query topGeneCases($filters: JSON) {

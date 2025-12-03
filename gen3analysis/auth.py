@@ -1,3 +1,5 @@
+import traceback
+
 from authutils.token.fastapi import access_token
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -8,10 +10,8 @@ from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
 )
-import traceback
 
-from gen3analysis import settings
-from gen3analysis.settings import logger
+from gen3analysis.settings import settings, logger
 
 # auto_error=False prevents FastAPI from raising a 403 when the request
 # is missing an Authorization header. Instead, we want to return a 401
@@ -85,7 +85,7 @@ class Auth:
                 f"{err_msg}:\n{e.detail if hasattr(e, 'detail') else e}",
                 exc_info=True,
             )
-            raise HTTPException(HTTP_401_UNAUTHORIZED, err_msg)
+            raise HTTPException(HTTP_401_UNAUTHORIZED, err_msg) from e
 
         return token_claims
 

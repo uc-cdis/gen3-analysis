@@ -2,13 +2,12 @@ from typing import List
 
 from elasticsearch_dsl import Q, Search
 
-from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
+from gen3analysis.filters.es.convert_gql_to_elastic_search import (
     convert_gql_to_elastic_search,
 )
-from gen3analysis.filters.gen3GQLFilters import (
-    GQLFilter,
-    get_gql_filter_contents,
-)
+
+from gen3analysis.filters.gen3GQLFilters import GQLFilter, get_gql_filter_contents
+
 from gen3analysis.gen3.es_client import get_es
 from gen3analysis.query_builders.utils.combine_nested import (
     combine_nested_queries_simple,

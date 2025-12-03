@@ -37,7 +37,7 @@ from gen3analysis.filters.gen3GQLFilters import (
 )
 
 
-def convert_operation_to_gql(operation: Operation) -> Optional[GQLFilter]:
+def convert_operation_to_gql_operation(operation: Operation) -> Optional[GQLFilter]:
     """Convert a single Operation to its corresponding GQLFilter."""
 
     def _create_simple_filter(gql_class, field_key, value_key):
@@ -52,14 +52,16 @@ def convert_operation_to_gql(operation: Operation) -> Optional[GQLFilter]:
 
     def _create_composite_filter(gql_class, field_key):
         """Create a composite filter (intersection/union)."""
-        converted_operands = [convert_operation_to_gql(op) for op in operation.operands]
+        converted_operands = [
+            convert_operation_to_gql_operation(op) for op in operation.operands
+        ]
         filtered_operands = [op for op in converted_operands if op is not None]
         return gql_class(**{field_key: filtered_operands})
 
     def _create_nested_filter():
         """Create a nested filter."""
         if operation.operand:
-            converted_filter = convert_operation_to_gql(operation.operand)
+            converted_filter = convert_operation_to_gql_operation(operation.operand)
             if converted_filter:
                 nested_contents = NestedContents(
                     path=operation.path, filter_content=converted_filter
@@ -111,7 +113,7 @@ def convert_filter_set_to_gql(filter_set: FilterSet) -> Optional[GQLFilter]:
     # Convert all operations in the root
     converted_filters = []
     for operation in filter_set.root.values():
-        converted = convert_operation_to_gql(operation)
+        converted = convert_operation_to_gql_operation(operation)
         if converted:
             converted_filters.append(converted)
 

@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     GUNICORN_WORKERS: Optional[int] = 1
     HOSTNAME: Optional[str] = ""
     DEBUG: Optional[bool] = False
-    URL_PREFIX: Optional[str] = None
 
     # Gen3 services
     ARBORIST_URL: Optional[str] = "http://arborist-service"

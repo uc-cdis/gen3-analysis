@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any, Iterable
 from elasticsearch_dsl import Q, A, Search, Nested
 from glom import glom, Path
 
-from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
+from gen3analysis.filters.es.convert_gql_to_elastic_search import (
     convert_gql_to_elastic_search,
 )
 from gen3analysis.filters.es.query_builder import ESQueryBuilder

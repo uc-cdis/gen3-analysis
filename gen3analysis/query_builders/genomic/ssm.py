@@ -2,9 +2,9 @@ from typing import Optional, List, Dict, Any
 
 from elasticsearch_dsl import Q, Search
 from glom import glom, flatten
-import json
 
-from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
+
+from gen3analysis.filters.es.convert_gql_to_elastic_search import (
     convert_gql_to_elastic_search,
 )
 from gen3analysis.filters.gen3GQLFilters import (
@@ -12,6 +12,7 @@ from gen3analysis.filters.gen3GQLFilters import (
     get_gql_filter_contents,
     GQLIncludes,
 )
+
 from gen3analysis.gen3.es_client import get_es
 from gen3analysis.query_builders.genomic.queries import query_case_ids, query_case_count
 from gen3analysis.settings import settings

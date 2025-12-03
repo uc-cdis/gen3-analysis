@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional
 
 from elasticsearch_dsl import Search, Q, A
 
-from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
+from gen3analysis.filters.es.convert_gql_to_elastic_search import (
     convert_gql_to_elastic_search,
 )
 from gen3analysis.filters.gen3GQLFilters import get_gql_filter_contents, GQLFilter

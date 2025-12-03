@@ -127,7 +127,7 @@ async def test_compare_facets_endpoint(app, client):
 
     app.state.guppy_client.execute.assert_called_once_with(
         access_token=TEST_ACCESS_TOKEN,
-        query="query ($cohort1: JSON, $cohort2: JSON){\n        cohort1: _aggregation {\n            case (filter: $cohort1, accessibility: accessible) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2, accessibility: accessible) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n    }",
+        query="query ($cohort1: JSON, $cohort2: JSON){\n        cohort1: CaseCentric__aggregation {\n            case (filter: $cohort1, accessibility: accessible) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n        cohort2: CaseCentric__aggregation {\n            case (filter: $cohort2, accessibility: accessible) { project_id { histogram { key count } } demographic { ethnicity { histogram { key count } } } abc { def { ghi { histogram { key count } } } } diagnoses { age_at_diagnosis { histogram(rangeStep: 3652) { key count } } }  }\n        }\n    }",
         variables={"cohort1": cohort1, "cohort2": cohort2},
         retry_count=1,
     )
@@ -210,7 +210,7 @@ async def test_compare_intersection_endpoint(app, client):
 
     app.state.guppy_client.execute.assert_called_once_with(
         access_token=TEST_ACCESS_TOKEN,
-        query="query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {\n        cohort1: _aggregation {\n            case (filter: $cohort1, accessibility: accessible) {\n                _totalCount\n            }\n        }\n        cohort2: _aggregation {\n            case (filter: $cohort2, accessibility: accessible) {\n                _totalCount\n            }\n        }\n        intersection: _aggregation {\n            case (filter: $intersection, accessibility: accessible) {\n                _totalCount\n            }\n        }\n    }",
+        query="query ($cohort1: JSON, $cohort2: JSON, $intersection: JSON) {\n        cohort1: CaseCentric__aggregation {\n            case_centric (filter: $cohort1, accessibility: accessible) {\n                _totalCount\n            }\n        }\n        cohort2: CaseCentric__aggregation {\n            case_centric (filter: $cohort2, accessibility: accessible) {\n                _totalCount\n            }\n        }\n        intersection: CaseCentric__aggregation {\n            case_centric (filter: $intersection, accessibility: accessible) {\n                _totalCount\n            }\n        }\n    }",
         variables={
             "cohort1": cohort1,
             "cohort2": cohort2,

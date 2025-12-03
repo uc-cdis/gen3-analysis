@@ -3,35 +3,25 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 from elasticsearch import Elasticsearch
-from fastapi import APIRouter, Query, Cookie
-from fastapi.params import Depends
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 
-from gen3analysis.auth import Auth
-from gen3analysis.settings import logger
-from gen3analysis.dependencies.guppy_client import get_guppy_client
-from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
-    convert_gql_to_elastic_search,
-)
 from gen3analysis.filters.gen3GQLFilters import (
     parse_gql_filter,
-    get_gql_filter_contents,
 )
 from gen3analysis.gen3.cursor import encode_cursor, decode_cursor
 from gen3analysis.gen3.es_client import open_pit
-from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.query_builders.cases import cases
-from gen3analysis.query_builders.genomic.ssm_facets import ssm_facet_query
 from gen3analysis.query_builders.genomic.gene_facets import gene_facet_query
-
 from gen3analysis.query_builders.genomic.queries import (
     query_top_genes,
     gene_table_query,
     query_top_ssm,
 )
 from gen3analysis.query_builders.genomic.ssm import ssm_table_query
+from gen3analysis.query_builders.genomic.ssm_facets import ssm_facet_query
+from gen3analysis.settings import logger
 from gen3analysis.settings import settings
 from gen3analysis.utils.filters import project_filter
 

@@ -152,14 +152,6 @@ class GqlExists:
     content: GqlExistsContent = field(default_factory=GqlExistsContent)
 
 
-# @dataclass_json(letter_case=LetterCase.CAMEL)
-# @dataclass(frozen=True)
-# class GqlIncludesContent:
-#     """Content for GQL includes operation"""
-#     field: str = ''
-#     value: List[Union[str, int]] = field(default_factory=list)
-
-
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass(frozen=True)
 class GqlIncludes:
@@ -167,14 +159,6 @@ class GqlIncludes:
 
     op: Literal["in"] = "in"
     content: List[Union[str, int]] = field(default_factory=list)
-
-
-# @dataclass_json(letter_case=LetterCase.CAMEL)
-# @dataclass(frozen=True)
-# class GqlExcludesContent:
-#     """Content for GQL excludes operation"""
-#     field: str = ''
-#     value: List[Union[str, int]] = field(default_factory=list)
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)

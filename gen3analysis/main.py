@@ -1,4 +1,5 @@
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 
@@ -74,7 +75,6 @@ async def lifespan(app: FastAPI):
         graphql_url="https://portal.gdc.cancer.gov/auth/api/v0/graphql",
     )
 
-    # TODO: add to settings
     get_nested_registry()
 
     app.state.guppy_client = guppy_client

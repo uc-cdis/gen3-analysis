@@ -46,9 +46,12 @@ components:
           title: Case Ids Filter Path
           type: string
         case_index:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: CaseCentric_case_centric
           description: case index to query
           title: Case Index
-          type: string
         cohort_filter:
           anyOf:
           - additionalProperties: true
@@ -57,9 +60,12 @@ components:
           description: case filter (optional)
           title: Cohort Filter
         cohort_item_field:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: case_id
           description: identity field for the case
           title: Cohort Item Field
-          type: string
         filter:
           anyOf:
           - additionalProperties: true
@@ -83,8 +89,6 @@ components:
           title: Query
       required:
       - case_ids_filter_path
-      - case_index
-      - cohort_item_field
       title: CohortQueryRequest
       type: object
     CompareSurvivalRequest:
@@ -408,7 +412,7 @@ components:
           title: Search
         size:
           anyOf:
-          - maximum: 1000.0
+          - maximum: 100000000.0
             minimum: 1.0
             type: integer
           - type: 'null'

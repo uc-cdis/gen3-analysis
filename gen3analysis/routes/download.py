@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from gen3analysis.auth import Auth
 from gen3analysis.config import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
+from gen3analysis.download.tar_stream import query_data_objects
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases import cases
 from gen3analysis.settings import settings

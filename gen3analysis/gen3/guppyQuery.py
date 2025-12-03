@@ -6,7 +6,7 @@ from fastapi import Cookie, HTTPException
 import httpx
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
-from gen3analysis.config import logger
+from gen3analysis.settings import logger
 from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 

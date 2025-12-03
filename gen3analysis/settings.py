@@ -1,4 +1,5 @@
 from typing import Optional
+from cdislogging import get_logger
 from pydantic import computed_field
 from pydantic_settings import BaseSettings
 
@@ -17,6 +18,11 @@ class Settings(BaseSettings):
     GUNICORN_WORKERS: Optional[int] = 1
     HOSTNAME: Optional[str] = ""
     DEBUG: Optional[bool] = False
+    URL_PREFIX: Optional[str] = None
+
+    # Gen3 services
+    ARBORIST_URL: Optional[str] = "http://arborist-service"
+    DEPLOYMENT_TYPE: Optional[str] = "prod"
 
     # Root of the documentation
     URL_PREFIX: Optional[str] = "/analysis/v0"
@@ -164,3 +170,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+logger = get_logger("gen3-analysis", log_level="debug" if settings.DEBUG else "debug")

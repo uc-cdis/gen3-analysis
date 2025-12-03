@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from gen3analysis.config import logger
+from gen3analysis.settings import logger
 
 
 class MetricModel(BaseModel):

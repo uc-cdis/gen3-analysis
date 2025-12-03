@@ -1,9 +1,6 @@
-import json
 from typing import Dict, Optional, List, Any
-
 from glom import glom
-
-from gen3analysis.config import logger
+from gen3analysis.settings import logger
 from gen3analysis.filters.gen3GQLFilters import (
     GQLFilter,
 )
@@ -39,9 +36,6 @@ async def get_item_ids(
     }}"""
 
     logger.info(f"executing: query {graphql_query}, variables {guppy_filter}")
-    # TODO - remove this
-    # print("executing query", graphql_query)
-    # print("executing variables", json.dumps(guppy_filter, indent=2))
 
     data = await gen3_graphql_client.execute(
         access_token=access_token,

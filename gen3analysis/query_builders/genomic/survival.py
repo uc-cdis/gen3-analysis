@@ -1,4 +1,3 @@
-import json
 from typing import List
 
 from elasticsearch_dsl import Q, Search

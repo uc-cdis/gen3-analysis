@@ -1,5 +1,3 @@
-from typing import Union
-
 from authutils.token.fastapi import access_token
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,8 +10,8 @@ from starlette.status import (
 )
 import traceback
 
-from gen3analysis import config
-from gen3analysis.config import logger
+from gen3analysis import settings
+from gen3analysis.settings import logger
 
 # auto_error=False prevents FastAPI from raising a 403 when the request
 # is missing an Authorization header. Instead, we want to return a 401
@@ -60,7 +58,7 @@ class Auth:
             if self.bearer_token and hasattr(self.bearer_token, "credentials")
             else None
         )
-        if not token and config.DEPLOYMENT_TYPE == "dev":
+        if not token and settings.DEPLOYMENT_TYPE == "dev":
             token = await self.app.state.gen3_sdk_auth.get_access_token()
 
         return token

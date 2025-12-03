@@ -5,7 +5,7 @@ import asyncio
 import httpx
 from fastapi import HTTPException
 
-from gen3analysis.config import logger
+from gen3analysis.settings import logger
 
 
 @dataclass

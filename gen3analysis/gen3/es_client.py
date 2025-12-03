@@ -2,8 +2,7 @@ from elasticsearch import Elasticsearch
 from typing import Optional
 from gen3analysis.filters.es.nesting_registry import NestingRegistry
 from functools import lru_cache
-from gen3analysis.config import logger
-from gen3analysis.settings import settings
+from gen3analysis.settings import settings, logger
 
 hosts = [h.strip() for h in settings.GEN3_ES_ENDPOINT.split(",") if h.strip()]
 

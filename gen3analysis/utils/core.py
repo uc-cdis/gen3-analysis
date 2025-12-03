@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Hashable, Any
 
 from sqlalchemy import inspect
 
-from gen3analysis.config import logger
+from gen3analysis.settings import logger
 
 
 def log_user_data_library_api_call(debug_log: str = None, **kwargs):

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Cookie
 from pydantic import BaseModel, Field
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
-from gen3analysis.config import logger
+from gen3analysis.settings import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.settings import settings

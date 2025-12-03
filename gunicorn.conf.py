@@ -5,7 +5,7 @@ import cdislogging
 import gunicorn.glogging
 from prometheus_client import multiprocess
 
-import gen3analysis.config
+import gen3analysis.settings
 
 
 def child_exit(server, worker):
@@ -42,13 +42,13 @@ class CustomLogger(gunicorn.glogging.Logger):
 
         self._remove_handlers(logging.getLogger())
         cdislogging.get_logger(
-            None, log_level="debug" if gen3analysis.config.DEBUG else "warn"
+            None, log_level="debug" if gen3analysis.settings.DEBUG else "warn"
         )
         for logger_name in ["gunicorn", "gunicorn.error", "gunicorn.access"]:
             self._remove_handlers(logging.getLogger(logger_name))
             cdislogging.get_logger(
                 logger_name,
-                log_level="debug" if gen3analysis.config.DEBUG else "info",
+                log_level="debug" if gen3analysis.settings.DEBUG else "info",
             )
 
 
@@ -57,7 +57,7 @@ logger_class = CustomLogger
 wsgi_app = "gen3analysis.main:app_instance"
 bind = "0.0.0.0:8000"
 
-workers = gen3analysis.config.GUNICORN_WORKERS
+workers = gen3analysis.settings.GUNICORN_WORKERS
 
 # default was `30` for the 2 below
 timeout = 90

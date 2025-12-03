@@ -59,12 +59,12 @@ async def lifespan(app: FastAPI):
         app (fastapi.FastAPI): The FastAPI app object
     """
     # startup
-    if config.DEPLOYMENT_TYPE == "prod":
+    if settings.DEPLOYMENT_TYPE == "prod":
         guppy_url = "http://guppy-service"
         revproxy_url = "http://revproxy-service"
     else:
-        guppy_url = f"{config.HOSTNAME}"
-        revproxy_url = f"{config.HOSTNAME}"
+        guppy_url = f"{settings.HOSTNAME}"
+        revproxy_url = f"{settings.HOSTNAME}"
 
     guppy_client = GuppyGQLClient(
         graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url
@@ -80,13 +80,13 @@ async def lifespan(app: FastAPI):
     app.state.guppy_client = guppy_client
     app.state.gdc_graphql_client = gdc_graphql_client
     app.state.gen3_sdk_auth = None
-    if config.DEPLOYMENT_TYPE == "dev":
-        app.state.gen3_sdk_auth = Gen3SdkAuth(endpoint=config.HOSTNAME)
+    if settings.DEPLOYMENT_TYPE == "dev":
+        app.state.gen3_sdk_auth = Gen3SdkAuth(endpoint=settings.HOSTNAME)
 
     app.state.arborist_client = ArboristClient(
-        arborist_base_url=config.ARBORIST_URL,
+        arborist_base_url=settings.ARBORIST_URL,
         logger=get_logger(
-            "gen3analysis.gen3authz", log_level="debug" if config.DEBUG else "info"
+            "gen3analysis.gen3authz", log_level="debug" if settings.DEBUG else "info"
         ),
     )
 

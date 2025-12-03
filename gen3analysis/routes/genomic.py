@@ -10,7 +10,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from gen3analysis.auth import Auth
-from gen3analysis.config import logger
+from gen3analysis.settings import logger
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.filters.es.convertGen3GQLToElasticSearch import (
     convert_gql_to_elastic_search,

@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
 from gen3analysis.dependencies.guppy_client import get_guppy_client
-from gen3analysis.filters.gen3GQLFilters import GQLFilter, parse_gql_filter
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.cases.cases import cases_query, case_summary_query
 from gen3analysis.settings import settings

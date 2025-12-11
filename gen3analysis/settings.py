@@ -168,7 +168,7 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def cnv_occurrence_centric_agg_gql(self) -> str:
-        return Settings.compute_gql_agg_index(self.CVN_OCCURRENCE_CENTRIC_INDEX)
+        return Settings.compute_gql_agg_index(self.CNV_OCCURRENCE_CENTRIC_INDEX)
 
     @computed_field
     @property

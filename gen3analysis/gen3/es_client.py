@@ -8,12 +8,14 @@ hosts = [h.strip() for h in settings.GEN3_ES_ENDPOINT.split(",") if h.strip()]
 
 INDEX_LIST = [
     settings.ES_GENE_CENTRIC_INDEX,
-    settings.ES_CASE_CENTRIC_INDEX,
-    settings.ES_CASE_INDEX,
-    settings.ES_FILE_INDEX,
     settings.ES_PROJECT_INDEX,
     settings.ES_SSM_CENTRIC_INDEX,
     settings.ES_SSM_OCCURRENCE_INDEX,
+    settings.ES_CNV_CENTRIC_INDEX,
+    settings.ES_CNV_OCCURRENCE_INDEX,
+    settings.ES_CASE_CENTRIC_INDEX,
+    settings.ES_CASE_INDEX,
+    settings.ES_FILE_INDEX,
 ]
 
 
@@ -29,6 +31,7 @@ def get_nested_registry() -> dict:
     es = get_es()
     registry = {}
     for index in INDEX_LIST:
+        logger.info(f"Building registry for: {index}")
         registry[index] = NestingRegistry.build(es, index)
 
     return registry

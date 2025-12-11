@@ -66,7 +66,7 @@ async def cnv_occurrence_query(
     {settings.cnv_occurrence_centric_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
-    {settings.cnv_occurrence_centric_agg_gql} {{ {settings.cnv_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+    {settings.cnv_occurrence_centric_agg_gql} {{ {settings.CNV_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
         _totalCount
         }}
     }}
@@ -89,7 +89,7 @@ async def cnv_occurrence_query(
     )
     total = glom(
         data,
-        f"data.{settings.cnv_occurrence_centric_agg_gql}.{settings.cnv_OCCURRENCE_CENTRIC_INDEX}._totalCount",
+        f"data.{settings.cnv_occurrence_centric_agg_gql}.{settings.CNV_OCCURRENCE_CENTRIC_INDEX}._totalCount",
     )
     return {
         "data": hits,

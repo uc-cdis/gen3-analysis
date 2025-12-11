@@ -22,7 +22,7 @@ class SSMSRBaseRequest(BaseModel):
 class SSMSRequest(SSMSRBaseRequest):
     filter: Optional[Dict] = Field(default=None, description="filter (optional)")
     start: Optional[int] = Field(default=0, ge=0, le=10000, description="start index")
-    size: Optional[int] = Field(default=10, ge=1, le=1000, description="page size")
+    size: Optional[int] = Field(default=10, ge=1, le=10000, description="page size")
 
 
 class SSMSIDRequest(SSMSRBaseRequest):

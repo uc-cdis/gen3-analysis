@@ -73,14 +73,9 @@ async def lifespan(app: FastAPI):
         graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url
     )
 
-    gdc_graphql_client = GDCGQLClient(
-        graphql_url="https://portal.gdc.cancer.gov/auth/api/v0/graphql",
-    )
-
     get_nested_registry()
 
     app.state.guppy_client = guppy_client
-    app.state.gdc_graphql_client = gdc_graphql_client
     app.state.gen3_sdk_auth = None
     if settings.DEPLOYMENT_TYPE == "dev":
         app.state.gen3_sdk_auth = Gen3SdkAuth(endpoint=settings.HOSTNAME)

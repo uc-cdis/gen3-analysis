@@ -93,7 +93,7 @@ async def cnv_query(
     hits = glom(data, f"data.{settings.cnv_centric_gql}")
     total = glom(
         data,
-        f"data.{settings.cnv_centric_agg_gql}.{settings.cnv_CENTRIC_INDEX}._totalCount",
+        f"data.{settings.cnv_centric_agg_gql}.{settings.CNV_CENTRIC_INDEX}._totalCount",
     )
     return {
         "data": hits,

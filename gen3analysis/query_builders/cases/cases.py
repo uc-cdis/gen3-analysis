@@ -35,8 +35,6 @@ async def get_item_ids(
               }}
     }}"""
 
-    logger.info(f"executing: query {graphql_query}, variables {guppy_filter}")
-
     data = await gen3_graphql_client.execute(
         access_token=access_token,
         query=graphql_query,
@@ -98,9 +96,6 @@ async def cohort_query(
             "query": cohort_query.replace("\n", "").replace("\r", ""),
             "variables": {"cohort_filters": cohort_filter},
         }
-        # TODO remove this
-        # with open("./logs/first_query.json", "w") as f:
-        #     f.write(json.dumps(q, indent=2))
 
         data = await gen3_graphql_client.execute(
             access_token=access_token,

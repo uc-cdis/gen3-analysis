@@ -38,6 +38,7 @@ class Settings(BaseSettings):
 
     MAX_CASES: Optional[int] = 10000
 
+    # Guppy default indices
     CASE_INDEX: Optional[str] = "case"
     FILE_INDEX: Optional[str] = "file"
     PROJECT_INDEX: Optional[str] = "project"
@@ -45,6 +46,7 @@ class Settings(BaseSettings):
     SSM_CENTRIC_INDEX: Optional[str] = "ssm_centric"
     SSM_OCCURRENCE_CENTRIC_INDEX: Optional[str] = "ssm_occurrence_centric"
     CNV_CENTRIC_INDEX: Optional[str] = "cnv_centric"
+    CNV_OCCURRENCE_CENTRIC_INDEX: Optional[str] = "cnv_occurrence_centric"
     CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
     CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
 
@@ -59,6 +61,7 @@ class Settings(BaseSettings):
     #     "release-ia24-202511102-001-mi_viz_open_1__ssm_centric"
     # )
 
+    # Elastic search indices for MMRF IA24
     ES_CASE_CENTRIC_INDEX: Optional[str] = (
         "all-ia-20251119-001-nn-mi_viz_open_1__case_centric"
     )
@@ -156,6 +159,16 @@ class Settings(BaseSettings):
     @property
     def cnv_centric_agg_gql(self) -> str:
         return Settings.compute_gql_agg_index(self.CNV_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def cnv_occurrence_centric_gql(self) -> str:
+        return Settings.compute_gql_index(self.CNV_OCCURRENCE_CENTRIC_INDEX)
+
+    @computed_field
+    @property
+    def cnv_occurrence_centric_agg_gql(self) -> str:
+        return Settings.compute_gql_agg_index(self.CVN_OCCURRENCE_CENTRIC_INDEX)
 
     @computed_field
     @property

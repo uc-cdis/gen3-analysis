@@ -17,7 +17,7 @@ DEFAULT_FIELDS = [
 
 @lru_cache
 def get_expandable_fields():
-    cnv_registry = get_nested_registry()[settings.ES_CNV_INDEX]
+    cnv_registry = get_nested_registry()[settings.CNV_OCCURRENCE_CENTRIC_INDEX]
     nested_fields = []
     # Access the internal _by_field dictionary which contains all field information
     for field_path, field_info in cnv_registry._by_field.items():

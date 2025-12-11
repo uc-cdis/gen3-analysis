@@ -61,8 +61,8 @@ async def ssms_occurrence_query(
     seen = set()
     query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
     query = f"""
-    query ssmsOccurrenceQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.ssm_occurrence_centric_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    query ssmsOccurrenceQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
+    {settings.ssm_occurrence_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
     {settings.ssm_occurrence_centric_agg_gql} {{ {settings.SSM_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{

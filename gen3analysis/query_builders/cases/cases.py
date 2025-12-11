@@ -145,8 +145,8 @@ async def cases_query(
             field_snippets.append(dot_notation_to_graphql(f))
 
     query = f"""
-    query casesMetadataQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.case_centric_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    query casesMetadataQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
+    {settings.case_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {build_fields_query_body(fields)}
             }}
     {settings.case_centric_agg_gql} {{ {settings.CASE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
@@ -160,7 +160,7 @@ async def cases_query(
         query=query,
         variables={
             "filter": filter,
-            "first": size,
+            "size": size,
             "offset": offset,
             "accessibility": "accessible",
         },

@@ -69,8 +69,8 @@ async def cnv_query(
     seen = set()
     query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
     query = f"""
-    query cnvQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.cnv_centric_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    query cnvQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
+    {settings.cnv_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
     {settings.cnv_centric_agg_gql} {{ {settings.CNV_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{

@@ -20,8 +20,8 @@ async def files_query(
     if fields is None:
         fields = ["file_id"]
     query = f"""
-    query filesQuery($filter: JSON, $first: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.file_gql}(first: $first, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
+    query filesQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
+    {settings.file_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility ) {{
             {build_fields_query_body(fields)}
     }}
     {settings.file_agg_gql} {{ {settings.FILE_INDEX}(filter:$filter, accessibility:$accessibility) {{
@@ -35,7 +35,7 @@ async def files_query(
         query=query,
         variables={
             "filter": filter,
-            "first": size,
+            "size": size,
             "offset": offset,
             "accessibility": "accessible",
         },

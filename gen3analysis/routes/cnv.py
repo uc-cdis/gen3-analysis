@@ -75,7 +75,7 @@ async def get_cnv(
 
 
 @cnv.get(
-    path="/{ssm_id}",
+    path="/{cnv_id}",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Query the cnv metadata for the cnv id",
@@ -97,7 +97,7 @@ async def get_cnv(
     },
 )
 async def get_cnv_by_id(
-    ssm_id: str = Path(..., description="SSM identifier"),
+    cnv_id: str = Path(..., description="CNV identifier"),
     fields: Optional[List[str]] = Query(default=None, description="fields (optional)"),
     expand: Optional[List[str]] = Query(default=None, description="expand (optional)"),
     access_token: Optional[str] = Cookie(default=None, alias="access_token"),
@@ -105,7 +105,7 @@ async def get_cnv_by_id(
 ):
     results = await cnv_id_query(
         gen3_graphql_client=gen3_graphql_client,
-        id=ssm_id,
+        id=cnv_id,
         fields=fields,
         expand=expand,
         access_token=access_token,

@@ -4,10 +4,13 @@ from functools import lru_cache
 
 from gen3analysis.gen3.es_client import get_nested_registry
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
+from gen3analysis.query_builders.utils.get_query_fields import get_query_fields
+from gen3analysis.query_builders.utils.normalize_csv_or_list import (
+    normalize_csv_or_list,
+)
 from gen3analysis.settings import settings
 from gen3analysis.utils.filterEdit import (
     dot_notation_to_graphql,
-    get_subfields,
 )
 
 DEFAULT_FIELDS = [
@@ -56,18 +59,9 @@ async def cnv_query(
     field_snippets: List[str] = []
 
     expandable_fields = get_expandable_fields()
-
-    if not fields:
-        field_snippets.extend(DEFAULT_FIELDS)
-
-    if expand:
-        for field in expand:
-            expand_fields = get_subfields(expandable_fields, field)
-            for f in expand_fields:
-                field_snippets.append(dot_notation_to_graphql(f))
-
-    seen = set()
-    query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
+    fields = normalize_csv_or_list(fields)
+    expand = normalize_csv_or_list(expand)
+    query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
     query cnvQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
     {settings.cnv_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
@@ -109,26 +103,10 @@ async def cnv_id_query(
     access_token: Optional[str] = None,
 ) -> Dict[str, Any]:
     field_snippets: List[str] = []
-
-    if not fields:
-        # Ensure DEFAULT_FIELDS is defined/imported appropriately
-        field_snippets.extend(DEFAULT_FIELDS)
-    else:
-        # Convert each requested field
-        for f in fields:
-            field_snippets.append(dot_notation_to_graphql(f))
-
     expandable_fields = get_expandable_fields()
-
-    # Handle expand
-    if expand:
-        for field in expand:
-            expand_fields = get_subfields(expandable_fields, field)
-            for f in expand_fields:
-                field_snippets.append(dot_notation_to_graphql(f))
-
-    seen = set()
-    query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
+    fields = normalize_csv_or_list(fields)
+    expand = normalize_csv_or_list(expand)
+    query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
 
     # Use the correct cnv index; adjust if your schema uses a different name
     query = f"""

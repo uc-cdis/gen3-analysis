@@ -3,12 +3,14 @@ from functools import lru_cache
 from glom import glom
 from gen3analysis.gen3.es_client import get_nested_registry
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
+from gen3analysis.query_builders.utils.get_query_fields import get_query_fields
+from gen3analysis.query_builders.utils.normalize_csv_or_list import (
+    normalize_csv_or_list,
+)
 from gen3analysis.settings import settings
 from gen3analysis.utils.filterEdit import (
     dot_notation_to_graphql,
-    get_subfields,
 )
-
 
 DEFAULT_FIELDS = [
     "cnv_occurrence_id",
@@ -49,18 +51,9 @@ async def cnv_occurrence_query(
     field_snippets: List[str] = []
 
     expandable_fields = get_expandable_fields()
-
-    if not fields:
-        field_snippets.extend(DEFAULT_FIELDS)
-
-    if expand:
-        for field in expand:
-            expand_fields = get_subfields(expandable_fields, field)
-            for f in expand_fields:
-                field_snippets.append(dot_notation_to_graphql(f))
-
-    seen = set()
-    query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
+    fields = normalize_csv_or_list(fields)
+    expand = normalize_csv_or_list(expand)
+    query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
     query cnvOccurrenceQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
     {settings.cnv_occurrence_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
@@ -104,28 +97,11 @@ async def cnv_occurrence_id_query(
     expand: Optional[List[str]] = None,
     access_token: Optional[str] = None,
 ) -> Dict[str, Any]:
-    field_snippets: List[str] = []
 
     expandable_fields = get_expandable_fields()
-
-    if not fields:
-        # Ensure DEFAULT_FIELDS is defined/imported appropriately
-        field_snippets.extend(DEFAULT_FIELDS)
-    else:
-        # Convert each requested field
-        for f in fields:
-            field_snippets.append(dot_notation_to_graphql(f))
-
-    # Handle expand
-    if expand:
-        for field in expand:
-            expand_fields = get_subfields(expandable_fields, field)
-            for f in expand_fields:
-                field_snippets.append(dot_notation_to_graphql(f))
-
-    seen = set()
-    query_fields = " ".join(x for x in field_snippets if not (x in seen or seen.add(x)))
-
+    fields = normalize_csv_or_list(fields)
+    expand = normalize_csv_or_list(expand)
+    query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
      query cnvOccurrenceIdQuery($filter: JSON, $accessibility: Accessibility) {{
      {settings.cnv_occurrence_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
@@ -133,8 +109,10 @@ async def cnv_occurrence_id_query(
              }}
     }}"""
 
+    # save query to file
+
     return await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
-        variables={"filter": {"in": {"cnv_id": [id]}}},
+        variables={"filter": {"in": {"cnv_occurrence_id": [id]}}},
     )

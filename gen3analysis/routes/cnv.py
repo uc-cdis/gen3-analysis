@@ -7,33 +7,33 @@ from starlette.responses import JSONResponse
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.query_builders.ssm.ssms import ssms_query, ssms_id_query
+from gen3analysis.query_builders.cnv.cnv import cnv_query, cnv_id_query
 
-ssms = APIRouter()
+cnv = APIRouter()
 
 
-class SSMSRBaseRequest(BaseModel):
+class CNVRBaseRequest(BaseModel):
     expand: Optional[List[str]] = Field(
         default=None, description="which fields to expand (optional)"
     )
     fields: Optional[List[str]] = Field(default=None, description="fields (optional)")
 
 
-class SSMSRequest(SSMSRBaseRequest):
+class CNVRequest(CNVRBaseRequest):
     filter: Optional[Dict] = Field(default=None, description="filter (optional)")
     start: Optional[int] = Field(default=0, ge=0, le=10000, description="start index")
-    size: Optional[int] = Field(default=10, ge=1, le=10000, description="page size")
+    size: Optional[int] = Field(default=10, ge=1, le=1000, description="page size")
 
 
-class SSMSIDRequest(SSMSRBaseRequest):
-    id: str = Field(default=None, description="ssms id")
+class CNVIDRequest(CNVRBaseRequest):
+    id: str = Field(default=None, description="cnv id")
 
 
-@ssms.post(
+@cnv.post(
     path="/",
     status_code=status.HTTP_200_OK,
-    description="Query the ssms metadata",
-    summary="Query ssms metadata",
+    description="Query the cnv metadata",
+    summary="Query cnv metadata",
     responses={
         status.HTTP_200_OK: {"description": "Successfully processed the query"},
         status.HTTP_400_BAD_REQUEST: {
@@ -50,8 +50,8 @@ class SSMSIDRequest(SSMSRBaseRequest):
         },
     },
 )
-async def get_ssms(
-    body: SSMSRequest,
+async def get_cnv(
+    body: CNVRequest,
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     access_token: Optional[str] = Cookie(default=None, alias="access_token"),
 ):
@@ -62,7 +62,7 @@ async def get_ssms(
     fields = body.fields
     gql_filter = parse_gql_filter(fltr)
 
-    results = await ssms_query(
+    results = await cnv_query(
         gen3_graphql_client=gen3_graphql_client,
         fields=fields,
         expand=expand,
@@ -74,14 +74,14 @@ async def get_ssms(
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)
 
 
-@ssms.get(
-    path="/{ssm_id}",
+@cnv.get(
+    path="/{cnv_id}",
     dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
-    description="Query the ssms metadata for the ssms id",
-    summary="Get ssms metadata",
+    description="Query the cnv metadata for the cnv id",
+    summary="Get cnv metadata",
     responses={
-        status.HTTP_200_OK: {"description": "Successfully processed the ssms query"},
+        status.HTTP_200_OK: {"description": "Successfully processed the cnv query"},
         status.HTTP_400_BAD_REQUEST: {
             "description": "The request body is missing required fields or has invalid values."
         },
@@ -96,16 +96,16 @@ async def get_ssms(
         },
     },
 )
-async def get_ssms_by_id(
-    ssm_id: str = Path(..., description="SSM identifier"),
+async def get_cnv_by_id(
+    cnv_id: str = Path(..., description="CNV identifier"),
     fields: Optional[List[str]] = Query(default=None, description="fields (optional)"),
     expand: Optional[List[str]] = Query(default=None, description="expand (optional)"),
     access_token: Optional[str] = Cookie(default=None, alias="access_token"),
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ):
-    results = await ssms_id_query(
+    results = await cnv_id_query(
         gen3_graphql_client=gen3_graphql_client,
-        id=ssm_id,
+        id=cnv_id,
         fields=fields,
         expand=expand,
         access_token=access_token,

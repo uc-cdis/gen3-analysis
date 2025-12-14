@@ -84,8 +84,8 @@ def compute_log2_uqfpkm(
     """
     Compute log2(uqfpkm + 1) transformation.
 
-    TODO: This is an unused util for now
-    We have log2 values in *_log2_uqfpkms.bin files already
+    TODO: This is an unused util assuming
+    we have log2 values in *_log2_uqfpkms.bin files already
 
     Args:
         uqfpkm_values: Array of uqfpkm values

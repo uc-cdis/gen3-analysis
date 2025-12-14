@@ -1,5 +1,95 @@
 components:
   schemas:
+    CNVOccurrenceRequest:
+      properties:
+        expand:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: which fields to expand (optional)
+          title: Expand
+        fields:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: filter (optional)
+          title: Filter
+        size:
+          anyOf:
+          - maximum: 1000.0
+            minimum: 1.0
+            type: integer
+          - type: 'null'
+          default: 10
+          description: page size
+          title: Size
+        start:
+          anyOf:
+          - maximum: 10000.0
+            minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 0
+          description: start index
+          title: Start
+      title: CNVOccurrenceRequest
+      type: object
+    CNVRequest:
+      properties:
+        expand:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: which fields to expand (optional)
+          title: Expand
+        fields:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: filter (optional)
+          title: Filter
+        size:
+          anyOf:
+          - maximum: 1000.0
+            minimum: 1.0
+            type: integer
+          - type: 'null'
+          default: 10
+          description: page size
+          title: Size
+        start:
+          anyOf:
+          - maximum: 10000.0
+            minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 0
+          description: start index
+          title: Start
+      title: CNVRequest
+      type: object
     CasesRequest:
       properties:
         fields:
@@ -362,7 +452,7 @@ components:
           title: Filter
         size:
           anyOf:
-          - maximum: 1000.0
+          - maximum: 10000.0
             minimum: 1.0
             type: integer
           - type: 'null'
@@ -616,6 +706,230 @@ paths:
       summary: Get case id metadata
       tags:
       - Cases
+  /cnv/:
+    post:
+      description: Query the cnv metadata
+      operationId: get_cnv_cnv__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CNVRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Query cnv metadata
+      tags:
+      - CNV
+  /cnv/{cnv_id}:
+    get:
+      description: Query the cnv metadata for the cnv id
+      operationId: get_cnv_by_id_cnv__cnv_id__get
+      parameters:
+      - description: CNV identifier
+        in: path
+        name: cnv_id
+        required: true
+        schema:
+          description: CNV identifier
+          title: Cnv Id
+          type: string
+      - description: fields (optional)
+        in: query
+        name: fields
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+      - description: expand (optional)
+        in: query
+        name: expand
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: expand (optional)
+          title: Expand
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the cnv query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Get cnv metadata
+      tags:
+      - CNV
+  /cnv_occurrence/:
+    post:
+      description: Query the cnv occurrence metadata
+      operationId: get_cnv_occurrence_cnv_occurrence__post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CNVOccurrenceRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Query cnv occurrence metadata
+      tags:
+      - CNV Occurrence
+  /cnv_occurrence/{cnv_id}:
+    get:
+      description: Query the cnv occurrence metadata for the cnv id
+      operationId: get_cnv_occurrence_by_id_cnv_occurrence__cnv_id__get
+      parameters:
+      - description: cnv occurrence identifier
+        in: path
+        name: cnv_id
+        required: true
+        schema:
+          description: cnv occurrence identifier
+          title: Cnv Id
+          type: string
+      - description: fields (optional)
+        in: query
+        name: fields
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields (optional)
+          title: Fields
+      - description: expand (optional)
+        in: query
+        name: expand
+        required: false
+        schema:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: expand (optional)
+          title: Expand
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the cnv query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      summary: Get cnv occurrence metadata
+      tags:
+      - CNV Occurrence
   /cohorts/query:
     post:
       description: Performs a cohort query and return the query for all items matching

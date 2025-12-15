@@ -1,5 +1,110 @@
 components:
   schemas:
+    AvailabilityRequest:
+      description: "Request body for POST /gene_expression/availability.\n\nAt least\
+        \ one of case_ids, gene_ids, case_filters, or cohort_id must be provided.\n\
+        \nNOTE: case_set_id and gene_set_id are NOT supported.\n\nAttributes:\n  \
+        \  case_ids: List of case UUIDs to check availability for\n    gene_ids: List\
+        \ of ENSEMBL gene IDs to check availability for\n    case_filters: Filter\
+        \ object for querying cases (GDC filter format)\n    cohort_id: Identifier\
+        \ for a saved cohort"
+      properties:
+        case_filters:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: A filter for cases
+          title: Case Filters
+        case_ids:
+          anyOf:
+          - items:
+              type: string
+            minItems: 1
+            type: array
+          - type: 'null'
+          description: A list of IDs for cases
+          title: Case Ids
+        cohort_id:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          description: An identifier for a cohort
+          title: Cohort Id
+        gene_ids:
+          anyOf:
+          - items:
+              type: string
+            minItems: 1
+            type: array
+          - type: 'null'
+          description: A list of human ENSEMBL gene IDs
+          title: Gene Ids
+      title: AvailabilityRequest
+      type: object
+    AvailabilityResponse:
+      description: "Response body for POST /gene_expression/availability.\n\nAttributes:\n\
+        \    genes: Availability information for genes (if gene_ids were requested)\n\
+        \    cases: Availability information for cases (if case_ids were requested)"
+      properties:
+        cases:
+          anyOf:
+          - $ref: '#/components/schemas/CaseResourceAvailability'
+          - type: 'null'
+          description: Case availability information
+        genes:
+          anyOf:
+          - $ref: '#/components/schemas/GeneResourceAvailability'
+          - type: 'null'
+          description: Gene availability information
+      title: AvailabilityResponse
+      type: object
+    CaseDetail:
+      description: "Detail about a single case expression data availability.\n\nAttributes:\n\
+        \    case_id: ID of the case\n    has_gene_expression_values: Whether expression\
+        \ data exists for this case"
+      properties:
+        case_id:
+          description: UUID of the case
+          title: Case Id
+          type: string
+        has_gene_expression_values:
+          description: Whether expression data exists for this case
+          title: Has Gene Expression Values
+          type: boolean
+      required:
+      - case_id
+      - has_gene_expression_values
+      title: CaseDetail
+      type: object
+    CaseResourceAvailability:
+      description: "Availability summary and details for cases.\n\nAttributes:\n \
+        \   with_gene_expression_count: Count of cases with expression data\n    without_gene_expression_count:\
+        \ Count of cases without expression data\n    details: List of individual\
+        \ case availability details"
+      properties:
+        details:
+          description: Individual case availability details
+          items:
+            $ref: '#/components/schemas/CaseDetail'
+          title: Details
+          type: array
+        with_gene_expression_count:
+          description: Count of cases with expression data
+          minimum: 0.0
+          title: With Gene Expression Count
+          type: integer
+        without_gene_expression_count:
+          description: Count of cases without expression data
+          minimum: 0.0
+          title: Without Gene Expression Count
+          type: integer
+      required:
+      - with_gene_expression_count
+      - without_gene_expression_count
+      title: CaseResourceAvailability
+      type: object
     CasesRequest:
       properties:
         fields:
@@ -213,6 +318,134 @@ components:
           title: Size
       title: FilesRequest
       type: object
+    GeneDetail:
+      description: "Detail about a single gene expression data availability.\n\nAttributes:\n\
+        \    gene_id: ENSEMBL gene ID\n    has_gene_expression_values: Whether expression\
+        \ data exists for this gene"
+      properties:
+        gene_id:
+          description: ENSEMBL gene ID
+          title: Gene Id
+          type: string
+        has_gene_expression_values:
+          description: Whether expression data exists for this gene
+          title: Has Gene Expression Values
+          type: boolean
+      required:
+      - gene_id
+      - has_gene_expression_values
+      title: GeneDetail
+      type: object
+    GeneResourceAvailability:
+      description: "Availability summary and details for genes.\n\nAttributes:\n \
+        \   with_gene_expression_count: Count of genes with expression data\n    without_gene_expression_count:\
+        \ Count of genes without expression data\n    details: List of individual\
+        \ gene availability details"
+      properties:
+        details:
+          description: Individual gene availability details
+          items:
+            $ref: '#/components/schemas/GeneDetail'
+          title: Details
+          type: array
+        with_gene_expression_count:
+          description: Count of genes with expression data
+          minimum: 0.0
+          title: With Gene Expression Count
+          type: integer
+        without_gene_expression_count:
+          description: Count of genes without expression data
+          minimum: 0.0
+          title: Without Gene Expression Count
+          type: integer
+      required:
+      - with_gene_expression_count
+      - without_gene_expression_count
+      title: GeneResourceAvailability
+      type: object
+    GeneSelectionRequest:
+      description: "Request body for POST /gene_expression/gene_selection.\n\nMust\
+        \ provide exactly one way to specify cases and exactly one way to specify\
+        \ genes.\n\nNote: case_set_id and gene_set_id are NOT supported in Gen3.\n\
+        \nAttributes:\n    case_ids: List of case UUIDs\n    case_filters: Filter\
+        \ object for querying cases\n    cohort_id: Identifier for a saved cohort\n\
+        \    gene_ids: List of ENSEMBL gene IDs\n    gene_type: Type of genes (e.g.,\
+        \ \"protein_coding\" for all protein-coding genes)\n    selection_size: Maximum\
+        \ number of genes to select (required, >= 1)\n    min_median_log2_uqfpkm:\
+        \ Minimum median log2(FPKM-UQ+1) threshold for eligibility"
+      properties:
+        case_filters:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: A filter for GDC cases
+          title: Case Filters
+        case_ids:
+          anyOf:
+          - items:
+              type: string
+            minItems: 1
+            type: array
+          - type: 'null'
+          description: A list of UUIDs for cases
+          title: Case Ids
+        cohort_id:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          description: An identifier for a saved cohort
+          title: Cohort Id
+        gene_ids:
+          anyOf:
+          - items:
+              type: string
+            minItems: 1
+            type: array
+          - type: 'null'
+          description: A list of human ENSEMBL gene IDs
+          title: Gene Ids
+        gene_type:
+          anyOf:
+          - $ref: '#/components/schemas/GeneType'
+          - type: 'null'
+          description: The type of genes (e.g., protein_coding)
+        min_median_log2_uqfpkm:
+          default: 1.0
+          description: The inclusive minimum value for the median log2(FPKM-UQ+1)
+          title: Min Median Log2 Uqfpkm
+          type: number
+        selection_size:
+          description: The maximum number of genes to select
+          minimum: 1.0
+          title: Selection Size
+          type: integer
+      required:
+      - selection_size
+      title: GeneSelectionRequest
+      type: object
+    GeneSelectionResponse:
+      description: "Response body for POST /gene_expression/gene_selection.\n\nAttributes:\n\
+        \    genes: List of selected genes, sorted by stddev descending"
+      properties:
+        genes:
+          description: Selected genes sorted by standard deviation descending
+          items:
+            $ref: '#/components/schemas/SelectedGene'
+          title: Genes
+          type: array
+      required:
+      - genes
+      title: GeneSelectionResponse
+      type: object
+    GeneType:
+      description: "Type of genes to include in queries.\n\nAttributes:\n    PROTEIN_CODING:\
+        \ All protein-coding genes"
+      enum:
+      - protein_coding
+      title: GeneType
+      type: string
     GenomicSurvivalRequest:
       properties:
         case_filter:
@@ -278,6 +511,14 @@ components:
       - cohort2
       title: IntersectionRequest
       type: object
+    OutputFormat:
+      description: "Output format for gene expression values.\n\nAttributes:\n   \
+        \ TSV: Tab-separated values (default)\n    JSON: JSON format"
+      enum:
+      - tsv
+      - json
+      title: OutputFormat
+      type: string
     PlotRequest:
       properties:
         filters:
@@ -380,6 +621,44 @@ components:
           title: Start
       title: SSMSRequest
       type: object
+    SelectedGene:
+      description: "A gene selected by the gene selection algorithm.\n\nAttributes:\n\
+        \    gene_id: ENSEMBL gene ID\n    symbol: Gene symbol\n    log2_uqfpkm_stddev:\
+        \ Standard deviation of log2(uqfpkm+1) across cases\n    log2_uqfpkm_median:\
+        \ Median of log2(uqfpkm+1) across cases"
+      properties:
+        gene_id:
+          description: ENSEMBL gene ID
+          title: Gene Id
+          type: string
+        log2_uqfpkm_median:
+          description: Median of log2(uqfpkm+1) across cases
+          title: Log2 Uqfpkm Median
+          type: number
+        log2_uqfpkm_stddev:
+          description: Standard deviation of log2(uqfpkm+1) across cases
+          title: Log2 Uqfpkm Stddev
+          type: number
+        symbol:
+          description: Gene symbol
+          title: Symbol
+          type: string
+      required:
+      - gene_id
+      - symbol
+      - log2_uqfpkm_stddev
+      - log2_uqfpkm_median
+      title: SelectedGene
+      type: object
+    TSVUnits:
+      description: "Units for gene expression values in TSV output format.\n\nAttributes:\n\
+        \    UQFPKM: Raw FPKM-UQ values (default)\n    MEDIAN_CENTERED_LOG2_UQFPKM:\
+        \ Median-centered log2(FPKM-UQ+1) values"
+      enum:
+      - uqfpkm
+      - median_centered_log2_uqfpkm
+      title: TSVUnits
+      type: string
     TopGeneChartRequest:
       properties:
         cohort_filter:
@@ -472,6 +751,58 @@ components:
       - msg
       - type
       title: ValidationError
+      type: object
+    ValuesRequest:
+      description: "Request body for POST /gene_expression/values.\n\nMust provide\
+        \ at least one way to specify cases (case_ids, case_filters, or cohort_id)\n\
+        and at least one way to specify genes (gene_ids).\n\nNote: case_set_id and\
+        \ gene_set_id are NOT supported in Gen3.\n\nAttributes:\n    case_ids: List\
+        \ of case UUIDs\n    gene_ids: List of ENSEMBL gene IDs\n    case_filters:\
+        \ Filter object for querying cases\n    cohort_id: Identifier for a saved\
+        \ cohort\n    format: Output format (tsv or json), defaults to tsv\n    tsv_units:\
+        \ Units for expression values if format=tsv"
+      properties:
+        case_filters:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: A filter for GDC cases
+          title: Case Filters
+        case_ids:
+          anyOf:
+          - items:
+              type: string
+            minItems: 1
+            type: array
+          - type: 'null'
+          description: A list of UUIDs for cases
+          title: Case Ids
+        cohort_id:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          description: An identifier for a saved cohort
+          title: Cohort Id
+        format:
+          $ref: '#/components/schemas/OutputFormat'
+          default: tsv
+          description: The data format of the response
+        gene_ids:
+          anyOf:
+          - items:
+              type: string
+            minItems: 1
+            type: array
+          - type: 'null'
+          description: A list of human ENSEMBL gene IDs
+          title: Gene Ids
+        tsv_units:
+          $ref: '#/components/schemas/TSVUnits'
+          default: uqfpkm
+          description: The units of gene expression data if format=tsv
+      title: ValuesRequest
       type: object
   securitySchemes:
     HTTPBearer:
@@ -884,6 +1215,95 @@ paths:
       summary: Get file id metadata
       tags:
       - Files
+  /gene_expression/availability:
+    post:
+      description: "Check the availability of gene expression data for cases and/or\
+        \ genes.\n\n    Returns counts and details about which cases and genes have\
+        \ gene expression data available."
+      operationId: availability_gene_expression_availability_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Check gene expression data availability
+      tags:
+      - Gene Expression
+  /gene_expression/gene_selection:
+    post:
+      description: "Select the most variably expressed genes for a collection of cases\
+        \ and genes.\n\n    Selection algorithm:\n    1. For each gene, compute log2(FPKM-UQ\
+        \ + 1) values (pre-computed)\n    2. Exclude genes with stddev \u2248 0 (no\
+        \ variation)\n    3. Exclude genes with median < min_median_log2_uqfpkm\n\
+        \    4. Sort remaining genes by stddev descending\n    5. Return top selection_size\
+        \ genes\n\n    Note: case_set_id and gene_set_id parameters are NOT supported\
+        \ in Gen3."
+      operationId: gene_selection_gene_expression_gene_selection_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneSelectionRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneSelectionResponse'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Select most variably expressed genes
+      tags:
+      - Gene Expression
+  /gene_expression/values:
+    post:
+      description: "Get gene expression values for the specified cases and genes.\n\
+        \n    Returns expression values in TSV (default) or JSON format.\n\n    For\
+        \ TSV format, use tsv_units to specify the units:\n    - uqfpkm: Raw FPKM-UQ\
+        \ values (default)\n    - median_centered_log2_uqfpkm: Median-centered log2(FPKM-UQ+1)\
+        \ values"
+      operationId: values_gene_expression_values_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValuesRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Get gene expression values
+      tags:
+      - Gene Expression
   /genomic/gene_facets:
     post:
       operationId: gene_facets_genomic_gene_facets_post

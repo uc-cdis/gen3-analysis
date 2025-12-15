@@ -75,6 +75,14 @@ class Settings(BaseSettings):
         "all-ia-20251119-001-nn-mi_viz_open_1__ssm_occurrence_centric"
     )
 
+    # Gene Expression API settings
+    # Path to SQLite database with gene/case metadata
+    GENE_EXPRESSION_SQLITE_PATH: Optional[str] = None
+    # Path to directory containing binary expression value files
+    GENE_EXPRESSION_DATA_DIR: Optional[str] = None
+    # Enable/disable gene expression API endpoints
+    GENE_EXPRESSION_ENABLED: bool = True
+
     @classmethod
     def compute_gql_index(cls, index: str) -> str:
         return f"{snake_to_pascal(index)}_{index}"

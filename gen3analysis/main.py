@@ -19,11 +19,12 @@ from gen3analysis.routes.cases import cases
 from gen3analysis.routes.cohorts import cohorts
 from gen3analysis.routes.compare import compare
 from gen3analysis.routes.files import files
+from gen3analysis.routes.gene_expression import gene_expression
 from gen3analysis.routes.genomic import genomic
 from gen3analysis.routes.ssm_occurrence import ssms_occurrence
 from gen3analysis.routes.ssms import ssms
 from gen3analysis.routes.survival import survival
-from gen3analysis.settings import settings
+from gen3analysis.settings import settings, logger
 
 route_aggregator = APIRouter()
 
@@ -38,6 +39,7 @@ route_definitions = [
     (files, "/files", ["Files"]),
     (ssms, "/ssms", ["SSMS"]),
     (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
+    (gene_expression, "/gene_expression", ["Gene Expression"]),
 ]
 
 for router, prefix, tags in route_definitions:
@@ -88,6 +90,32 @@ async def lifespan(app: FastAPI):
         ),
     )
 
+    # Initialize gene expression data store
+    if settings.GENE_EXPRESSION_ENABLED:
+        from gen3analysis.gene_expression.data_store import GeneExpressionDataStore
+
+        try:
+            if (
+                settings.GENE_EXPRESSION_SQLITE_PATH
+                and settings.GENE_EXPRESSION_DATA_DIR
+            ):
+                logger.info(
+                    "Initializing gene expression data store from %s",
+                    settings.GENE_EXPRESSION_DATA_DIR,
+                )
+                GeneExpressionDataStore.get_instance(
+                    sqlite_path=settings.GENE_EXPRESSION_SQLITE_PATH,
+                    data_dir=settings.GENE_EXPRESSION_DATA_DIR,
+                )
+                logger.info("Gene expression data store initialized successfully")
+            else:
+                logger.warning(
+                    "Gene expression data paths not configured and fallback disabled"
+                )
+        except Exception as e:
+            logger.error("Failed to initialize gene expression data store: %s", e)
+            raise
+
     yield
 
     # teardown
@@ -95,6 +123,12 @@ async def lifespan(app: FastAPI):
     app.state.gdc_graphql_client = None
     app.state.gen3_sdk_auth = None
     app.state.arborist_client = None
+
+    # Reset gene expression data store
+    if settings.GENE_EXPRESSION_ENABLED:
+        from gen3analysis.gene_expression.data_store import GeneExpressionDataStore
+
+        GeneExpressionDataStore.reset_instance()
 
     # NOTE: multiprocess.mark_process_dead is called by the gunicorn "child_exit" function for each
     # worker. "child_exit" is defined in the gunicorn.conf.py

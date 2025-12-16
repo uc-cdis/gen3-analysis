@@ -60,51 +60,6 @@ components:
           description: Gene availability information
       title: AvailabilityResponse
       type: object
-    CaseDetail:
-      description: "Detail about a single case expression data availability.\n\nAttributes:\n\
-        \    case_id: ID of the case\n    has_gene_expression_values: Whether expression\
-        \ data exists for this case"
-      properties:
-        case_id:
-          description: UUID of the case
-          title: Case Id
-          type: string
-        has_gene_expression_values:
-          description: Whether expression data exists for this case
-          title: Has Gene Expression Values
-          type: boolean
-      required:
-      - case_id
-      - has_gene_expression_values
-      title: CaseDetail
-      type: object
-    CaseResourceAvailability:
-      description: "Availability summary and details for cases.\n\nAttributes:\n \
-        \   with_gene_expression_count: Count of cases with expression data\n    without_gene_expression_count:\
-        \ Count of cases without expression data\n    details: List of individual\
-        \ case availability details"
-      properties:
-        details:
-          description: Individual case availability details
-          items:
-            $ref: '#/components/schemas/CaseDetail'
-          title: Details
-          type: array
-        with_gene_expression_count:
-          description: Count of cases with expression data
-          minimum: 0.0
-          title: With Gene Expression Count
-          type: integer
-        without_gene_expression_count:
-          description: Count of cases without expression data
-          minimum: 0.0
-          title: Without Gene Expression Count
-          type: integer
-      required:
-      - with_gene_expression_count
-      - without_gene_expression_count
-      title: CaseResourceAvailability
-      type: object
     CNVOccurrenceRequest:
       properties:
         expand:
@@ -194,6 +149,51 @@ components:
           description: start index
           title: Start
       title: CNVRequest
+      type: object
+    CaseDetail:
+      description: "Detail about a single case expression data availability.\n\nAttributes:\n\
+        \    case_id: ID of the case\n    has_gene_expression_values: Whether expression\
+        \ data exists for this case"
+      properties:
+        case_id:
+          description: UUID of the case
+          title: Case Id
+          type: string
+        has_gene_expression_values:
+          description: Whether expression data exists for this case
+          title: Has Gene Expression Values
+          type: boolean
+      required:
+      - case_id
+      - has_gene_expression_values
+      title: CaseDetail
+      type: object
+    CaseResourceAvailability:
+      description: "Availability summary and details for cases.\n\nAttributes:\n \
+        \   with_gene_expression_count: Count of cases with expression data\n    without_gene_expression_count:\
+        \ Count of cases without expression data\n    details: List of individual\
+        \ case availability details"
+      properties:
+        details:
+          description: Individual case availability details
+          items:
+            $ref: '#/components/schemas/CaseDetail'
+          title: Details
+          type: array
+        with_gene_expression_count:
+          description: Count of cases with expression data
+          minimum: 0.0
+          title: With Gene Expression Count
+          type: integer
+        without_gene_expression_count:
+          description: Count of cases without expression data
+          minimum: 0.0
+          title: Without Gene Expression Count
+          type: integer
+      required:
+      - with_gene_expression_count
+      - without_gene_expression_count
+      title: CaseResourceAvailability
       type: object
     CasesRequest:
       properties:

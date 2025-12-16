@@ -1,7 +1,6 @@
 from typing import Dict, Optional, List, Any
 from functools import lru_cache
 from glom import glom
-
 from gen3analysis.gen3.es_client import get_nested_registry
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.query_builders.utils.get_query_fields import get_query_fields
@@ -14,27 +13,16 @@ from gen3analysis.utils.filterEdit import (
 )
 
 DEFAULT_FIELDS = [
-    "start_position",
-    "gene_aa_change",
-    "reference_allele",
-    "ncbi_build",
-    "cosmic_id",
-    "mutation_subtype",
-    "mutation_type",
-    "chromosome",
-    "genomic_dna_change",
-    "tumor_allele",
-    "end_position",
-    "ssm_id",
+    "cnv_occurrence_id",
 ]
 
 
 @lru_cache
 def get_expandable_fields():
-    ssm_registry = get_nested_registry()[settings.ES_SSM_CENTRIC_INDEX]
+    cnv_registry = get_nested_registry()[settings.CNV_OCCURRENCE_CENTRIC_INDEX]
     nested_fields = []
     # Access the internal _by_field dictionary which contains all field information
-    for field_path, field_info in ssm_registry._by_field.items():
+    for field_path, field_info in cnv_registry._by_field.items():
         # Check if this field is nested (has nested_paths in its ancestry)
         if len(field_info.nested_paths) > 0:
             # Add all fields that are within a nested path
@@ -49,7 +37,7 @@ def process_item_fields(fields):
     return results
 
 
-async def ssms_query(
+async def cnv_occurrence_query(
     gen3_graphql_client: GuppyGQLClient,
     filter=None,
     fields=None,
@@ -67,13 +55,13 @@ async def ssms_query(
     expand = normalize_csv_or_list(expand)
     query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
-    query ssmsQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.ssm_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    query cnvOccurrenceQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
+    {settings.cnv_occurrence_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
-    {settings.ssm_centric_agg_gql} {{ {settings.SSM_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
-            _totalCount
-         }}
+    {settings.cnv_occurrence_centric_agg_gql} {{ {settings.CNV_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+        _totalCount
+        }}
     }}
    }}"""
 
@@ -88,10 +76,13 @@ async def ssms_query(
         },
     )
 
-    hits = glom(data, f"data.{settings.ssm_centric_gql}")
+    hits = glom(
+        data,
+        f"data.{settings.cnv_occurrence_centric_gql}",
+    )
     total = glom(
         data,
-        f"data.{settings.ssm_centric_agg_gql}.{settings.SSM_CENTRIC_INDEX}._totalCount",
+        f"data.{settings.cnv_occurrence_centric_agg_gql}.{settings.CNV_OCCURRENCE_CENTRIC_INDEX}._totalCount",
     )
     return {
         "data": hits,
@@ -99,32 +90,29 @@ async def ssms_query(
     }
 
 
-async def ssms_id_query(
+async def cnv_occurrence_id_query(
     gen3_graphql_client: GuppyGQLClient,
     id: str,
     fields: Optional[List[str]] = None,
     expand: Optional[List[str]] = None,
     access_token: Optional[str] = None,
 ) -> Dict[str, Any]:
-    field_snippets: List[str] = []
 
     expandable_fields = get_expandable_fields()
     fields = normalize_csv_or_list(fields)
     expand = normalize_csv_or_list(expand)
     query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
-
-    # Use the correct SSM index; adjust if your schema uses a different name
-    index_name = settings.SSM_CENTRIC_INDEX
-
     query = f"""
-    query ssmsQuery($filter: JSON, $accessibility: Accessibility) {{
-    {settings.ssm_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
-         {query_fields}
-         }}
+     query cnvOccurrenceIdQuery($filter: JSON, $accessibility: Accessibility) {{
+     {settings.cnv_occurrence_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
+             {query_fields}
+             }}
     }}"""
+
+    # save query to file
 
     return await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,
-        variables={"filter": {"in": {"ssm_id": [id]}}},
+        variables={"filter": {"in": {"cnv_occurrence_id": [id]}}},
     )

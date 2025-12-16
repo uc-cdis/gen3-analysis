@@ -23,6 +23,8 @@ from gen3analysis.routes.gene_expression import gene_expression
 from gen3analysis.routes.genomic import genomic
 from gen3analysis.routes.ssm_occurrence import ssms_occurrence
 from gen3analysis.routes.ssms import ssms
+from gen3analysis.routes.cnv import cnv
+from gen3analysis.routes.cnv_occurrence import cnv_occurrence
 from gen3analysis.routes.survival import survival
 from gen3analysis.settings import settings, logger
 
@@ -40,6 +42,8 @@ route_definitions = [
     (ssms, "/ssms", ["SSMS"]),
     (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
     (gene_expression, "/gene_expression", ["Gene Expression"]),
+    (cnv, "/cnv", ["CNV"]),
+    (cnv_occurrence, "/cnv_occurrence", ["CNV Occurrence"]),
 ]
 
 for router, prefix, tags in route_definitions:
@@ -71,14 +75,9 @@ async def lifespan(app: FastAPI):
         graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url
     )
 
-    gdc_graphql_client = GDCGQLClient(
-        graphql_url="https://portal.gdc.cancer.gov/auth/api/v0/graphql",
-    )
-
     get_nested_registry()
 
     app.state.guppy_client = guppy_client
-    app.state.gdc_graphql_client = gdc_graphql_client
     app.state.gen3_sdk_auth = None
     if settings.DEPLOYMENT_TYPE == "dev":
         app.state.gen3_sdk_auth = Gen3SdkAuth(endpoint=settings.HOSTNAME)

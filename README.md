@@ -6,6 +6,20 @@
 
 The Gen3 Analysis service allows users to run analysis queries on Gen3 data.
 
+## Getting Started
+
+### Installation
+assume you have poetry installed:
+```bash
+poetry install
+```
+
+### Running the server
+```bash
+poetry run uvicorn gen3analysis.main:app_instance --reload
+```
+Note: the --reload flag is optional and will reload the server on code changes
+
 ## Details
 
 The server is built with [FastAPI](https://fastapi.tiangolo.com/) and packaged with [Poetry](https://poetry.eustace.io/).

@@ -50,18 +50,7 @@ class Settings(BaseSettings):
     CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
     CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
 
-    # IA14
-    # ES_CASE_CENTRIC_INDEX: Optional[str] = "all-ia-20251113-003-nn-mi_viz_open_1__case_centric"
-    # ES_CASE_INDEX: Optional[str] = "ia14-20251017_case"
-    # ES_FILE_INDEX: Optional[str] = "ia14-20251017_file"
-    # ES_PROJECT_INDEX: Optional[str] = "ia14-20251017_project"
-    # ES_GENE_CENTRIC_INDEX: Optional[str] = "release-ia24-202511102-001-mi_viz_open_1__gene_centric"
-    # ES_SSM_CENTRIC_INDEX: Optional[str] = "release-ia24-202511102-001-mi_viz_open_1__ssm_centric"
-    # ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
-    #     "release-ia24-202511102-001-mi_viz_open_1__ssm_centric"
-    # )
-
-    # Elastic search indices for MMRF IA24
+    # Elastic search indices for MMRF and GDC
     ES_CASE_CENTRIC_INDEX: Optional[str] = (
         "all-ia-20251119-001-nn-mi_viz_open_1__case_centric"
     )
@@ -77,6 +66,8 @@ class Settings(BaseSettings):
     ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
         "all-ia-20251119-001-nn-mi_viz_open_1__ssm_occurrence_centric"
     )
+    ES_CNV_CENTRIC_INDEX: Optional[str] = "cvn_centric"
+    ES_CNV_OCCURRENCE_INDEX: Optional[str] = "cnv_occurrence_centric"
 
     # Gene Expression API settings
     # Path to SQLite database with gene/case metadata
@@ -85,10 +76,6 @@ class Settings(BaseSettings):
     GENE_EXPRESSION_DATA_DIR: Optional[str] = None
     # Enable/disable gene expression API endpoints
     GENE_EXPRESSION_ENABLED: bool = True
-
-    ES_CNV_CENTRIC_INDEX: Optional[str] = "cvn_centric"
-
-    ES_CNV_OCCURRENCE_INDEX: Optional[str] = "cnv_occurrence_centric"
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:

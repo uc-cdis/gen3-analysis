@@ -22,7 +22,13 @@ INDEX_LIST = [
 @lru_cache
 def get_es() -> Elasticsearch:
     logger.info(f"Setting up connection to ES: {hosts}")
-    kwargs = {"hosts": hosts, "use_ssl": settings.ES_VERIFY_SSL, "request_timeout": 120}
+    kwargs = {
+        "hosts": hosts,
+        "use_ssl": settings.ES_VERIFY_SSL,
+        "request_timeout": settings.ES_TIMEOUT,
+        "timeout": settings.ES_TIMEOUT,
+        "retry_on_timeout": True,
+    }
     return Elasticsearch(**kwargs)
 
 

@@ -11,7 +11,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from gen3analysis.auth import Gen3SdkAuth
-from gen3analysis.gdc.graphqlQuery import GDCGQLClient
 from gen3analysis.gen3.es_client import get_nested_registry
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 from gen3analysis.routes.basic import basic_router

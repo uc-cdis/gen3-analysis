@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     )
     ES_VERIFY_SSL: Optional[bool] = False
     ES_CA_CERT: Optional[str] = None
+    ES_TIMEOUT: int = 30
 
     MAX_CASES: Optional[int] = 10000
 

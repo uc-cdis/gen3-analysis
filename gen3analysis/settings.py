@@ -52,21 +52,13 @@ class Settings(BaseSettings):
     CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
 
     # Elastic search indices for MMRF and GDC
-    ES_CASE_CENTRIC_INDEX: Optional[str] = (
-        "all-ia-20251119-001-nn-mi_viz_open_1__case_centric"
-    )
-    ES_CASE_INDEX: Optional[str] = "all-ia-20251119-001-nn_case"
-    ES_FILE_INDEX: Optional[str] = "all-ia-20251119-001-nn_file"
-    ES_PROJECT_INDEX: Optional[str] = "all-ia-20251119-001-nn_project"
-    ES_GENE_CENTRIC_INDEX: Optional[str] = (
-        "all-ia-20251119-001-nn-mi_viz_open_1__gene_centric"
-    )
-    ES_SSM_CENTRIC_INDEX: Optional[str] = (
-        "all-ia-20251119-001-nn-mi_viz_open_1__ssm_centric"
-    )
-    ES_SSM_OCCURRENCE_INDEX: Optional[str] = (
-        "all-ia-20251119-001-nn-mi_viz_open_1__ssm_occurrence_centric"
-    )
+    ES_CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
+    ES_CASE_INDEX: Optional[str] = "case"
+    ES_FILE_INDEX: Optional[str] = "file"
+    ES_PROJECT_INDEX: Optional[str] = "project"
+    ES_GENE_CENTRIC_INDEX: Optional[str] = "gene_centric"
+    ES_SSM_CENTRIC_INDEX: Optional[str] = "ssm_centric"
+    ES_SSM_OCCURRENCE_INDEX: Optional[str] = "ssm_occurrence_centric"
     ES_CNV_CENTRIC_INDEX: Optional[str] = "cvn_centric"
     ES_CNV_OCCURRENCE_INDEX: Optional[str] = "cnv_occurrence_centric"
 

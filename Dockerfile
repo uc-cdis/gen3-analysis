@@ -34,7 +34,7 @@ RUN dnf -y install vim
 
 ENV GENE_EXPRESSION_SQLITE_PATH=/opt/mmrf_gene_expression_test_data/schemaless.sqlite3
 ENV GENE_EXPRESSION_DATA_DIR=/opt/mmrf_gene_expression_test_data/mmrf_test_data
-ENV GENE_EXPRESSION_ENABLED=true
+ENV GENE_EXPRESSION_ENABLED=false
 
 # Switch to non-root user 'gen3' for the serving process
 USER gen3

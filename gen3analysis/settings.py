@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     ES_GENE_CENTRIC_INDEX: Optional[str] = "gene_centric"
     ES_SSM_CENTRIC_INDEX: Optional[str] = "ssm_centric"
     ES_SSM_OCCURRENCE_INDEX: Optional[str] = "ssm_occurrence_centric"
-    ES_CNV_CENTRIC_INDEX: Optional[str] = "cvn_centric"
+    ES_CNV_CENTRIC_INDEX: Optional[str] = "cnv_centric"
     ES_CNV_OCCURRENCE_INDEX: Optional[str] = "cnv_occurrence_centric"
 
     # Gene Expression API settings

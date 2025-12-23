@@ -68,10 +68,10 @@ async def ssms_query(
     query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
     query ssmsQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.ssm_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    hits: {settings.ssm_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
-    {settings.ssm_centric_agg_gql} {{ {settings.SSM_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+    {settings.ssm_centric_agg_gql} {{ totals: {settings.SSM_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
             _totalCount
          }}
     }}
@@ -118,7 +118,7 @@ async def ssms_id_query(
 
     query = f"""
     query ssmsQuery($filter: JSON, $accessibility: Accessibility) {{
-    {settings.ssm_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
+    hits: {settings.ssm_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
          {query_fields}
          }}
     }}"""

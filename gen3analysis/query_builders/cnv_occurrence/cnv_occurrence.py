@@ -59,7 +59,7 @@ async def cnv_occurrence_query(
     {settings.cnv_occurrence_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
-    {settings.cnv_occurrence_centric_agg_gql} {{ {settings.CNV_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+    {settings.cnv_occurrence_centric_agg_gql} {{ totals: {settings.CNV_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
         _totalCount
         }}
     }}
@@ -104,7 +104,7 @@ async def cnv_occurrence_id_query(
     query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
      query cnvOccurrenceIdQuery($filter: JSON, $accessibility: Accessibility) {{
-     {settings.cnv_occurrence_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
+     hits: {settings.cnv_occurrence_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
              {query_fields}
              }}
     }}"""

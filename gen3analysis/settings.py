@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     # Path to directory containing binary expression value files
     GENE_EXPRESSION_DATA_DIR: Optional[str] = None
     # Enable/disable gene expression API endpoints
-    GENE_EXPRESSION_ENABLED: bool = True
+    GENE_EXPRESSION_ENABLED: bool = False
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:

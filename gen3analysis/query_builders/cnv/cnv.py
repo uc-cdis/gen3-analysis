@@ -64,10 +64,10 @@ async def cnv_query(
     query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
     query cnvQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.cnv_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    hits: {settings.cnv_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
-    {settings.cnv_centric_agg_gql} {{ {settings.CNV_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+    {settings.cnv_centric_agg_gql} {{ totals: {settings.CNV_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
             _totalCount
          }}
     }}
@@ -111,7 +111,7 @@ async def cnv_id_query(
     # Use the correct cnv index; adjust if your schema uses a different name
     query = f"""
     query cnvQuery($filter: JSON, $accessibility: Accessibility) {{
-    {settings.cnv_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
+    hits: {settings.cnv_centric_gql}(filter:$filter, first:1, offset:0, accessibility:$accessibility) {{
          {query_fields}
          }}
     }}"""

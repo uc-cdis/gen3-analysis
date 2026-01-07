@@ -2,7 +2,27 @@ from typing import Optional
 from cdislogging import get_logger
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import os
+from pathlib import Path
+import os, sys
+
+
+def _running_under_pytest() -> bool:
+    return "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
+
+
+def _select_env_file() -> Optional[str]:
+    # gen3analysis/settings.py -> project root is ../
+    project_root = Path(__file__).resolve().parent.parent
+    project_root_env = project_root / ".env"
+    tests_env = project_root / "tests" / ".env"
+
+    if _running_under_pytest() and tests_env.exists():
+        return str(tests_env)
+
+    if project_root_env.exists():
+        return str(project_root_env)
+
+    return None
 
 
 def snake_to_pascal(snake_case_string):
@@ -175,11 +195,9 @@ class Settings(BaseSettings):
     def case_centric_agg_gql(self) -> str:
         return Settings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
 
-    _env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
-
     model_config = SettingsConfigDict(
         # If the .env file is missing (common in CI / containers), just skip it.
-        env_file=_env_path if os.path.exists(_env_path) else None,
+        env_file=_select_env_file(),
         env_file_encoding="utf-8",
         extra="ignore",
     )

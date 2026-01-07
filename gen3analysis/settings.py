@@ -67,11 +67,15 @@ class Settings(BaseSettings):
 
     # Gene Expression API settings
     # Path to SQLite database with gene/case metadata
-    GENE_EXPRESSION_SQLITE_PATH: Optional[str] = None
+    GENE_EXPRESSION_SQLITE_PATH: Optional[str] = (
+        "data/mmrf_gene_expression_test_data/schemaless.sqlite3"
+    )
     # Path to a directory containing binary expression value files
-    GENE_EXPRESSION_DATA_DIR: Optional[str] = None
+    GENE_EXPRESSION_DATA_DIR: Optional[str] = (
+        "data/mmrf_gene_expression_test_data/mmrf_test_data"
+    )
     # Enable/disable gene expression API endpoints
-    GENE_EXPRESSION_ENABLED: bool = False
+    GENE_EXPRESSION_ENABLED: bool = True
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:
@@ -171,8 +175,11 @@ class Settings(BaseSettings):
     def case_centric_agg_gql(self) -> str:
         return Settings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
 
+    _env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+
     model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(__file__), "..", ".env"),
+        # If the .env file is missing (common in CI / containers), just skip it.
+        env_file=_env_path if os.path.exists(_env_path) else None,
         env_file_encoding="utf-8",
         extra="ignore",
     )

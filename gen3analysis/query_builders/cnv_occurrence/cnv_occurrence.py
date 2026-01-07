@@ -48,7 +48,6 @@ async def cnv_occurrence_query(
 ):
     if filter is None:
         filter = {}
-    field_snippets: List[str] = []
 
     expandable_fields = get_expandable_fields()
     fields = normalize_csv_or_list(fields)
@@ -56,10 +55,10 @@ async def cnv_occurrence_query(
     query_fields = get_query_fields(fields, expand, expandable_fields, DEFAULT_FIELDS)
     query = f"""
     query cnvOccurrenceQuery($filter: JSON, $size: Int, $offset: Int, $accessibility: Accessibility) {{
-    {settings.cnv_occurrence_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
+    hits: {settings.cnv_occurrence_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
-    {settings.cnv_occurrence_centric_agg_gql} {{ totals: {settings.CNV_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+    aggs: {settings.cnv_occurrence_centric_agg_gql} {{ totals: {settings.CNV_OCCURRENCE_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
         _totalCount
         }}
     }}
@@ -76,13 +75,10 @@ async def cnv_occurrence_query(
         },
     )
 
-    hits = glom(
-        data,
-        f"data.{settings.cnv_occurrence_centric_gql}",
-    )
+    hits = glom(data, "data.hits")
     total = glom(
         data,
-        f"data.{settings.cnv_occurrence_centric_agg_gql}.{settings.CNV_OCCURRENCE_CENTRIC_INDEX}._totalCount",
+        f"data.aggs.totals._totalCount",
     )
     return {
         "data": hits,

@@ -60,7 +60,6 @@ async def ssms_query(
 ):
     if filter is None:
         filter = {}
-    field_snippets: List[str] = []
 
     expandable_fields = get_expandable_fields()
     fields = normalize_csv_or_list(fields)

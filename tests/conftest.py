@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 import json
 from pathlib import Path
 from gen3analysis.main import get_app
+import gen3analysis.settings
 
 TEST_ACCESS_TOKEN = "123"
 TEST_PROJECT_ID = "test-project-id"

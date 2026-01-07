@@ -52,7 +52,7 @@ for router, prefix, tags in route_definitions:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Parse the configuration, setup and instantiate necessary classes.
+    Parse the configuration, setup, and instantiate necessary classes.
 
     This is FastAPI's way of dealing with startup logic before the app
     starts receiving requests.
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):
         guppy_url = "http://guppy-service"
         revproxy_url = "http://revproxy-service"
     else:
-        guppy_url = f"{settings.HOSTNAME}"
+        guppy_url = f"{settings.GUPPY_URL}"
         revproxy_url = f"{settings.HOSTNAME}"
 
     guppy_client = GuppyGQLClient(

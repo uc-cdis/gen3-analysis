@@ -1,7 +1,8 @@
 from typing import Optional
 from cdislogging import get_logger
 from pydantic import computed_field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
 
 
 def snake_to_pascal(snake_case_string):
@@ -22,6 +23,8 @@ class Settings(BaseSettings):
     # Gen3 services
     ARBORIST_URL: Optional[str] = "http://arborist-service"
     DEPLOYMENT_TYPE: Optional[str] = "prod"
+
+    GUPPY_URL: Optional[str] = "http://guppy-service"
 
     # Root of the documentation
     URL_PREFIX: Optional[str] = "/analysis/v0"
@@ -65,7 +68,7 @@ class Settings(BaseSettings):
     # Gene Expression API settings
     # Path to SQLite database with gene/case metadata
     GENE_EXPRESSION_SQLITE_PATH: Optional[str] = None
-    # Path to directory containing binary expression value files
+    # Path to a directory containing binary expression value files
     GENE_EXPRESSION_DATA_DIR: Optional[str] = None
     # Enable/disable gene expression API endpoints
     GENE_EXPRESSION_ENABLED: bool = False
@@ -168,9 +171,11 @@ class Settings(BaseSettings):
     def case_centric_agg_gql(self) -> str:
         return Settings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(os.path.dirname(__file__), "..", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()

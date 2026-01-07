@@ -56,7 +56,6 @@ async def cnv_query(
 ):
     if filter is None:
         filter = {}
-    field_snippets: List[str] = []
 
     expandable_fields = get_expandable_fields()
     fields = normalize_csv_or_list(fields)
@@ -67,7 +66,7 @@ async def cnv_query(
     hits: {settings.cnv_centric_gql}(first: $size, offset:$offset, filter:$filter, accessibility:$accessibility) {{
             {query_fields}
             }}
-    {settings.cnv_centric_agg_gql} {{ totals: {settings.CNV_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
+    aggs: {settings.cnv_centric_agg_gql} {{ totals: {settings.CNV_CENTRIC_INDEX}(filter:$filter, accessibility:$accessibility) {{
             _totalCount
          }}
     }}
@@ -84,10 +83,10 @@ async def cnv_query(
         },
     )
 
-    hits = glom(data, f"data.{settings.cnv_centric_gql}")
+    hits = glom(data, "data.hits")
     total = glom(
         data,
-        f"data.{settings.cnv_centric_agg_gql}.{settings.CNV_CENTRIC_INDEX}._totalCount",
+        f"data.aggs.totals._totalCount",
     )
     return {
         "data": hits,

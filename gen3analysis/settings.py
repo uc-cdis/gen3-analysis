@@ -205,6 +205,4 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-gitlogger = get_logger(
-    "gen3-analysis", log_level="debug" if settings.DEBUG else "debug"
-)
+logger = get_logger("gen3-analysis", log_level="debug" if settings.DEBUG else "debug")

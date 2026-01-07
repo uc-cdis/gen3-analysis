@@ -95,7 +95,7 @@ class Settings(BaseSettings):
         "data/mmrf_gene_expression_test_data/mmrf_test_data"
     )
     # Enable/disable gene expression API endpoints
-    GENE_EXPRESSION_ENABLED: bool = True
+    GENE_EXPRESSION_ENABLED: bool = False
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:
@@ -205,4 +205,6 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-logger = get_logger("gen3-analysis", log_level="debug" if settings.DEBUG else "debug")
+gitlogger = get_logger(
+    "gen3-analysis", log_level="debug" if settings.DEBUG else "debug"
+)

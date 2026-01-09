@@ -244,7 +244,7 @@ class GeneExpressionDataLoader:
             True if the file exists, False otherwise
         """
         file_path = self._get_expression_file_path(gene_id, value_type)
-        return file_path.exists()
+        return file_path.resolve().exists()
 
     def get_case_ids_ordered(self) -> List[str]:
         """Get ordered list of case IDs from the database.

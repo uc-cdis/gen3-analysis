@@ -1535,6 +1535,15 @@ paths:
         \ genes.\n\n    Returns counts and details about which cases and genes have\
         \ gene expression data available."
       operationId: availability_gene_expression_availability_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
       requestBody:
         content:
           application/json:

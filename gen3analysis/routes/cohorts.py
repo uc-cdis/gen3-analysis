@@ -168,11 +168,6 @@ async def top_genes_in_cohort(
         glom(x, "case_id") for x in glom(case_data, f"data.CaseCentric_case_centric")
     ]
 
-    print(
-        "case ids",
-        json.dumps({"nested": {"path": "case", "in": {"case_id": case_ids}}}),
-    )
-
     # build a filter containing the cohort ids and merge with the other filters
     gene_filters = {
         "and": [

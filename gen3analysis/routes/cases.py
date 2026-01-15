@@ -1,13 +1,18 @@
 from typing import Dict, Optional, Tuple, Any, List
-from fastapi import APIRouter, Depends, Query, Path
-from fastapi import Cookie
+from fastapi import Path
 from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import JSONResponse
+from gen3analysis.query_builders.cases.cases import cases_query, case_summary_query
+from typing import Optional, List
+
+from fastapi import APIRouter, Depends, HTTPException, Cookie
+from starlette.requests import Request
+
 from gen3analysis.dependencies.guppy_client import get_guppy_client
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.query_builders.cases.cases import cases_query, case_summary_query
-from gen3analysis.settings import settings
+from gen3analysis.query_builders.cases.cases import get_item_ids
+from gen3analysis.settings import logger, settings
 
 cases = APIRouter()
 

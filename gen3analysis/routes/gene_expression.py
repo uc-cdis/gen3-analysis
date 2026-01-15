@@ -15,8 +15,11 @@ from __future__ import annotations
 from io import StringIO
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Cookie, HTTPException, Request, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
+
+from gen3analysis.dependencies.guppy_client import get_guppy_client
+from gen3analysis.gen3.guppyQuery import GuppyGQLClient
 
 from gen3analysis.gene_expression.computations import (
     compute_gene_statistics,
@@ -46,7 +49,9 @@ from gen3analysis.models.gene_expression import (
     ValuesRequest,
     ValuesResponse,
 )
+from gen3analysis.query_builders.cases.cases import get_item_ids
 from gen3analysis.settings import logger, settings
+from glom import glom
 
 gene_expression = APIRouter()
 
@@ -75,33 +80,44 @@ def get_data_store() -> GeneExpressionDataStore:
     return data_store
 
 
-def resolve_case_ids(
+async def resolve_case_ids(
     request: Request,
     case_ids: Optional[List[str]] = None,
     case_filters: Optional[dict] = None,
-    cohort_id: Optional[str] = None,
+    gen3_graphql_client: Optional[GuppyGQLClient] = None,
+    access_token: Optional[str] = None,
 ) -> Optional[List[str]]:
     """
     Resolve case IDs.
 
     For now only case_ids is supported.
-    TODO: Add support for case_filters and cohort_id if needed
 
     Returns:
-        List of resolved case IDs, or None if no case source provided
+        List of resolved case IDs, or None if no case source is provided
     """
     if case_ids:
         return case_ids
 
-    # TODO: Implement case_filters
     if case_filters:
-        logger.warning("case_filters not yet implemented, ignoring")
-        return None
+        results = await get_item_ids(
+            gen3_graphql_client,
+            settings.case_centric_gql,
+            ["case_id"],
+            case_filters,
+            limit=settings.MAX_CASES,
+            access_token=access_token,
+        )
+        ids = list(
+            set(case["case_id"] for case in results["data"][settings.case_centric_gql])
+        )
 
-    # TODO: Implement cohort_id
-    if cohort_id:
-        logger.warning("cohort_id not yet implemented, ignoring")
-        return None
+        if not ids:
+            logger.warning(
+                "No case IDs found for filters %s",
+                case_filters,
+            )
+
+        return ids
 
     return None
 
@@ -124,6 +140,8 @@ def resolve_case_ids(
 async def availability(
     request: Request,
     body: AvailabilityRequest,
+    access_token: Optional[str] = Cookie(None),
+    gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
 ) -> AvailabilityResponse:
     """
     Check gene expression data availability for cases and/or genes.
@@ -169,11 +187,12 @@ async def availability(
     case_availability = None
 
     # Resolve case IDs
-    resolved_case_ids = resolve_case_ids(
+    resolved_case_ids = await resolve_case_ids(
         request,
         case_ids=body.case_ids,
         case_filters=body.case_filters,
-        cohort_id=body.cohort_id,
+        gen3_graphql_client=gen3_graphql_client,
+        access_token=access_token,
     )
 
     if resolved_case_ids:

@@ -55,12 +55,11 @@ async def get_cnv(
     gen3_graphql_client: GuppyGQLClient = Depends(get_guppy_client),
     access_token: Optional[str] = Cookie(default=None, alias="access_token"),
 ):
-    fltr = body.filter
     expand = body.expand
     start = body.start
     size = body.size
     fields = body.fields
-    gql_filter = parse_gql_filter(fltr)
+    gql_filter = body.filter
 
     results = await cnv_query(
         gen3_graphql_client=gen3_graphql_client,

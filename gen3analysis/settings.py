@@ -36,7 +36,7 @@ def snake_to_pascal(snake_case_string):
 
 
 class Settings(BaseSettings):
-    GUNICORN_WORKERS: Optional[int] = 1
+    GUNICORN_WORKERS: Optional[int] = 7
     HOSTNAME: Optional[str] = ""
     DEBUG: Optional[bool] = False
 

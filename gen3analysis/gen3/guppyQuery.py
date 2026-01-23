@@ -13,6 +13,7 @@ from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 class GuppyGQLClient:
     def __init__(self, graphql_url: str, csrf_token_url: str):
         self.graphql_url = graphql_url
+        self.download_url = graphql_url.replace("/graphql", "/download")
         self.csrf_cache = CSRFTokenCache(
             rest_api_url=f"{csrf_token_url}/_status",
             token_ttl_seconds=3600,  # 1 hour
@@ -71,6 +72,45 @@ class GuppyGQLClient:
             except Exception as e:
                 # log exception
                 logger.error(f"GuppyGQLClient error: {str(e)}")
+                if attempt == retry_count:
+                    raise
+                await asyncio.sleep(0.1 * (2**attempt))  # Exponential backoff
+
+    async def download(
+        self,
+        access_token: str,
+        payload: Dict,
+        retry_count: int = 3,
+    ) -> Dict[str, Any]:
+        for attempt in range(retry_count + 1):
+            try:
+                #    csrf_token = await self.csrf_cache.get_token()
+                headers = {
+                    "Content-Type": "application/json",
+                    #        "X-CSRF-Token": csrf_token,
+                }
+                if access_token:
+                    headers["Authorization"] = f"Bearer {access_token}"
+
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    response = await client.post(
+                        self.download_url, json=payload, headers=headers
+                    )
+
+                    if response.status_code != 200:
+                        if attempt < retry_count:
+                            continue
+                        raise HTTPException(
+                            status_code=response.status_code,
+                            detail=f"GraphQL request failed: {response.text}",
+                        )
+
+                    result = response.json()
+                    return result
+
+            except Exception as e:
+                # log exception
+                logger.error(f"GuppyGQLClient download error: {str(e)}")
                 if attempt == retry_count:
                     raise
                 await asyncio.sleep(0.1 * (2**attempt))  # Exponential backoff

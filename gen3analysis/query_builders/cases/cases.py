@@ -92,11 +92,6 @@ async def cohort_query(
                   }}
         }}"""
 
-        q = {
-            "query": cohort_query.replace("\n", "").replace("\r", ""),
-            "variables": {"cohort_filters": cohort_filter},
-        }
-
         data = await gen3_graphql_client.execute(
             access_token=access_token,
             query=cohort_query,

@@ -234,6 +234,57 @@ components:
           title: Size
       title: CasesRequest
       type: object
+    CohortDownloadRequest:
+      properties:
+        case_ids_filter_path:
+          description: path for the case ids in the query
+          title: Case Ids Filter Path
+          type: string
+        case_index:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: CaseCentric_case_centric
+          description: case index to query
+          title: Case Index
+        cohort_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: case filter (optional)
+          title: Cohort Filter
+        cohort_item_field:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: case_id
+          description: identity field for the case
+          title: Cohort Item Field
+        fields:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          description: fields to download (optional)
+          title: Fields
+        filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: query filter (optional)
+          title: Filter
+        index:
+          description: index to download from
+          title: Index
+          type: string
+      required:
+      - case_ids_filter_path
+      - index
+      title: CohortDownloadRequest
+      type: object
     CohortQueryRequest:
       properties:
         case_ids_filter_path:
@@ -1261,6 +1312,52 @@ paths:
       summary: Get cnv occurrence metadata
       tags:
       - CNV Occurrence
+  /cohorts/download:
+    post:
+      description: Performs a cohort query for the guppy download endpoint and return
+        the query for all items matching the ids.
+      operationId: cohort_download_query_cohorts_download_post
+      parameters:
+      - in: cookie
+        name: access_token
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CohortDownloadRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successfully processed the cohort query
+        '400':
+          description: The request body is missing required fields or has invalid
+            values.
+        '401':
+          description: User unauthorized when accessing endpoint
+        '403':
+          description: User does not have access to requested data
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '500':
+          description: Something went wrong internally when processing the request
+      security:
+      - HTTPBearer: []
+      summary: Cohort centric download query
+      tags:
+      - Cohorts
   /cohorts/query:
     post:
       description: Performs a cohort query and return the query for all items matching

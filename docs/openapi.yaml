@@ -333,6 +333,15 @@ components:
           default: ''
           description: the query to execute using the case ids found using the cohort_filter(optional)
           title: Query
+        sort:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          description: set the sort order (optional)
+          title: Sort
       required:
       - case_ids_filter_path
       title: CohortQueryRequest
@@ -846,31 +855,6 @@ components:
           description: Mutation filter (optional)
           title: Ssm Filter
       title: TopGeneChartRequest
-      type: object
-    TopGenesChartRequest:
-      properties:
-        cohort_filters:
-          additionalProperties: true
-          default:
-            and: []
-          title: Cohort Filters
-          type: object
-        size:
-          default: 20
-          title: Size
-          type: integer
-        ssm_filters:
-          additionalProperties: true
-          default:
-            and:
-            - nested:
-                in:
-                  project_id:
-                  - MMRF-COMMPASS
-                path: case.project
-          title: Ssm Filters
-          type: object
-      title: TopGenesChartRequest
       type: object
     ValidationError:
       properties:
@@ -1403,39 +1387,6 @@ paths:
       - HTTPBearer: []
       summary: Queries for cohort ids and uses those ids as the cohort in the second
         query
-      tags:
-      - Cohorts
-  /cohorts/top_genes_in_cohort:
-    post:
-      operationId: top_genes_in_cohort_cohorts_top_genes_in_cohort_post
-      parameters:
-      - in: cookie
-        name: access_token
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TopGenesChartRequest'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
-      summary: Top Genes In Cohort
       tags:
       - Cohorts
   /compare/facets:

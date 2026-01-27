@@ -54,6 +54,7 @@ async def cohort_query(
     query: str,
     access_token: Optional[str] = None,
     limit=10000,
+    sort: Optional[List[Dict]] = None,
 ):
     """
     Executes a cohort-oriented query using a Gen3 GraphQL client and retrieves results
@@ -112,10 +113,14 @@ async def cohort_query(
         else:
             filter["and"] = [{"in": {case_ids_filter_path: ids}}]
 
+        variables = {"filter": filter}
+        if sort is not None:
+            variables["sort"] = sort
+
         return await gen3_graphql_client.execute(
             access_token=access_token,
             query=query,
-            variables={"filter": filter},
+            variables=variables,
         )
     except Exception as e:
         logger.error(f"Error while processing cohort query: {e}")

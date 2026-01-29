@@ -939,12 +939,6 @@ def gene_table_query(
             cnv_query = build_cnv_change_query(gene_id, change, case_ids)
             cnv_s = cnv_s.query(cnv_query)
 
-            # write the results to a json file
-            with open(
-                f"./logs/gene_table_query_cnv_query_{gene_id}_{change}.json", "w"
-            ) as f:
-                json.dump(cnv_s.to_dict(), f, indent=4)
-
             results = cnv_s.execute()
             base = glom(results, "hits.hits", default=[{"novalue": True}])
             if len(base) == 0:

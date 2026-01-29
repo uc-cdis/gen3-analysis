@@ -379,11 +379,10 @@ async def values(
     except DataStoreNotInitializedError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    resolved_case_ids = resolve_case_ids(
+    resolved_case_ids = await resolve_case_ids(
         request,
         case_ids=body.case_ids,
         case_filters=body.case_filters,
-        cohort_id=body.cohort_id,
     )
 
     if not resolved_case_ids:

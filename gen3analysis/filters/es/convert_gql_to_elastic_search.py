@@ -60,23 +60,23 @@ def convert_gql_to_elastic_search(
 
     if is_gql_greater_than(fltr):
         field, value = next(iter(fltr.greater_than_op.items()))
-        q = Q("range", **{field: {"gt": value}}, boost=boost)
+        q = Q("range", **{field: {"gt": value}})
 
     if is_gql_greater_than_or_equals(fltr):
         field, value = next(iter(fltr.greater_than_or_equals_op.items()))
-        q = Q("range", **{field: {"gte": value}}, boost=boost)
+        q = Q("range", **{field: {"gte": value}})
 
     if is_gql_less_than(fltr):
         field, value = next(iter(fltr.less_than_op.items()))
-        q = Q("range", **{field: {"lt": value}}, boost=boost)
+        q = Q("range", **{field: {"lt": value}})
 
     if is_gql_less_than_or_equals(fltr):
         field, value = next(iter(fltr.less_than_or_equals_op.items()))
-        q = Q("range", **{field: {"lte": value}}, boost=boost)
+        q = Q("range", **{field: {"lte": value}})
 
     if is_gql_includes(fltr):
         field, values = next(iter(fltr.in_op.items()))
-        q = Q("terms", **{field: values}, boost=boost)
+        q = Q("terms", **{field: values})
 
     if is_gql_excludes(fltr):
         field, values = next(iter(fltr.exclude_op.items()))

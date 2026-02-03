@@ -15,7 +15,7 @@ USER gen3
 # copy ONLY poetry artifact, install the dependencies but not the app;
 # this will make sure that the dependencies are cached
 COPY poetry.lock pyproject.toml /${appname}/
-RUN poetry install -vv --no-root --only main --no-interaction
+RUN poetry install -vv --no-root --only main --extras flask --no-interaction
 
 COPY --chown=gen3:gen3 . /${appname}
 

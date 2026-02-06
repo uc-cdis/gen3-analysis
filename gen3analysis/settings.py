@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     ES_VERIFY_SSL: Optional[bool] = False
     ES_CA_CERT: Optional[str] = None
     ES_TIMEOUT: int = 30
+    ES_ENABLED: bool = True
 
     MAX_CASES: Optional[int] = 10000
 
@@ -96,6 +97,12 @@ class Settings(BaseSettings):
     )
     # Enable/disable gene expression API endpoints
     GENE_EXPRESSION_ENABLED: bool = False
+
+    # Data Cache settings
+    DATA_CACHE_ENABLED: Optional[bool] = True
+    CACHE_DIR = Optional[Path] = Path("/tmp/genomic_cache")
+    MAX_CACHE_SIZE_GB: Optional[int] = 50
+    CACHE_EXPIRY_DAYS: Optional[int] = 7
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:

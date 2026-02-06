@@ -26,6 +26,7 @@ from gen3analysis.routes.cnv import cnv
 from gen3analysis.routes.cnv_occurrence import cnv_occurrence
 from gen3analysis.routes.survival import survival
 from gen3analysis.settings import settings, logger
+from gen3analysis.routes.genomic_viz import genomic_viz
 
 route_aggregator = APIRouter()
 
@@ -35,14 +36,15 @@ route_definitions = [
     (compare, "/compare", ["Compare"]),
     (survival, "/survival", ["Survival"]),
     (cohorts, "/cohorts", ["Cohorts"]),
-    (genomic, "/genomic", ["Genomic"]),
-    (cases, "/cases", ["Cases"]),
-    (files, "/files", ["Files"]),
-    (ssms, "/ssms", ["SSMS"]),
-    (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
-    (gene_expression, "/gene_expression", ["Gene Expression"]),
-    (cnv, "/cnv", ["CNV"]),
-    (cnv_occurrence, "/cnv_occurrence", ["CNV Occurrence"]),
+    (genomic_viz, "/genomic_viz", ["Genomic Viz"]),
+    # (genomic, "/genomic", ["Genomic"]),
+    # (cases, "/cases", ["Cases"]),
+    # (files, "/files", ["Files"]),
+    # (ssms, "/ssms", ["SSMS"]),
+    # (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
+    # (gene_expression, "/gene_expression", ["Gene Expression"]),
+    # (cnv, "/cnv", ["CNV"]),
+    # (cnv_occurrence, "/cnv_occurrence", ["CNV Occurrence"]),
 ]
 
 for router, prefix, tags in route_definitions:
@@ -74,7 +76,10 @@ async def lifespan(app: FastAPI):
         graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url
     )
 
-    get_nested_registry()
+    if settings.ES_ENABLED:
+        get_nested_registry()
+    if settings.DATA_CACHE_ENABLED:
+        settings.CACHE_DIR.mkdir(exist_ok=True)
 
     app.state.guppy_client = guppy_client
     app.state.gen3_sdk_auth = None

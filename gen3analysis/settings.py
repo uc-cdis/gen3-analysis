@@ -35,6 +35,64 @@ def snake_to_pascal(snake_case_string):
     return pascal_case_string
 
 
+class CoreSetttings(BaseSettings):
+    GUNICORN_WORKERS: Optional[int] = 7
+    HOSTNAME: Optional[str] = ""
+    DEBUG: Optional[bool] = False
+
+    # Gen3 services
+    ARBORIST_URL: Optional[str] = "http://arborist-service"
+    DEPLOYMENT_TYPE: Optional[str] = "prod"
+
+    # Root of the documentation
+    URL_PREFIX: Optional[str] = "/analysis/v0"
+
+
+class GuppySettings(BaseSettings):
+    GUPPY_URL: Optional[str] = "http://guppy-service"
+
+
+class GDCGenomicSettings(BaseSettings):
+
+    # Guppy default indices
+    CASE_INDEX: Optional[str] = "case"
+    FILE_INDEX: Optional[str] = "file"
+    PROJECT_INDEX: Optional[str] = "project"
+    GENE_CENTRIC_INDEX: Optional[str] = "gene_centric"
+    SSM_CENTRIC_INDEX: Optional[str] = "ssm_centric"
+    SSM_OCCURRENCE_CENTRIC_INDEX: Optional[str] = "ssm_occurrence_centric"
+    CNV_CENTRIC_INDEX: Optional[str] = "cnv_centric"
+    CNV_OCCURRENCE_CENTRIC_INDEX: Optional[str] = "cnv_occurrence_centric"
+    CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
+    CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
+
+    # Elastic search indices for MMRF and GDC
+    ES_CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
+    ES_CASE_INDEX: Optional[str] = "case"
+    ES_FILE_INDEX: Optional[str] = "file"
+    ES_PROJECT_INDEX: Optional[str] = "project"
+    ES_GENE_CENTRIC_INDEX: Optional[str] = "gene_centric"
+    ES_SSM_CENTRIC_INDEX: Optional[str] = "ssm_centric"
+    ES_SSM_OCCURRENCE_INDEX: Optional[str] = "ssm_occurrence_centric"
+    ES_CNV_CENTRIC_INDEX: Optional[str] = "cnv_centric"
+    ES_CNV_OCCURRENCE_INDEX: Optional[str] = "cnv_occurrence_centric"
+
+
+class GeneExpressionSettings(BaseSettings):
+    GENE_EXPRESSION_SQLITE_PATH: Optional[str] = (
+        "data/mmrf_gene_expression_test_data/schemaless.sqlite3"
+    )
+    GENE_EXPRESSION_DATA_DIR: Optional[str] = (
+        "data/mmrf_gene_expression_test_data/mmrf_test_data"
+    )
+
+
+class Gen3GenomicSettings(BaseSettings):
+    # BAMI Cache settings
+    DATA_CACHE_ENABLED: Optional[bool] = True
+    CACHE_DIR: Optional[Path] = Path("data/bami_cache")
+
+
 class Settings(BaseSettings):
     GUNICORN_WORKERS: Optional[int] = 7
     HOSTNAME: Optional[str] = ""
@@ -100,9 +158,7 @@ class Settings(BaseSettings):
 
     # Data Cache settings
     DATA_CACHE_ENABLED: Optional[bool] = True
-    CACHE_DIR = Optional[Path] = Path("/tmp/genomic_cache")
-    MAX_CACHE_SIZE_GB: Optional[int] = 50
-    CACHE_EXPIRY_DAYS: Optional[int] = 7
+    CACHE_DIR: Optional[Path] = Path("/tmp/genomic_cache")
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:

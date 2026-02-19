@@ -836,7 +836,6 @@ components:
           anyOf:
           - type: string
           - type: 'null'
-          default: .*.*
           description: Search term (optional)
           title: Search
         size:

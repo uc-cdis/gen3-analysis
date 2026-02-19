@@ -88,12 +88,10 @@ class Settings(BaseSettings):
     # Gene Expression API settings
     # Path to SQLite database with gene/case metadata
     GENE_EXPRESSION_SQLITE_PATH: Optional[str] = (
-        "data/mmrf_gene_expression_test_data/schemaless.sqlite3"
+        "data/ia24_gene_expression/geneexpression_db.sqlite3"
     )
     # Path to a directory containing binary expression value files
-    GENE_EXPRESSION_DATA_DIR: Optional[str] = (
-        "data/mmrf_gene_expression_test_data/mmrf_test_data"
-    )
+    GENE_EXPRESSION_DATA_DIR: Optional[str] = "data/ia24_gene_expression/data"
     # Enable/disable gene expression API endpoints
     GENE_EXPRESSION_ENABLED: bool = False
 

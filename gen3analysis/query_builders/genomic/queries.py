@@ -929,7 +929,13 @@ def gene_table_query(
         gene_information[gene_id]["ssm_cases_across_commons"] = total
 
         # get the cnv count for each change type
-        for change in ["Gain", "Loss", "Amplification", "Homozygous Deletion"]:
+        for change in [
+            "Gain",
+            "Loss",
+            "Neutral",
+            "Amplification",
+            "Homozygous Deletion",
+        ]:
             cnv_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
             cnv_s = cnv_s[:1]
             cnv_s = cnv_s.extra(track_scores=False)
@@ -940,11 +946,15 @@ def gene_table_query(
             results = cnv_s.execute()
             base = glom(results, "hits.hits", default=[{"novalue": True}])
             if len(base) == 0:
-                gene_information[gene_id][f"cnv_count_{change.lower()}"] = 0
+                gene_information[gene_id][
+                    f"cnv_count_{change.lower().replace(' ', '_')}"
+                ] = 0
             else:
                 base_array = base[0]
                 total = glom(base_array, "inner_hits.case.hits.total.value", default=0)
-                gene_information[gene_id][f"cnv_count_{change.lower()}"] = total
+                gene_information[gene_id][
+                    f"cnv_count_{change.lower().replace(' ', '_')}"
+                ] = total
 
     # get the ssm mutations and counts
     # build the filters from the gene and ssm filter list

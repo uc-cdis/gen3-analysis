@@ -188,7 +188,7 @@ class TopGeneChartRequest(BaseModel):
     )
     size: Optional[int] = Field(default=20, ge=1, le=100000000)
     offset: Optional[int] = Field(default=0, ge=0)
-    search: Optional[str] = Field(default=".*.*", description="Search term (optional)")
+    search: Optional[str] = Field(default=None, description="Search term (optional)")
 
 
 @genomic.post(
@@ -285,10 +285,13 @@ def gene_table(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)
     ssm_filter = parse_gql_filter(body.ssm_filter)
+    search = body.search
     size = body.size
     offset = body.offset
 
-    table_data = gene_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
+    table_data = gene_table_query(
+        cohort_filter, gene_filter, ssm_filter, size, offset, search
+    )
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)
 

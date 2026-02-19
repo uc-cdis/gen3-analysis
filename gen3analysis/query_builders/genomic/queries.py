@@ -280,10 +280,6 @@ def build_ssm_gene_mutations(
 
     # reverse_nested sub-agg
     terms_agg.bucket("rn", "reverse_nested")
-    # TODO remove this
-    # save query to file
-    # with open("./logs/ssm_mutations_query.json", "w") as f:
-    #     json.dump(s.to_dict(), f, indent=2)
     results = s.execute()
 
     data_path = Path(
@@ -431,6 +427,7 @@ def build_gene_query(
     gene_es_filters: List[GQLFilter],
     ssm_es_filters: List[GQLFilter],
     case_ids: List[str],
+    search: Optional[str] = None,
 ):
     # Build must-clauses conditionally
     must_clauses = [
@@ -446,6 +443,11 @@ def build_gene_query(
     ]
     if len(gene_es_filters) > 0:
         must_clauses.extend(gene_es_filters)
+
+    if search is not None:
+        must_clauses.append(
+            Q("wildcard", symbol={"value": search, "case_insensitive": True})
+        )
 
     top_gene_query = Q(
         "bool",
@@ -542,10 +544,6 @@ def query_top_genes(
     s = s[0 : settings.MAX_CASES]  # Get all cases
     s = s.source(False)
     s = s.query(filters)
-
-    # with open("./logs/query_top_genes_case_query.json", "w") as f:
-    #     json.dump(s.to_dict(), f, indent=2)
-
     results = s.execute()
 
     case_ids = [x._id for x in results["hits"]["hits"]]
@@ -816,6 +814,7 @@ def gene_table_query(
     ssm_filter: GQLFilter,
     size: int = 20,
     offset: int = 0,
+    search: Optional[str] = None,
 ) -> Dict[str, Any]:
 
     case_ids = query_case_ids(case_filter)
@@ -894,14 +893,13 @@ def gene_table_query(
         ]
     )
 
-    genes_by_cases_query = build_gene_query(gene_es_filters, ssm_es_filters, case_ids)
+    genes_by_cases_query = build_gene_query(
+        gene_es_filters, ssm_es_filters, case_ids, search
+    )
     gene_cases_s = gene_cases_s.query(genes_by_cases_query)
     gene_cases_s = gene_cases_s[offset:size]
     gene_cases_s = gene_cases_s.extra(track_scores=True)
     gene_cases_s = gene_cases_s.extra(track_total_hits=True)
-    # write the results to a json file
-    # with open("./logs/gene_table_query_genes_by_cases_query.json", "w") as f:
-    #     json.dump(gene_cases_s.to_dict(), f, indent=4)
 
     results = gene_cases_s.execute()
 

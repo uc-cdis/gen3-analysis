@@ -255,8 +255,9 @@ def build_tsv_response(
     # Header: gene_id followed by case_ids (or submitter_ids)
     column_headers = []
     for case_id in case_ids:
+        # If you want submitter_id append it instead
         submitter_id = data_store.get_case_submitter_id(case_id)
-        column_headers.append(submitter_id)
+        column_headers.append(case_id)
 
     output.write("gene_id\t" + "\t".join(column_headers) + "\n")
 

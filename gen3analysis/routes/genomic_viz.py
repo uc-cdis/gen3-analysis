@@ -35,19 +35,20 @@ def extract_s3_key_from_presigned_url(presigned_url: str) -> str:
     """
     parsed = urlparse(presigned_url)
     s3_key = parsed.path.lstrip("/")
+    filename = s3_key.split("/")[-1]
 
     # Optional: Validate UUID format
-    uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/"
-    if not re.match(uuid_pattern, s3_key):
-        raise ValueError(f"URL path doesn't start with UUID format: {s3_key}")
+    # uuid_pattern = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/"
+    # if not re.match(uuid_pattern, s3_key):
+    #     raise ValueError(f"URL path doesn't start with UUID format: {s3_key}")
 
-    return s3_key
+    return filename
 
 
 def get_cache_key(url: str) -> str:
     """Generate cache key from S3 URL"""
     s3_key = extract_s3_key_from_presigned_url(url)
-    return s3_key.replace("/", "_")
+    return s3_key.replace("/", "_").replace(".bam", "")
 
 
 def get_file_path(cache_key: str, extension: str) -> Path:

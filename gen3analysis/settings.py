@@ -117,7 +117,7 @@ class Settings(BaseSettings):
     ES_VERIFY_SSL: Optional[bool] = False
     ES_CA_CERT: Optional[str] = None
     ES_TIMEOUT: int = 30
-    ES_ENABLED: bool = True
+    ES_ENABLED: bool = False
 
     MAX_CASES: Optional[int] = 10000
 
@@ -158,7 +158,7 @@ class Settings(BaseSettings):
 
     # Data Cache settings
     DATA_CACHE_ENABLED: Optional[bool] = True
-    CACHE_DIR: Optional[Path] = Path("/tmp/genomic_cache")
+    CACHE_DIR: Optional[Path] = Path("data/bai_cache")
 
     @classmethod
     def compute_gql_index(cls, index: str) -> str:

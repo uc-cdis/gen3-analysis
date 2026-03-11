@@ -178,10 +178,8 @@ async def cohort_download_query(
     try:
         data = await download.download_query(
             gen3_graphql_client=gen3_graphql_client,
-            case_index=case_index,
             index=index,
             fields=fields,
-            cohort_item_field=cohort_item_field,
             cohort_filter=cohort_filter,
             filter=query_filter,
             case_ids_filter_path=case_ids_filter_path,

@@ -263,12 +263,7 @@ class GQLNestedFilter:
 
     @classmethod
     def from_payload(cls, data: Dict[str, Any]) -> "GQLNestedFilter":
-        return cls(
-            nested_op=NestedContents(
-                path=data.get("path", ""),
-                filter_content=parse_gql_filter(data.get("filter_content", {})),
-            )
-        )
+        return cls(nested_op=NestedContents.from_payload(data.get("nested", {})))
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "GQLNestedFilter":

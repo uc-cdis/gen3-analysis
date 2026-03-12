@@ -534,19 +534,7 @@ def query_top_genes(
     size: int = 20,
     offset: int = 0,
 ) -> Dict[str, Any]:
-    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
-    if case_filter:
-        filters = convert_gql_to_elastic_search(
-            case_filter, settings.ES_CASE_CENTRIC_INDEX
-        )
-    else:
-        filters = Q("match_all")
-    s = s[0 : settings.MAX_CASES]  # Get all cases
-    s = s.source(False)
-    s = s.query(filters)
-    results = s.execute()
-
-    case_ids = [x._id for x in results["hits"]["hits"]]
+    case_ids = query_case_ids(case_filter)
 
     if len(case_ids) == 0:
         return {"data": [], "total": 0}
@@ -673,19 +661,7 @@ def query_top_ssm(
     offset: int = 0,
 ) -> Dict[str, Any]:
     # get all the cases in the cohort
-    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
-    if case_filter:
-        filters = convert_gql_to_elastic_search(
-            case_filter, settings.ES_CASE_CENTRIC_INDEX
-        )
-    else:
-        filters = Q("match_all")
-    s = s[0 : settings.MAX_CASES]  # Get all cases
-    s = s.source(False)
-    s = s.query(filters)
-    results = s.execute()
-
-    case_ids = [x._id for x in results["hits"]["hits"]]
+    case_ids = query_case_ids(case_filter)
 
     if len(case_ids) == 0:
         return {"data": [], "total": 0}
@@ -985,3 +961,89 @@ def gene_table_query(
         "genesTotal": total_genes_count,
         "genes": [x for x in gene_information.values()],
     }
+
+
+def build_create_ssm_cohort(
+    case_filter: GQLFilter,
+    gene_filter: GQLFilter,
+    ssm_filter: GQLFilter,
+) -> Search:
+
+    case_ids = query_case_ids(case_filter)
+    # The case_id filter used in both must and scoring
+    case_id_filter = Q("terms", **{"case.case_id": case_ids}, boost=0)
+
+    # Nested filter that defines "a case counts" - mirrored in both query and agg
+    matching_case_filter = Q(
+        "bool",
+        must=[
+            Q("bool", must=[Q("bool", must=[case_id_filter])]),
+            Q(
+                "bool",
+                must=[
+                    Q(
+                        "nested",
+                        path="case.ssm",
+                        query=Q("exists", field="case.ssm.ssm_id"),
+                    )
+                ],
+            ),
+            Q("exists", field="case.project.project_id"),
+        ],
+        must_not=[Q("term", **{"case.project.project_id": ""})],
+    )
+
+    # Top-level must clauses
+    must_clauses = [
+        Q(
+            "nested",
+            path="case",
+            ignore_unmapped=True,
+            query=Q("bool", must=[case_id_filter]),
+        ),
+        Q("terms", **{"is_cancer_gene_census": ["true"]}),
+        Q("term", symbol="kras"),
+    ]
+
+    # Should clauses: scoring nested + match_all with 0 boost
+    should_clauses = [
+        Q(
+            "bool",
+            must=[
+                Q(
+                    "nested",
+                    path="case",
+                    score_mode="sum",
+                    query=Q(
+                        "constant_score",
+                        boost=1.0,
+                        filter=matching_case_filter,
+                    ),
+                )
+            ],
+        ),
+        Q("bool", boost=0, must=[Q("match_all")]),
+    ]
+
+    query = Q("bool", must=must_clauses, should=should_clauses)
+
+    s = (
+        Search()
+        .query(query)
+        .source(["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"])
+        .extra(
+            from_=0,
+            size=1,
+            track_scores=True,
+            track_total_hits=True,
+        )
+    )
+
+    # Aggregation: nested > filter > terms + cardinality
+    s.aggs.bucket("cases", "nested", path="case").bucket(
+        "matching_cases", "filter", filter=matching_case_filter
+    ).metric("case_ids", "terms", field="case.case_id", size=10000).metric(
+        "case_count", "cardinality", field="case.case_id"
+    )
+
+    return s

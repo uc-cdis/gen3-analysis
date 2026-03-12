@@ -117,6 +117,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # teardown
+    if app.state.guppy_client:
+        await app.state.guppy_client.close()
     app.state.guppy_client = None
     app.state.gdc_graphql_client = None
     app.state.gen3_sdk_auth = None

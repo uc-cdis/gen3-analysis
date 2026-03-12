@@ -9,12 +9,12 @@ from gen3analysis.utils.filterEdit import dot_notation_to_graphql
 
 async def download_query(
     gen3_graphql_client: GuppyGQLClient,
-    case_index: str,
-    cohort_item_field: str,
     cohort_filter: Dict,
     filter: Dict,
     case_ids_filter_path: str,
     index: str,
+    cohort_item_field: str = "case_id",
+    case_index: str = "CaseCentric_case_centric",
     fields: Optional[List[str]] = None,
     access_token: Optional[str] = None,
 ):

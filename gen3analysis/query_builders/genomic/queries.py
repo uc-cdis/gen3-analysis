@@ -534,19 +534,7 @@ def query_top_genes(
     size: int = 20,
     offset: int = 0,
 ) -> Dict[str, Any]:
-    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
-    if case_filter:
-        filters = convert_gql_to_elastic_search(
-            case_filter, settings.ES_CASE_CENTRIC_INDEX
-        )
-    else:
-        filters = Q("match_all")
-    s = s[0 : settings.MAX_CASES]  # Get all cases
-    s = s.source(False)
-    s = s.query(filters)
-    results = s.execute()
-
-    case_ids = [x._id for x in results["hits"]["hits"]]
+    case_ids = query_case_ids(case_filter)
 
     if len(case_ids) == 0:
         return {"data": [], "total": 0}
@@ -673,19 +661,7 @@ def query_top_ssm(
     offset: int = 0,
 ) -> Dict[str, Any]:
     # get all the cases in the cohort
-    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
-    if case_filter:
-        filters = convert_gql_to_elastic_search(
-            case_filter, settings.ES_CASE_CENTRIC_INDEX
-        )
-    else:
-        filters = Q("match_all")
-    s = s[0 : settings.MAX_CASES]  # Get all cases
-    s = s.source(False)
-    s = s.query(filters)
-    results = s.execute()
-
-    case_ids = [x._id for x in results["hits"]["hits"]]
+    case_ids = query_case_ids(case_filter)
 
     if len(case_ids) == 0:
         return {"data": [], "total": 0}

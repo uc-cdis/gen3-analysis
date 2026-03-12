@@ -18,6 +18,26 @@ class GuppyGQLClient:
             rest_api_url=f"{csrf_token_url}/_status",
             token_ttl_seconds=3600,  # 1 hour
         )
+        self._http_client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async HTTP client."""
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(
+                timeout=45.0,
+                limits=httpx.Limits(
+                    max_keepalive_connections=20,
+                    max_connections=100,
+                    keepalive_expiry=30.0,
+                ),
+            )
+        return self._http_client
+
+    async def close(self):
+        """Close the HTTP client connection pool."""
+        if self._http_client is not None and not self._http_client.is_closed:
+            await self._http_client.aclose()
+            self._http_client = None
 
     async def execute(
         self,
@@ -38,36 +58,38 @@ class GuppyGQLClient:
 
                 payload = {"query": query, "variables": variables or {}}
 
-                async with httpx.AsyncClient(timeout=45.0) as client:
-                    response = await client.post(
-                        self.graphql_url, json=payload, headers=headers
+                client = self._get_client()
+                response = await client.post(
+                    self.graphql_url, json=payload, headers=headers
+                )
+
+                if response.status_code != 200:
+                    if attempt < retry_count:
+                        continue
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"GraphQL request failed: {response.text}",
                     )
 
-                    if response.status_code != 200:
-                        if attempt < retry_count:
-                            continue
-                        raise HTTPException(
-                            status_code=response.status_code,
-                            detail=f"GraphQL request failed: {response.text}",
-                        )
+                result = response.json()
 
-                    result = response.json()
+                # Check for CSRF-related errors
+                if self._is_csrf_error(result):
+                    if attempt < retry_count:
+                        await self.csrf_cache._refresh_token()  # Force refresh
+                        continue
 
-                    # Check for CSRF-related errors
-                    if self._is_csrf_error(result):
-                        if attempt < retry_count:
-                            await self.csrf_cache._refresh_token()  # Force refresh
-                            continue
+                if result.get("errors"):
+                    err_msg = (
+                        f"GuppyGQLClient error: {result['errors']} for query: {query}"
+                    )
+                    logger.error(err_msg)
+                    raise HTTPException(
+                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=err_msg,
+                    )
 
-                    if result.get("errors"):
-                        err_msg = f"GuppyGQLClient error: {result['errors']} for query: {query}"
-                        logger.error(err_msg)
-                        raise HTTPException(
-                            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=err_msg,
-                        )
-
-                    return result
+                return result
 
             except Exception as e:
                 # log exception
@@ -97,16 +119,16 @@ class GuppyGQLClient:
                         self.download_url, json=payload, headers=headers
                     )
 
-                    if response.status_code != 200:
-                        if attempt < retry_count:
-                            continue
-                        raise HTTPException(
-                            status_code=response.status_code,
-                            detail=f"GraphQL request failed: {response.text}",
-                        )
+                if response.status_code != 200:
+                    if attempt < retry_count:
+                        continue
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"GraphQL request failed: {response.text}",
+                    )
 
-                    result = response.json()
-                    return result
+                result = response.json()
+                return result
 
             except Exception as e:
                 # log exception

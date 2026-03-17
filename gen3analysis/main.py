@@ -88,31 +88,31 @@ async def lifespan(app: FastAPI):
         ),
     )
 
-    # Initialize gene expression data store
-    if settings.GENE_EXPRESSION_ENABLED:
-        from gen3analysis.gene_expression.data_store import GeneExpressionDataStore
-
-        try:
-            if (
-                settings.GENE_EXPRESSION_SQLITE_PATH
-                and settings.GENE_EXPRESSION_DATA_DIR
-            ):
-                logger.info(
-                    "Initializing gene expression data store from %s",
-                    settings.GENE_EXPRESSION_DATA_DIR,
-                )
-                GeneExpressionDataStore.get_instance(
-                    sqlite_path=settings.GENE_EXPRESSION_SQLITE_PATH,
-                    data_dir=settings.GENE_EXPRESSION_DATA_DIR,
-                )
-                logger.info("Gene expression data store initialized successfully")
-            else:
-                logger.warning(
-                    "Gene expression data paths not configured and fallback disabled"
-                )
-        except Exception as e:
-            logger.error("Failed to initialize gene expression data store: %s", e)
-            raise
+    # # Initialize gene expression data store
+    # if settings.GENE_EXPRESSION_ENABLED:
+    #     from gen3analysis.gene_expression.data_store import GeneExpressionDataStore
+    #
+    #     try:
+    #         if (
+    #             settings.GENE_EXPRESSION_SQLITE_PATH
+    #             and settings.GENE_EXPRESSION_DATA_DIR
+    #         ):
+    #             logger.info(
+    #                 "Initializing gene expression data store from %s",
+    #                 settings.GENE_EXPRESSION_DATA_DIR,
+    #             )
+    #             GeneExpressionDataStore.get_instance(
+    #                 sqlite_path=settings.GENE_EXPRESSION_SQLITE_PATH,
+    #                 data_dir=settings.GENE_EXPRESSION_DATA_DIR,
+    #             )
+    #             logger.info("Gene expression data store initialized successfully")
+    #         else:
+    #             logger.warning(
+    #                 "Gene expression data paths not configured and fallback disabled"
+    #             )
+    #     except Exception as e:
+    #         logger.error("Failed to initialize gene expression data store: %s", e)
+    #         raise
 
     yield
 

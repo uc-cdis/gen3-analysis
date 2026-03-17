@@ -1,3 +1,4 @@
+import copy
 from typing import Dict, Optional, List, Any
 from glom import glom
 
@@ -90,13 +91,13 @@ async def cohort_query(
         # Get the cohort ids using elastic search
         cohort_filter_gql = parse_gql_filter(cohort_filter)
         case_ids = query_case_ids(cohort_filter_gql)
-        # build a filter containing the cohort ids and merge with the other filters
-        ids = case_ids
+        # Work on a copy so the input filter is not mutated.
+        query_filter = copy.deepcopy(filter) if filter else {}
 
         if "and" in filter:
-            filter["and"].append({"in": {case_ids_filter_path: ids}})
+            query_filter["and"].append({"in": {case_ids_filter_path: case_ids}})
         else:
-            filter["and"] = [{"in": {case_ids_filter_path: ids}}]
+            query_filter["and"] = [{"in": {case_ids_filter_path: case_ids}}]
 
         variables = {"filter": filter}
         if sort is not None:

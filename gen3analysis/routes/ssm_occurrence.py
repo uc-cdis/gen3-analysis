@@ -79,7 +79,6 @@ async def get_ssms_occurrence(
 
 @ssms_occurrence.get(
     path="/{ssm_id}",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Query the ssms occurrence metadata for the ssms id",
     summary="Get ssms occurrence metadata",

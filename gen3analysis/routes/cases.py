@@ -45,7 +45,6 @@ class CaseSummaryRequest(BaseModel):
 
 @cases.post(
     path="/",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Performs a cases query and returns case metadata for the matching cases.",
     summary="Query case metadata",
@@ -82,7 +81,6 @@ async def query_cases(
 
 @cases.get(
     path="/{case_id}",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Performs a cases query and returns case metadata for case id",
     summary="Get case id metadata",

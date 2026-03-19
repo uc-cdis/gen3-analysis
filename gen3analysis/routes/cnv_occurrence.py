@@ -79,7 +79,6 @@ async def get_cnv_occurrence(
 
 @cnv_occurrence.get(
     path="/{cnv_id}",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Query the cnv occurrence metadata for the cnv id",
     summary="Get cnv occurrence metadata",

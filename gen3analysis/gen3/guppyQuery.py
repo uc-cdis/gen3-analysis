@@ -26,7 +26,7 @@ class GuppyGQLClient:
             self._http_client = httpx.AsyncClient(
                 timeout=45.0,
                 limits=httpx.Limits(
-                    max_keepalive_connections=50,
+                    max_keepalive_connections=75,
                     max_connections=100,
                     keepalive_expiry=30.0,
                 ),

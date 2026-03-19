@@ -112,7 +112,7 @@ async def lifespan(app: FastAPI):
                 )
         except Exception as e:
             logger.error("Failed to initialize gene expression data store: %s", e)
-            raise
+            # continue without gene expression data store
 
     yield
 

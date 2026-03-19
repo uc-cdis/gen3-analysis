@@ -1,3 +1,4 @@
+import time
 from typing import Dict, Optional, List, Any
 from glom import glom
 
@@ -87,9 +88,17 @@ async def cohort_query(
     # Get the cohort items by id
 
     try:
+        start_time = time.time()
+
         # Get the cohort ids using elastic search
         cohort_filter_gql = parse_gql_filter(cohort_filter)
+        es_start = time.time()
         case_ids = await query_case_ids(cohort_filter_gql)
+        es_duration = time.time() - es_start
+        logger.info(
+            f"ES query_case_ids returned {len(case_ids)} IDs in {es_duration:.3f}s"
+        )
+
         # build a filter containing the cohort ids and merge with the other filters
         ids = case_ids
 
@@ -102,11 +111,19 @@ async def cohort_query(
         if sort is not None:
             variables["sort"] = sort
 
-        return await gen3_graphql_client.execute(
+        guppy_start = time.time()
+        result = await gen3_graphql_client.execute(
             access_token=access_token,
             query=query,
             variables=variables,
         )
+        guppy_duration = time.time() - guppy_start
+        total_duration = time.time() - start_time
+        logger.info(
+            f"Guppy query completed in {guppy_duration:.3f}s (total: {total_duration:.3f}s)"
+        )
+
+        return result
     except Exception as e:
         logger.error(f"Error while processing cohort query: {e}")
         raise e

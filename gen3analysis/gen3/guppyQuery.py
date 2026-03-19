@@ -63,7 +63,7 @@ class GuppyGQLClient:
                     self.graphql_url, json=payload, headers=headers
                 )
 
-                print(response.status_code)
+                logger.debug(f"Guppy response status: {response.status_code}")
                 if response.status_code != 200:
                     if attempt < retry_count:
                         continue

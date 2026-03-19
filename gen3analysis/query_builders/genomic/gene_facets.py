@@ -292,9 +292,9 @@ def build_gene_aggregation(
     return response.to_dict()
 
 
-def gene_facet_query(case_filter: GQLFilter, filters):
+async def gene_facet_query(case_filter: GQLFilter, filters):
 
-    case_ids = query_case_ids(case_filter)
+    case_ids = await query_case_ids(case_filter)
 
     filter_contents = get_gql_filter_contents(filters)
 

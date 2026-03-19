@@ -212,12 +212,12 @@ class TopGeneChartRequest(BaseModel):
         },
     },
 )
-def gene_frequency_chart(body: TopGeneChartRequest):
+async def gene_frequency_chart(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)
     ssm_filter = parse_gql_filter(body.ssm_filter)
 
-    chart_data = query_top_genes(
+    chart_data = await query_top_genes(
         case_filter=cohort_filter,
         gene_filter=gene_filter,
         ssm_filter=ssm_filter,
@@ -251,12 +251,12 @@ def gene_frequency_chart(body: TopGeneChartRequest):
         },
     },
 )
-def ssm_frequency_chart(body: TopGeneChartRequest):
+async def ssm_frequency_chart(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)
     ssm_filter = parse_gql_filter(body.ssm_filter)
 
-    chart_data = query_top_ssm(
+    chart_data = await query_top_ssm(
         case_filter=cohort_filter,
         gene_filter=gene_filter,
         ssm_filter=ssm_filter,
@@ -281,7 +281,7 @@ def ssm_frequency_chart(body: TopGeneChartRequest):
         },
     },
 )
-def gene_table(body: TopGeneChartRequest):
+async def gene_table(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)
     ssm_filter = parse_gql_filter(body.ssm_filter)
@@ -289,7 +289,7 @@ def gene_table(body: TopGeneChartRequest):
     size = body.size
     offset = body.offset
 
-    table_data = gene_table_query(
+    table_data = await gene_table_query(
         cohort_filter, gene_filter, ssm_filter, size, offset, search
     )
 
@@ -297,7 +297,7 @@ def gene_table(body: TopGeneChartRequest):
 
 
 @genomic.post(path="/ssm_table")
-def ssm_table(body: TopGeneChartRequest):
+async def ssm_table(body: TopGeneChartRequest):
     cohort_filter = parse_gql_filter(body.cohort_filter)
     gene_filter = parse_gql_filter(body.gene_filter)
     ssm_filter = parse_gql_filter(body.ssm_filter)
@@ -305,7 +305,9 @@ def ssm_table(body: TopGeneChartRequest):
     offset = body.offset
     search = body.search
 
-    table_data = ssm_table_query(cohort_filter, gene_filter, ssm_filter, size, offset)
+    table_data = await ssm_table_query(
+        cohort_filter, gene_filter, ssm_filter, size, offset
+    )
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=table_data)
 
@@ -325,7 +327,7 @@ async def ssm_facets(
 ):
     case_filter = parse_gql_filter(body.cohort_filter)
     genomic_filters = parse_gql_filter(body.genomic_filter)
-    results = ssm_facet_query(case_filter, genomic_filters)
+    results = await ssm_facet_query(case_filter, genomic_filters)
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)
 
@@ -334,6 +336,6 @@ async def ssm_facets(
 async def gene_facets(body: FacetRequest):
     case_filter = parse_gql_filter(body.cohort_filter)
     genomic_filters = parse_gql_filter(body.genomic_filter)
-    results = gene_facet_query(case_filter, genomic_filters)
+    results = await gene_facet_query(case_filter, genomic_filters)
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

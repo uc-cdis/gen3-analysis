@@ -249,8 +249,8 @@ def build_ssm_consequence_aggregation(
     return response.to_dict()
 
 
-def ssm_facet_query(case_filter: GQLFilter, filters):
-    case_ids = query_case_ids(case_filter)
+async def ssm_facet_query(case_filter: GQLFilter, filters):
+    case_ids = await query_case_ids(case_filter)
     filter_contents = get_gql_filter_contents(filters)
 
     es_filters = [

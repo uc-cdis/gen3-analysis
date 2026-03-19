@@ -89,7 +89,7 @@ async def cohort_query(
     try:
         # Get the cohort ids using elastic search
         cohort_filter_gql = parse_gql_filter(cohort_filter)
-        case_ids = query_case_ids(cohort_filter_gql)
+        case_ids = await query_case_ids(cohort_filter_gql)
         # build a filter containing the cohort ids and merge with the other filters
         ids = case_ids
 

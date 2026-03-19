@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Dict, Any, Optional
 
 from elasticsearch_dsl import Search, Q, A
@@ -286,7 +287,7 @@ def build_gene_aggregation(
         )
 
     # Execute the query
-    response = s.execute()
+    response = await asyncio.to_thread(s.execute)
 
     # Return the full response as a dictionary
     return response.to_dict()

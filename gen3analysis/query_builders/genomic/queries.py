@@ -632,16 +632,18 @@ async def query_top_genes(
 
     # given case ids, get 20 top genes
 
-    gene_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
-    gene_s = gene_s.source(
-        ["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"]
-    )
-    gene_s = gene_s.query(top_gene_query)
-    gene_s = gene_s[offset:size]
-    gene_s = gene_s.extra(track_scores=True)
-    gene_s = gene_s.extra(track_total_hits=True)
+    def _execute_gene_search():
+        gene_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
+        gene_s = gene_s.source(
+            ["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"]
+        )
+        gene_s = gene_s.query(top_gene_query)
+        gene_s = gene_s[offset:size]
+        gene_s = gene_s.extra(track_scores=True)
+        gene_s = gene_s.extra(track_total_hits=True)
+        return gene_s.execute()
 
-    results = gene_s.execute()
+    results = await asyncio.to_thread(_execute_gene_search)
 
     hits = results["hits"]["hits"]._l_
     gene_info = []
@@ -753,23 +755,25 @@ async def query_top_ssm(
 
     # given case ids, get 20 top ssm
 
-    ssm_s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
-    ssm_s = ssm_s.source(
-        [
-            "id",
-            "score",
-            "genomic_dna_change",
-            "mutation_subtype",
-            "ssm_id",
-            "consequence",
-        ]
-    )
-    ssm_s = ssm_s.query(top_ssm_query)
-    ssm_s = ssm_s[offset:size]
-    ssm_s = ssm_s.extra(track_scores=True)
-    ssm_s = ssm_s.extra(track_total_hits=True)
+    def _execute_ssm_search():
+        ssm_s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
+        ssm_s = ssm_s.source(
+            [
+                "id",
+                "score",
+                "genomic_dna_change",
+                "mutation_subtype",
+                "ssm_id",
+                "consequence",
+            ]
+        )
+        ssm_s = ssm_s.query(top_ssm_query)
+        ssm_s = ssm_s[offset:size]
+        ssm_s = ssm_s.extra(track_scores=True)
+        ssm_s = ssm_s.extra(track_total_hits=True)
+        return ssm_s.execute()
 
-    results = ssm_s.execute()
+    results = await asyncio.to_thread(_execute_ssm_search)
 
     hits = results["hits"]["hits"]._l_
     ssm_info = []

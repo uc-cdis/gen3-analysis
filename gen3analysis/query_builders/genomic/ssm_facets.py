@@ -3,6 +3,7 @@ This module provides functionality to build complex nested queries and aggregati
 for genomic data
 """
 
+import asyncio
 from typing import List, Dict, Any, Optional
 
 from elasticsearch_dsl import Search, Q, A
@@ -243,7 +244,7 @@ def build_ssm_consequence_aggregation(
     s = s.query("bool", must=query_list)
 
     # Execute the query
-    response = s.execute()
+    response = await asyncio.to_thread(s.execute)
 
     # Return the full response as a dictionary
     return response.to_dict()

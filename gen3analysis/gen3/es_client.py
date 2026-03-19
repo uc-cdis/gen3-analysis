@@ -18,23 +18,43 @@ INDEX_LIST = [
     settings.ES_FILE_INDEX,
 ]
 
+# Shared client for the nested registry (only used at startup)
+_cached_es_client: Optional[Elasticsearch] = None
 
-@lru_cache
+
 def get_es() -> Elasticsearch:
-    logger.info(f"Setting up connection to ES: {hosts}")
+    """
+    Create a new Elasticsearch client for each request to avoid connection pool contention.
+    Each client has its own connection pool, allowing concurrent requests to execute in parallel.
+    """
     kwargs = {
         "hosts": hosts,
         "use_ssl": settings.ES_VERIFY_SSL,
         "request_timeout": settings.ES_TIMEOUT,
         "timeout": settings.ES_TIMEOUT,
         "retry_on_timeout": True,
+        "maxsize": 25,  # Connection pool size per client
+        "max_retries": 1,  # Reduce retries
+        "retry_on_status": [429, 503],  # Only retry on these status codes
     }
     return Elasticsearch(**kwargs)
 
 
+def get_cached_es() -> Elasticsearch:
+    """
+    Get or create a cached ES client for one-time operations like building the registry.
+    This should only be used for initialization, not for request handling.
+    """
+    global _cached_es_client
+    if _cached_es_client is None:
+        logger.info(f"Setting up cached ES client for registry: {hosts}")
+        _cached_es_client = get_es()
+    return _cached_es_client
+
+
 @lru_cache
 def get_nested_registry() -> dict:
-    es = get_es()
+    es = get_cached_es()
     registry = {}
     for index in INDEX_LIST:
         logger.info(f"Building registry for: {index}")
@@ -44,14 +64,14 @@ def get_nested_registry() -> dict:
 
 
 def open_pit(index: str, keep_alive: Optional[str] = None) -> str:
-    es = get_es()
+    es = get_cached_es()
     keep_alive = keep_alive or settings.ES_PIT_KEEP_ALIVE
     resp = es.open_point_in_time(index=index, keep_alive=keep_alive)
     return resp["id"]
 
 
 def close_pit(pit_id: str) -> None:
-    es = get_es()
+    es = get_cached_es()
     try:
         es.close_point_in_time(body={"id": pit_id})
     except Exception:

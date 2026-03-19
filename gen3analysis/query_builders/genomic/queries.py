@@ -512,7 +512,9 @@ def build_gene_query(
 
 async def query_case_ids(case_filter: GQLFilter) -> List[str]:
     def _execute_search():
-        s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
+        # Get ES client - note: get_es() uses lru_cache so this returns shared instance
+        es = get_es()
+        s = Search(using=es, index=settings.ES_CASE_CENTRIC_INDEX)
         if case_filter:
             filters = convert_gql_to_elastic_search(
                 case_filter, settings.ES_CASE_CENTRIC_INDEX
@@ -522,8 +524,10 @@ async def query_case_ids(case_filter: GQLFilter) -> List[str]:
         s = s[0 : settings.MAX_CASES]  # Get all cases
         s = s.source(False)
         s = s.query(filters)
+        # Execute returns immediately once results are available
         return s.execute()
 
+    # Run in thread pool to avoid blocking event loop
     results = await asyncio.to_thread(_execute_search)
 
     case_ids = [x._id for x in results["hits"]["hits"]]

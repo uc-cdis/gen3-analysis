@@ -206,7 +206,7 @@ def transform_to_graphql_response(
     return graphql_response
 
 
-def build_gene_aggregation(
+async def build_gene_aggregation(
     case_ids: List[str],
     filters: Optional[List[dict]] = [],
     size: int = 200,

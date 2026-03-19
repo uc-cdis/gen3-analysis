@@ -158,7 +158,7 @@ def transform_to_graphql_response(
     return result
 
 
-def build_ssm_consequence_aggregation(
+async def build_ssm_consequence_aggregation(
     case_ids: List[str],
     filters: Optional[List[dict]],
     size: int = 64,
@@ -206,7 +206,7 @@ def build_ssm_consequence_aggregation(
     )
     s.aggs["consequence:global"].bucket("consequence:filtered", filtered_agg)
 
-    # Nested aggregation for consequence
+    # Nested aggregation for a consequence
     nested_consequence_agg = A("nested", path="consequence")
     s.aggs["consequence:global"]["consequence:filtered"].bucket(
         "consequence", nested_consequence_agg

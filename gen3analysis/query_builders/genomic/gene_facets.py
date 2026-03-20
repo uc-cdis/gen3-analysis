@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Dict, Any, Optional
 
 from elasticsearch_dsl import Search, Q, A
@@ -6,7 +7,7 @@ from gen3analysis.filters.es.convert_gql_to_elastic_search import (
     convert_gql_to_elastic_search,
 )
 from gen3analysis.filters.gen3GQLFilters import get_gql_filter_contents, GQLFilter
-from gen3analysis.gen3.es_client import get_es
+from gen3analysis.gen3.es_client import get_es, get_es_executor
 from gen3analysis.query_builders.genomic.queries import query_case_ids
 from gen3analysis.query_builders.utils.combine_nested import (
     combine_nested_queries_simple,
@@ -205,7 +206,7 @@ def transform_to_graphql_response(
     return graphql_response
 
 
-def build_gene_aggregation(
+async def build_gene_aggregation(
     case_ids: List[str],
     filters: Optional[List[dict]] = [],
     size: int = 200,
@@ -285,16 +286,18 @@ def build_gene_aggregation(
             agg_field, terms_agg
         )
 
-    # Execute the query
-    response = s.execute()
+    # Execute the query in dedicated ES thread pool
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    response = await loop.run_in_executor(executor, s.execute)
 
     # Return the full response as a dictionary
     return response.to_dict()
 
 
-def gene_facet_query(case_filter: GQLFilter, filters):
+async def gene_facet_query(case_filter: GQLFilter, filters):
 
-    case_ids = query_case_ids(case_filter)
+    case_ids = await query_case_ids(case_filter)
 
     filter_contents = get_gql_filter_contents(filters)
 
@@ -306,7 +309,7 @@ def gene_facet_query(case_filter: GQLFilter, filters):
     # Combine nested queries to find a single gene that satisfies all filters.
     combined_filters = combine_nested_queries_simple(es_filters)
 
-    response = build_gene_aggregation(
+    response = await build_gene_aggregation(
         case_ids=case_ids,
         filters=combined_filters,
     )

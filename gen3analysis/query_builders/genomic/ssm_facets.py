@@ -3,6 +3,7 @@ This module provides functionality to build complex nested queries and aggregati
 for genomic data
 """
 
+import asyncio
 from typing import List, Dict, Any, Optional
 
 from elasticsearch_dsl import Search, Q, A
@@ -12,7 +13,7 @@ from gen3analysis.filters.es.convert_gql_to_elastic_search import (
 )
 
 from gen3analysis.filters.gen3GQLFilters import get_gql_filter_contents, GQLFilter
-from gen3analysis.gen3.es_client import get_es
+from gen3analysis.gen3.es_client import get_es, get_es_executor
 from gen3analysis.query_builders.genomic.queries import query_case_ids
 from gen3analysis.query_builders.utils.combine_nested import (
     combine_nested_queries_simple,
@@ -157,7 +158,7 @@ def transform_to_graphql_response(
     return result
 
 
-def build_ssm_consequence_aggregation(
+async def build_ssm_consequence_aggregation(
     case_ids: List[str],
     filters: Optional[List[dict]],
     size: int = 64,
@@ -205,7 +206,7 @@ def build_ssm_consequence_aggregation(
     )
     s.aggs["consequence:global"].bucket("consequence:filtered", filtered_agg)
 
-    # Nested aggregation for consequence
+    # Nested aggregation for a consequence
     nested_consequence_agg = A("nested", path="consequence")
     s.aggs["consequence:global"]["consequence:filtered"].bucket(
         "consequence", nested_consequence_agg
@@ -242,15 +243,17 @@ def build_ssm_consequence_aggregation(
     # Combine both queries
     s = s.query("bool", must=query_list)
 
-    # Execute the query
-    response = s.execute()
+    # Execute the query in a dedicated ES thread pool
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    response = await loop.run_in_executor(executor, s.execute)
 
     # Return the full response as a dictionary
     return response.to_dict()
 
 
-def ssm_facet_query(case_filter: GQLFilter, filters):
-    case_ids = query_case_ids(case_filter)
+async def ssm_facet_query(case_filter: GQLFilter, filters):
+    case_ids = await query_case_ids(case_filter)
     filter_contents = get_gql_filter_contents(filters)
 
     es_filters = [
@@ -267,7 +270,7 @@ def ssm_facet_query(case_filter: GQLFilter, filters):
     if len(combined_filters) == 0:
         combined_filters = None
 
-    response = build_ssm_consequence_aggregation(
+    response = await build_ssm_consequence_aggregation(
         case_ids=case_ids,
         filters=combined_filters,
     )

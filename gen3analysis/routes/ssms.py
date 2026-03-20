@@ -75,7 +75,6 @@ async def get_ssms(
 
 @ssms.get(
     path="/{ssm_id}",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Query the ssms metadata for the ssms id",
     summary="Get ssms metadata",

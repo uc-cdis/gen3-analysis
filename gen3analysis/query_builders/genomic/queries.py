@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Optional, List, Dict, Any, Iterable
 
@@ -13,7 +14,7 @@ from gen3analysis.filters.gen3GQLFilters import (
     get_gql_filter_contents,
     GQLIncludes,
 )
-from gen3analysis.gen3.es_client import get_es, get_nested_registry
+from gen3analysis.gen3.es_client import get_es, get_nested_registry, get_es_executor
 from gen3analysis.settings import settings
 
 
@@ -509,32 +510,40 @@ def build_gene_query(
     return top_gene_query
 
 
-def query_case_ids(case_filter: GQLFilter) -> List[str]:
-    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
-    if case_filter:
-        filters = convert_gql_to_elastic_search(
-            case_filter, settings.ES_CASE_CENTRIC_INDEX
-        )
-    else:
-        filters = Q("match_all")
-    s = s[0 : settings.MAX_CASES]  # Get all cases
-    s = s.source(False)
-    s = s.query(filters)
+async def query_case_ids(case_filter: GQLFilter) -> List[str]:
+    def _execute_search():
+        # Create a new ES client for this request
+        es = get_es()
+        s = Search(using=es, index=settings.ES_CASE_CENTRIC_INDEX)
+        if case_filter:
+            filters = convert_gql_to_elastic_search(
+                case_filter, settings.ES_CASE_CENTRIC_INDEX
+            )
+        else:
+            filters = Q("match_all")
+        s = s[0 : settings.MAX_CASES]  # Get all cases
+        s = s.source(False)
+        s = s.query(filters)
+        # Execute returns immediately once results are available
+        return s.execute()
 
-    results = s.execute()
+    # Run in a dedicated ES thread pool to avoid blocking the event loop
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    results = await loop.run_in_executor(executor, _execute_search)
 
     case_ids = [x._id for x in results["hits"]["hits"]]
     return case_ids
 
 
-def query_top_genes(
+async def query_top_genes(
     case_filter: GQLFilter,
     gene_filter: GQLFilter,
     ssm_filter: GQLFilter,
     size: int = 20,
     offset: int = 0,
 ) -> Dict[str, Any]:
-    case_ids = query_case_ids(case_filter)
+    case_ids = await query_case_ids(case_filter)
 
     if len(case_ids) == 0:
         return {"data": [], "total": 0}
@@ -629,16 +638,20 @@ def query_top_genes(
 
     # given case ids, get 20 top genes
 
-    gene_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
-    gene_s = gene_s.source(
-        ["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"]
-    )
-    gene_s = gene_s.query(top_gene_query)
-    gene_s = gene_s[offset:size]
-    gene_s = gene_s.extra(track_scores=True)
-    gene_s = gene_s.extra(track_total_hits=True)
+    def _execute_gene_search():
+        gene_s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
+        gene_s = gene_s.source(
+            ["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"]
+        )
+        gene_s = gene_s.query(top_gene_query)
+        gene_s = gene_s[offset:size]
+        gene_s = gene_s.extra(track_scores=True)
+        gene_s = gene_s.extra(track_total_hits=True)
+        return gene_s.execute()
 
-    results = gene_s.execute()
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    results = await loop.run_in_executor(executor, _execute_gene_search)
 
     hits = results["hits"]["hits"]._l_
     gene_info = []
@@ -653,7 +666,7 @@ def query_top_genes(
     }
 
 
-def query_top_ssm(
+async def query_top_ssm(
     case_filter: GQLFilter,
     gene_filter: GQLFilter,
     ssm_filter: GQLFilter,
@@ -661,7 +674,7 @@ def query_top_ssm(
     offset: int = 0,
 ) -> Dict[str, Any]:
     # get all the cases in the cohort
-    case_ids = query_case_ids(case_filter)
+    case_ids = await query_case_ids(case_filter)
 
     if len(case_ids) == 0:
         return {"data": [], "total": 0}
@@ -750,23 +763,27 @@ def query_top_ssm(
 
     # given case ids, get 20 top ssm
 
-    ssm_s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
-    ssm_s = ssm_s.source(
-        [
-            "id",
-            "score",
-            "genomic_dna_change",
-            "mutation_subtype",
-            "ssm_id",
-            "consequence",
-        ]
-    )
-    ssm_s = ssm_s.query(top_ssm_query)
-    ssm_s = ssm_s[offset:size]
-    ssm_s = ssm_s.extra(track_scores=True)
-    ssm_s = ssm_s.extra(track_total_hits=True)
+    def _execute_ssm_search():
+        ssm_s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
+        ssm_s = ssm_s.source(
+            [
+                "id",
+                "score",
+                "genomic_dna_change",
+                "mutation_subtype",
+                "ssm_id",
+                "consequence",
+            ]
+        )
+        ssm_s = ssm_s.query(top_ssm_query)
+        ssm_s = ssm_s[offset:size]
+        ssm_s = ssm_s.extra(track_scores=True)
+        ssm_s = ssm_s.extra(track_total_hits=True)
+        return ssm_s.execute()
 
-    results = ssm_s.execute()
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    results = await loop.run_in_executor(executor, _execute_ssm_search)
 
     hits = results["hits"]["hits"]._l_
     ssm_info = []
@@ -784,7 +801,7 @@ def query_top_ssm(
     }
 
 
-def gene_table_query(
+async def gene_table_query(
     case_filter: GQLFilter,
     gene_filter: GQLFilter,
     ssm_filter: GQLFilter,
@@ -793,7 +810,7 @@ def gene_table_query(
     search: Optional[str] = None,
 ) -> Dict[str, Any]:
 
-    case_ids = query_case_ids(case_filter)
+    case_ids = await query_case_ids(case_filter)
 
     # get SSM cases
     case_filter_contents = get_gql_filter_contents(case_filter)
@@ -963,13 +980,13 @@ def gene_table_query(
     }
 
 
-def build_create_ssm_cohort(
+async def build_create_ssm_cohort(
     case_filter: GQLFilter,
     gene_filter: GQLFilter,
     ssm_filter: GQLFilter,
 ) -> Search:
 
-    case_ids = query_case_ids(case_filter)
+    case_ids = await query_case_ids(case_filter)
     # The case_id filter used in both must and scoring
     case_id_filter = Q("terms", **{"case.case_id": case_ids}, boost=0)
 

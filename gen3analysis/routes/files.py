@@ -43,7 +43,6 @@ class FilesSummaryRequest(BaseModel):
 
 @files.post(
     path="/",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Performs a files query and returns case metadata for the matching files.",
     summary="Query case metadata",
@@ -81,7 +80,6 @@ async def query_files(
 
 @files.get(
     path="/{file_id}",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Performs a files query and returns file metadata for file id",
     summary="Get file id metadata",

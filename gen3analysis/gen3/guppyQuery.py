@@ -12,7 +12,7 @@ from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
 
 class GuppyGQLClient:
     def __init__(self, graphql_url: str, csrf_token_url: str):
-        self.graphql_url = graphql_url
+        self.graphql_url = graphql_url  # set up the download endpoint URL
         self.download_url = graphql_url.replace("/graphql", "/download")
         self.csrf_cache = CSRFTokenCache(
             rest_api_url=f"{csrf_token_url}/_status",
@@ -26,7 +26,7 @@ class GuppyGQLClient:
             self._http_client = httpx.AsyncClient(
                 timeout=45.0,
                 limits=httpx.Limits(
-                    max_keepalive_connections=20,
+                    max_keepalive_connections=75,
                     max_connections=100,
                     keepalive_expiry=30.0,
                 ),
@@ -114,10 +114,10 @@ class GuppyGQLClient:
                 if access_token:
                     headers["Authorization"] = f"Bearer {access_token}"
 
-                async with httpx.AsyncClient(timeout=45.0) as client:
-                    response = await client.post(
-                        self.download_url, json=payload, headers=headers
-                    )
+                client = self._get_client()
+                response = await client.post(
+                    self.download_url, json=payload, headers=headers
+                )
 
                 if response.status_code != 200:
                     if attempt < retry_count:

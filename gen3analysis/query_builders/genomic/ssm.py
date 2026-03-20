@@ -422,7 +422,7 @@ def query_ssm_ids(
     return {"ssmsTotal": total, "ssm_ids": ssm_ids}
 
 
-def ssm_table_query(
+async def ssm_table_query(
     case_filter: GQLFilter,
     gene_filter: GQLFilter,
     ssm_filter: GQLFilter,
@@ -433,7 +433,7 @@ def ssm_table_query(
 
     # first get the case id using the cohort filter
 
-    case_ids = query_case_ids(case_filter)
+    case_ids = await query_case_ids(case_filter)
 
     if len(case_ids) == 0:
         return {"data": [], "total": 0}

@@ -42,7 +42,6 @@ class CohortQueryRequest(BaseModel):
 
 @cohorts.post(
     path="/query",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Performs a cohort query and return the query for all items matching the ids.",
     summary="Queries for cohort ids and uses those ids as the cohort in the second query",
@@ -129,7 +128,6 @@ class CohortDownloadRequest(BaseModel):
 
 @cohorts.post(
     path="/download",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Performs a cohort query for the guppy download endpoint and return the query for all items matching the ids.",
     summary="Cohort centric download query",

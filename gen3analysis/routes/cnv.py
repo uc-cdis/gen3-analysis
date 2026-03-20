@@ -75,7 +75,6 @@ async def get_cnv(
 
 @cnv.get(
     path="/{cnv_id}",
-    dependencies=[Depends(get_guppy_client)],
     status_code=status.HTTP_200_OK,
     description="Query the cnv metadata for the cnv id",
     summary="Get cnv metadata",

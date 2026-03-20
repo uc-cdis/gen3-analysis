@@ -88,35 +88,10 @@ async def cohort_query(
     # Get the cohort items by id
 
     try:
-        start_time = time.time()
 
-        # NOTE: Eventually have to switch this query to the download API or ES when number of cases > 10K
-        cohort_query = f"""query objectIds ($cohort_filters: JSON) {{
-                {case_index}(first:{settings.MAX_CASES}, filter:$cohort_filters) {{
-                              {dot_notation_to_graphql(cohort_item_field)}
-                  }}
-        }}"""
-
-        data = await gen3_graphql_client.execute(
-            access_token=access_token,
-            query=cohort_query,
-            variables={"cohort_filters": cohort_filter},
-        )
-
-        if (data.get("data") is None) or (data.get("data").get(case_index) is None):
-            return {"hits": [], "total": 0}
-        case_ids = [
-            glom(x, cohort_item_field) for x in glom(data, f"data.{case_index}")
-        ]
-
-        # # Get the cohort ids using elastic search
-        # cohort_filter_gql = parse_gql_filter(cohort_filter)
-        # es_start = time.time()
-        # case_ids = await query_case_ids(cohort_filter_gql)
-        # es_duration = time.time() - es_start
-        # logger.info(
-        #     f"ES query_case_ids returned {len(case_ids)} IDs in {es_duration:.3f}s"
-        # )
+        # Get the cohort ids using elastic search
+        cohort_filter_gql = parse_gql_filter(cohort_filter)
+        case_ids = await query_case_ids(cohort_filter_gql)
 
         # build a filter containing the cohort ids and merge with the other filters
         ids = case_ids
@@ -136,12 +111,6 @@ async def cohort_query(
             query=query,
             variables=variables,
         )
-        guppy_duration = time.time() - guppy_start
-        total_duration = time.time() - start_time
-        logger.info(
-            f"Guppy query completed in {guppy_duration:.3f}s (total: {total_duration:.3f}s)"
-        )
-
         return result
     except Exception as e:
         logger.error(f"Error while processing cohort query: {e}")

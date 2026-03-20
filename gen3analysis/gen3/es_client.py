@@ -23,7 +23,7 @@ INDEX_LIST = [
 _cached_es_client: Optional[Elasticsearch] = None
 
 # Dedicated thread pool for ES queries to avoid contention with default asyncio thread pool
-# Allow up to 50 concurrent ES queries
+# Allow up to 100 concurrent ES queries
 _es_thread_pool: Optional[ThreadPoolExecutor] = None
 
 
@@ -32,7 +32,7 @@ def get_es_executor() -> ThreadPoolExecutor:
     global _es_thread_pool
     if _es_thread_pool is None:
         _es_thread_pool = ThreadPoolExecutor(
-            max_workers=50, thread_name_prefix="es_query_"
+            max_workers=100, thread_name_prefix="es_query_"
         )
     return _es_thread_pool
 

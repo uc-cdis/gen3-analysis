@@ -527,7 +527,7 @@ async def query_case_ids(case_filter: GQLFilter) -> List[str]:
         # Execute returns immediately once results are available
         return s.execute()
 
-    # Run in dedicated ES thread pool to avoid blocking event loop
+    # Run in a dedicated ES thread pool to avoid blocking the event loop
     loop = asyncio.get_event_loop()
     executor = get_es_executor()
     results = await loop.run_in_executor(executor, _execute_search)

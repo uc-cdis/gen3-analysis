@@ -309,7 +309,7 @@ async def gene_facet_query(case_filter: GQLFilter, filters):
     # Combine nested queries to find a single gene that satisfies all filters.
     combined_filters = combine_nested_queries_simple(es_filters)
 
-    response = build_gene_aggregation(
+    response = await build_gene_aggregation(
         case_ids=case_ids,
         filters=combined_filters,
     )

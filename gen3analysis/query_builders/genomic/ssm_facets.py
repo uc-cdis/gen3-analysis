@@ -243,7 +243,7 @@ async def build_ssm_consequence_aggregation(
     # Combine both queries
     s = s.query("bool", must=query_list)
 
-    # Execute the query in dedicated ES thread pool
+    # Execute the query in a dedicated ES thread pool
     loop = asyncio.get_event_loop()
     executor = get_es_executor()
     response = await loop.run_in_executor(executor, s.execute)
@@ -270,7 +270,7 @@ async def ssm_facet_query(case_filter: GQLFilter, filters):
     if len(combined_filters) == 0:
         combined_filters = None
 
-    response = build_ssm_consequence_aggregation(
+    response = await build_ssm_consequence_aggregation(
         case_ids=case_ids,
         filters=combined_filters,
     )

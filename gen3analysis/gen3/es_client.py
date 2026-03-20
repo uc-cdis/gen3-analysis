@@ -48,8 +48,8 @@ def get_es() -> Elasticsearch:
         "request_timeout": settings.ES_TIMEOUT,
         "timeout": settings.ES_TIMEOUT,
         "retry_on_timeout": True,
-        "maxsize": 25,  # Connection pool size per client
-        "max_retries": 1,  # Reduce retries
+        "maxsize": 100,  # Connection pool size per client
+        "max_retries": 2,  # Reduce retries
         "retry_on_status": [429, 503],  # Only retry on these status codes
     }
     return Elasticsearch(**kwargs)

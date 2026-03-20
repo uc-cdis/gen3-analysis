@@ -13,7 +13,7 @@ from gen3analysis.filters.es.convert_gql_to_elastic_search import (
 )
 
 from gen3analysis.filters.gen3GQLFilters import get_gql_filter_contents, GQLFilter
-from gen3analysis.gen3.es_client import get_es
+from gen3analysis.gen3.es_client import get_es, get_es_executor
 from gen3analysis.query_builders.genomic.queries import query_case_ids
 from gen3analysis.query_builders.utils.combine_nested import (
     combine_nested_queries_simple,
@@ -243,8 +243,10 @@ async def build_ssm_consequence_aggregation(
     # Combine both queries
     s = s.query("bool", must=query_list)
 
-    # Execute the query
-    response = await asyncio.to_thread(s.execute)
+    # Execute the query in dedicated ES thread pool
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    response = await loop.run_in_executor(executor, s.execute)
 
     # Return the full response as a dictionary
     return response.to_dict()

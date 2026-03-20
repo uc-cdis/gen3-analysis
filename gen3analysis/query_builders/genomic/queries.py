@@ -14,7 +14,7 @@ from gen3analysis.filters.gen3GQLFilters import (
     get_gql_filter_contents,
     GQLIncludes,
 )
-from gen3analysis.gen3.es_client import get_es, get_nested_registry
+from gen3analysis.gen3.es_client import get_es, get_nested_registry, get_es_executor
 from gen3analysis.settings import settings
 
 
@@ -512,7 +512,7 @@ def build_gene_query(
 
 async def query_case_ids(case_filter: GQLFilter) -> List[str]:
     def _execute_search():
-        # Get ES client - note: get_es() uses lru_cache so this returns shared instance
+        # Create a new ES client for this request
         es = get_es()
         s = Search(using=es, index=settings.ES_CASE_CENTRIC_INDEX)
         if case_filter:
@@ -527,8 +527,10 @@ async def query_case_ids(case_filter: GQLFilter) -> List[str]:
         # Execute returns immediately once results are available
         return s.execute()
 
-    # Run in thread pool to avoid blocking event loop
-    results = await asyncio.to_thread(_execute_search)
+    # Run in dedicated ES thread pool to avoid blocking event loop
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    results = await loop.run_in_executor(executor, _execute_search)
 
     case_ids = [x._id for x in results["hits"]["hits"]]
     return case_ids
@@ -647,7 +649,9 @@ async def query_top_genes(
         gene_s = gene_s.extra(track_total_hits=True)
         return gene_s.execute()
 
-    results = await asyncio.to_thread(_execute_gene_search)
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    results = await loop.run_in_executor(executor, _execute_gene_search)
 
     hits = results["hits"]["hits"]._l_
     gene_info = []
@@ -777,7 +781,9 @@ async def query_top_ssm(
         ssm_s = ssm_s.extra(track_total_hits=True)
         return ssm_s.execute()
 
-    results = await asyncio.to_thread(_execute_ssm_search)
+    loop = asyncio.get_event_loop()
+    executor = get_es_executor()
+    results = await loop.run_in_executor(executor, _execute_ssm_search)
 
     hits = results["hits"]["hits"]._l_
     ssm_info = []

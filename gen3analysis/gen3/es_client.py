@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from elasticsearch import Elasticsearch
 from typing import Optional
 from gen3analysis.filters.es.nesting_registry import NestingRegistry
@@ -20,6 +21,20 @@ INDEX_LIST = [
 
 # Shared client for the nested registry (only used at startup)
 _cached_es_client: Optional[Elasticsearch] = None
+
+# Dedicated thread pool for ES queries to avoid contention with default asyncio thread pool
+# Allow up to 50 concurrent ES queries
+_es_thread_pool: Optional[ThreadPoolExecutor] = None
+
+
+def get_es_executor() -> ThreadPoolExecutor:
+    """Get or create the dedicated thread pool for ES queries."""
+    global _es_thread_pool
+    if _es_thread_pool is None:
+        _es_thread_pool = ThreadPoolExecutor(
+            max_workers=50, thread_name_prefix="es_query_"
+        )
+    return _es_thread_pool
 
 
 def get_es() -> Elasticsearch:

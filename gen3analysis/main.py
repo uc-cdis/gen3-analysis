@@ -30,23 +30,46 @@ from gen3analysis.settings import settings, logger
 route_aggregator = APIRouter()
 
 
-route_definitions = [
-    (basic_router, "", ["Basic"]),
-    (compare, "/compare", ["Compare"]),
-    (survival, "/survival", ["Survival"]),
-    (cohorts, "/cohorts", ["Cohorts"]),
-    (genomic, "/genomic", ["Genomic"]),
-    (cases, "/cases", ["Cases"]),
-    (files, "/files", ["Files"]),
-    (ssms, "/ssms", ["SSMS"]),
-    (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
-    (gene_expression, "/gene_expression", ["Gene Expression"]),
-    (cnv, "/cnv", ["CNV"]),
-    (cnv_occurrence, "/cnv_occurrence", ["CNV Occurrence"]),
-]
+# Map route names to their definitions (router, prefix, tags)
+ALL_ROUTE_DEFINITIONS = {
+    "basic": (basic_router, "", ["Basic"]),
+    "compare": (compare, "/compare", ["Compare"]),
+    "survival": (survival, "/survival", ["Survival"]),
+    "cohorts": (cohorts, "/cohorts", ["Cohorts"]),
+    "genomic": (genomic, "/genomic", ["Genomic"]),
+    "cases": (cases, "/cases", ["Cases"]),
+    "files": (files, "/files", ["Files"]),
+    "ssms": (ssms, "/ssms", ["SSMS"]),
+    "ssms_occurrence": (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
+    "gene_expression": (gene_expression, "/gene_expression", ["Gene Expression"]),
+    "cnv": (cnv, "/cnv", ["CNV"]),
+    "cnv_occurrence": (cnv_occurrence, "/cnv_occurrence", ["CNV Occurrence"]),
+}
 
-for router, prefix, tags in route_definitions:
-    route_aggregator.include_router(router, prefix=prefix, tags=tags)
+# Get enabled routes from environment variable
+# Format: comma-separated list like "basic,compare,survival"
+# If not set or "all", enable all routes
+enabled_routes_env = (
+    settings.ENABLED_ROUTES if hasattr(settings, "ENABLED_ROUTES") else None
+)
+if not enabled_routes_env:
+    import os
+
+    enabled_routes_env = os.environ.get("ENABLED_ROUTES", "all")
+
+if enabled_routes_env == "all":
+    enabled_routes = list(ALL_ROUTE_DEFINITIONS.keys())
+else:
+    enabled_routes = [r.strip() for r in enabled_routes_env.split(",") if r.strip()]
+
+# Include only enabled routes
+for route_name in enabled_routes:
+    if route_name in ALL_ROUTE_DEFINITIONS:
+        router, prefix, tags = ALL_ROUTE_DEFINITIONS[route_name]
+        route_aggregator.include_router(router, prefix=prefix, tags=tags)
+        logger.info(f"Enabled route: {route_name}")
+    else:
+        logger.warning(f"Unknown route requested: {route_name}")
 
 
 @asynccontextmanager
@@ -112,7 +135,7 @@ async def lifespan(app: FastAPI):
                 )
         except Exception as e:
             logger.error("Failed to initialize gene expression data store: %s", e)
-            raise
+            # Don't fail the app startup if gene expression data store initialization fails'
 
     yield
 

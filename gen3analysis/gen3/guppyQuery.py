@@ -44,7 +44,7 @@ class GuppyGQLClient:
         access_token: str,
         query: str,
         variables: Dict[str, Any] = None,
-        retry_count: int = 1,
+        retry_count: int = 3,
     ) -> Dict[str, Any]:
         for attempt in range(retry_count + 1):
             try:
@@ -63,7 +63,6 @@ class GuppyGQLClient:
                     self.graphql_url, json=payload, headers=headers
                 )
 
-                logger.debug(f"Guppy response status: {response.status_code}")
                 if response.status_code != 200:
                     if attempt < retry_count:
                         continue

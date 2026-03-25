@@ -43,6 +43,7 @@ class CoreSettings(BaseSettings):
     DEBUG: Optional[bool] = False
 
     # Gen3 services
+    GUPPY_URL: Optional[str] = "http://guppy-service"
     ARBORIST_URL: Optional[str] = "http://arborist-service"
     DEPLOYMENT_TYPE: Optional[str] = "prod"
 
@@ -74,11 +75,8 @@ class CoreSettings(BaseSettings):
     # GraphQL settings
     GRAPHQL_ENABLED: Optional[bool] = True
 
-
-class GuppySettings(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
-
-    GUPPY_URL: Optional[str] = "http://guppy-service"
+    # Case ID cache: max number of distinct case_filter keys to cache
+    CASE_ID_CACHE_MAX_SIZE: int = 128
 
 
 class GDCGenomicSettings(BaseSettings):
@@ -224,8 +222,7 @@ class GeneExpressionSettings(BaseSettings):
 
 SettingsRegistry = {
     "core": CoreSettings,
-    "guppy": GuppySettings,
-    "cohortCentric": GDCGenomicSettings,
+    "cohort": GDCGenomicSettings,
     "gene_expression": GeneExpressionSettings,
 }
 
@@ -258,7 +255,20 @@ def create_settings(enabled_routes: List[str]) -> BaseSettings:
 # If not set, all routes are enabled by default
 ENABLED_ROUTES_ENV = os.environ.get("ENABLED_ROUTES", "all")
 if ENABLED_ROUTES_ENV == "all":
-    ENABLED_ROUTES = ["core", "guppy", "cohortCentric", "gene_expression"]
+    ENABLED_ROUTES = [
+        "core",
+        "compare",
+        "survival",
+        "cohorts",
+        "gene_expression",
+        "genomic",
+        "cases",
+        "files",
+        "ssms",
+        "ssm_occurrence",
+        "cnv",
+        "cnv_occurrence",
+    ]
 else:
     # Always include core, add user-specified routes
     ENABLED_ROUTES = ["core"] + [

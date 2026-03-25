@@ -1,4 +1,5 @@
 import json
+import threading
 from typing import Optional, List, Dict, Any, Iterable
 
 from elasticsearch_dsl import Q, A, Search, Nested
@@ -509,22 +510,57 @@ def build_gene_query(
     return top_gene_query
 
 
+_case_id_cache: Dict[str, List[str]] = {}
+_cache_lock = threading.Lock()
+_in_flight: Dict[str, threading.Event] = {}
+
+
+def _make_case_filter_key(case_filter: Optional[GQLFilter]) -> str:
+    if case_filter is None:
+        return ""
+    return case_filter.to_json()
+
+
 def query_case_ids(case_filter: GQLFilter) -> List[str]:
-    s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
-    if case_filter:
-        filters = convert_gql_to_elastic_search(
-            case_filter, settings.ES_CASE_CENTRIC_INDEX
-        )
-    else:
-        filters = Q("match_all")
-    s = s[0 : settings.MAX_CASES]  # Get all cases
-    s = s.source(False)
-    s = s.query(filters)
+    cache_key = _make_case_filter_key(case_filter)
 
-    results = s.execute()
+    while True:
+        with _cache_lock:
+            if cache_key in _case_id_cache:
+                return _case_id_cache[cache_key]
+            if cache_key not in _in_flight:
+                # This thread owns the fetch for this key
+                event = threading.Event()
+                _in_flight[cache_key] = event
+                break
+            event = _in_flight[cache_key]
+        # Another thread is already fetching this key; wait for it then retry
+        event.wait()
 
-    case_ids = [x._id for x in results["hits"]["hits"]]
-    return case_ids
+    try:
+        s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
+        if case_filter:
+            filters = convert_gql_to_elastic_search(
+                case_filter, settings.ES_CASE_CENTRIC_INDEX
+            )
+        else:
+            filters = Q("match_all")
+        s = s[0 : settings.MAX_CASES]  # Get all cases
+        s = s.source(False)
+        s = s.query(filters)
+
+        results = s.execute()
+        case_ids = [x._id for x in results["hits"]["hits"]]
+
+        with _cache_lock:
+            if len(_case_id_cache) >= settings.CASE_ID_CACHE_MAX_SIZE:
+                _case_id_cache.clear()
+            _case_id_cache[cache_key] = case_ids
+        return case_ids
+    finally:
+        with _cache_lock:
+            _in_flight.pop(cache_key, None)
+        event.set()
 
 
 def query_top_genes(

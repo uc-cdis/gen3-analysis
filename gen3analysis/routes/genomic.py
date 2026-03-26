@@ -18,6 +18,8 @@ from gen3analysis.query_builders.genomic.queries import (
     query_top_genes,
     gene_table_query,
     query_top_ssm,
+    build_ssm_caseids_query,
+    gene_caseids_query,
 )
 from gen3analysis.query_builders.genomic.ssm import ssm_table_query
 from gen3analysis.query_builders.genomic.ssm_facets import ssm_facet_query
@@ -335,5 +337,19 @@ async def gene_facets(body: FacetRequest):
     case_filter = parse_gql_filter(body.cohort_filter)
     genomic_filters = parse_gql_filter(body.genomic_filter)
     results = gene_facet_query(case_filter, genomic_filters)
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=results)
+
+
+@genomic.post(path="/gene_cases")
+async def gene_cases(body: FacetRequest):
+    cohort_filter = parse_gql_filter(body.cohort_filter)
+    gene_filter = parse_gql_filter(body.gene_filter)
+    ssm_filter = parse_gql_filter(body.ssm_filter)
+    results = gene_caseids_query(
+        cohort_filter,
+        gene_filter,
+        ssm_filter,
+    )
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=results)

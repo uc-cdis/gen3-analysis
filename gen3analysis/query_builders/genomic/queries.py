@@ -963,7 +963,7 @@ def gene_table_query(
     }
 
 
-def build_create_ssm_cohort(
+def gene_caseids_query(
     case_filter: GQLFilter,
     gene_filter: GQLFilter,
     ssm_filter: GQLFilter,
@@ -972,6 +972,22 @@ def build_create_ssm_cohort(
     case_ids = query_case_ids(case_filter)
     # The case_id filter used in both must and scoring
     case_id_filter = Q("terms", **{"case.case_id": case_ids}, boost=0)
+
+    gene_filter_contents = get_gql_filter_contents(gene_filter)
+    gene_es_filters = []
+    for x in gene_filter_contents:
+        gene_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_SSM_CENTRIC_INDEX, boost=0, start_path_index=1
+        )
+        gene_es_filters.append(gene_query)
+
+    ssm_filter_contents = get_gql_filter_contents(ssm_filter)
+    ssm_es_filters = []
+    for x in ssm_filter_contents:
+        ssm_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_SSM_CENTRIC_INDEX, start_path_index=1, boost=0
+        )
+        ssm_es_filters.append(ssm_query)
 
     # Nested filter that defines "a case counts" - mirrored in both query and agg
     matching_case_filter = Q(
@@ -1001,8 +1017,18 @@ def build_create_ssm_cohort(
             ignore_unmapped=True,
             query=Q("bool", must=[case_id_filter]),
         ),
-        Q("terms", **{"is_cancer_gene_census": ["true"]}),
-        Q("term", symbol="kras"),
+        Q(
+            "nested",
+            path="consequence",
+            ignore_unmapped=True,
+            query=Q(
+                "bool",
+                must=[*ssm_es_filters, *gene_es_filters],
+            ),
+        ),
+        # TDDO remove after confirm this works
+        # Q("terms", **{"is_cancer_gene_census": ["true"]}),
+        # Q("term", symbol="kras"),
     ]
 
     # Should clauses: scoring nested + match_all with 0 boost
@@ -1046,4 +1072,5 @@ def build_create_ssm_cohort(
         "case_count", "cardinality", field="case.case_id"
     )
 
-    return s
+    results = s.execute()
+    return results

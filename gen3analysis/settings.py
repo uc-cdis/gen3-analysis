@@ -75,13 +75,18 @@ class CoreSettings(BaseSettings):
     # GraphQL settings
     GRAPHQL_ENABLED: Optional[bool] = True
 
-    # Case ID cache: max number of distinct case_filter keys to cache
+    # Case ID cache
     CASE_ID_CACHE_MAX_SIZE: int = 128
+    CASE_ID_CACHE_TTL: int = 300  # seconds; used by Redis cache
+    REDIS_URL: Optional[str] = (
+        None  # e.g. "redis://localhost:6379"; disables in-process cache when set
+    )
 
 
 class GDCGenomicSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
+    MAX_CASES: Optional[int] = 10000
     # Guppy default indices
     CASE_INDEX: Optional[str] = "case"
     FILE_INDEX: Optional[str] = "file"
@@ -234,20 +239,11 @@ def create_settings(enabled_routes: List[str]) -> BaseSettings:
     Args:
         enabled_routes: List of route names to enable (e.g., ['core', 'guppy', 'cohortCentric'])
     """
-    # Start with core settings
-    settings_dict = CoreSettings(
-        _env_file=_select_env_file(), _env_file_encoding="utf-8"
-    ).model_dump()
-
-    for route in enabled_routes:
-        if route in SettingsRegistry and route != "core":
-            route_settings = SettingsRegistry[route](
-                _env_file=_select_env_file(), _env_file_encoding="utf-8"
-            )
-            settings_dict.update(route_settings.model_dump())
-
-    # Create a Settings instance with the merged dict
-    return CoreSettings(**settings_dict)
+    bases = tuple(SettingsRegistry[r] for r in enabled_routes if r in SettingsRegistry)
+    CombinedSettings = type(
+        "CombinedSettings", bases, {"model_config": SettingsConfigDict(extra="ignore")}
+    )
+    return CombinedSettings(_env_file=_select_env_file(), _env_file_encoding="utf-8")
 
 
 # Determine enabled routes from environment variable
@@ -259,7 +255,7 @@ if ENABLED_ROUTES_ENV == "all":
         "core",
         "compare",
         "survival",
-        "cohorts",
+        "cohort",
         "gene_expression",
         "genomic",
         "cases",

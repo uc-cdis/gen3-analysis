@@ -1,5 +1,6 @@
 import json
 import threading
+from functools import lru_cache
 from typing import Optional, List, Dict, Any, Iterable
 
 from elasticsearch_dsl import Q, A, Search, Nested
@@ -514,6 +515,18 @@ _case_id_cache: Dict[str, List[str]] = {}
 _cache_lock = threading.Lock()
 _in_flight: Dict[str, threading.Event] = {}
 
+_REDIS_KEY_PREFIX = "gen3analysis:case_ids:"
+
+
+@lru_cache(maxsize=1)
+def _get_redis():
+    """Return a Redis client if REDIS_URL is configured, else None."""
+    if not settings.REDIS_URL:
+        return None
+    import redis
+
+    return redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+
 
 def _make_case_filter_key(case_filter: Optional[GQLFilter]) -> str:
     if case_filter is None:
@@ -521,21 +534,46 @@ def _make_case_filter_key(case_filter: Optional[GQLFilter]) -> str:
     return case_filter.to_json()
 
 
+def _redis_get(key: str) -> Optional[List[str]]:
+    r = _get_redis()
+    if r is None:
+        return None
+    raw = r.get(_REDIS_KEY_PREFIX + key)
+    if raw is None:
+        return None
+    return json.loads(raw)
+
+
+def _redis_set(key: str, case_ids: List[str]) -> None:
+    r = _get_redis()
+    if r is None:
+        return
+    r.set(_REDIS_KEY_PREFIX + key, json.dumps(case_ids), ex=settings.CASE_ID_CACHE_TTL)
+
+
 def query_case_ids(case_filter: GQLFilter) -> List[str]:
     cache_key = _make_case_filter_key(case_filter)
 
+    # Fast path: Redis (shared across all workers)
+    cached = _redis_get(cache_key)
+    if cached is not None:
+        return cached
+
+    # Coalescing: only one thread per worker fires the ES query for a given key
     while True:
         with _cache_lock:
             if cache_key in _case_id_cache:
                 return _case_id_cache[cache_key]
             if cache_key not in _in_flight:
-                # This thread owns the fetch for this key
                 event = threading.Event()
                 _in_flight[cache_key] = event
                 break
             event = _in_flight[cache_key]
-        # Another thread is already fetching this key; wait for it then retry
         event.wait()
+        # After waking, check Redis first — another worker may have populated it
+        cached = _redis_get(cache_key)
+        if cached is not None:
+            return cached
 
     try:
         s = Search(using=get_es(), index=settings.ES_CASE_CENTRIC_INDEX)
@@ -551,6 +589,8 @@ def query_case_ids(case_filter: GQLFilter) -> List[str]:
 
         results = s.execute()
         case_ids = [x._id for x in results["hits"]["hits"]]
+
+        _redis_set(cache_key, case_ids)
 
         with _cache_lock:
             if len(_case_id_cache) >= settings.CASE_ID_CACHE_MAX_SIZE:

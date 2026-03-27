@@ -10,7 +10,7 @@ class GQLEqual:
     """GraphQL Equal filter: {'=': {'field': 'value'}}"""
 
     equal_op: Dict[str, Union[str, int]] = field(
-        default_factory=dict, metadata=config(field_name="!=")
+        default_factory=dict, metadata=config(field_name="=")
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -417,6 +417,8 @@ def parse_gql_filter(data: Dict[str, Any]) -> Optional["GQLFilter"]:
         return None
 
     if "=" in data:
+        return GQLEqual.from_dict(data)
+    if "eq" in data:
         return GQLEqual.from_dict(data)
     elif "!=" in data:
         return GQLNotEqual.from_dict(data)

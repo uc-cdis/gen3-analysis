@@ -105,8 +105,6 @@ async def cnv_occurrence_id_query(
              }}
     }}"""
 
-    # save query to file
-
     return await gen3_graphql_client.execute(
         access_token=access_token,
         query=query,

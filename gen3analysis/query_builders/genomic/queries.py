@@ -643,8 +643,10 @@ def query_top_genes(
     hits = results["hits"]["hits"]._l_
     gene_info = []
     for hit in hits:
+        x_score = hit.get("_score", 0)
+        max_score = max(x_score - 1, 0)
         info = dict(hit.get("_source", {}))
-        info["numCases"] = hit.get("_score", -1)
+        info["numCases"] = max_score
         gene_info.append(info)
     return {
         "filteredCases": len(case_ids),
@@ -884,10 +886,14 @@ def gene_table_query(
     gene_information = {}
     gene_ids = []
     for x in results["hits"]["hits"]:
+
+        x_score = glom(x, "_score", default=0)
+        max_score = max(x_score - 1, 0)
         gene_information[x._id] = {
             "gene_id": x._id,
             "id": x._id,  # to be compatible with GDC response
-            "case_count": x._score,
+            # score is the number of cases that have this gene, and for some reason it is off by 1
+            "case_count": max_score,
             **(x._source.to_dict()),
         }
         gene_ids.append(x._id)
@@ -963,7 +969,7 @@ def gene_table_query(
     }
 
 
-def build_create_ssm_cohort(
+def gene_caseids_query(
     case_filter: GQLFilter,
     gene_filter: GQLFilter,
     ssm_filter: GQLFilter,
@@ -973,77 +979,73 @@ def build_create_ssm_cohort(
     # The case_id filter used in both must and scoring
     case_id_filter = Q("terms", **{"case.case_id": case_ids}, boost=0)
 
+    gene_filter_contents = get_gql_filter_contents(gene_filter)
+    gene_es_filters = []
+    for x in gene_filter_contents:
+        gene_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_GENE_CENTRIC_INDEX, boost=0, start_path_index=1
+        )
+        gene_es_filters.append(gene_query)
+
+    ssm_filter_contents = get_gql_filter_contents(ssm_filter)
+    ssm_es_filters = []
+    for x in ssm_filter_contents:
+        ssm_query = convert_gql_to_elastic_search(
+            x, index=settings.ES_GENE_CENTRIC_INDEX, start_path_index=1, boost=0
+        )
+        ssm_es_filters.append(ssm_query)
+
+    s = Search(using=get_es(), index=settings.ES_GENE_CENTRIC_INDEX)
+
     # Nested filter that defines "a case counts" - mirrored in both query and agg
-    matching_case_filter = Q(
-        "bool",
-        must=[
-            Q("bool", must=[Q("bool", must=[case_id_filter])]),
-            Q(
-                "bool",
-                must=[
-                    Q(
-                        "nested",
-                        path="case.ssm",
-                        query=Q("exists", field="case.ssm.ssm_id"),
-                    )
-                ],
-            ),
-            Q("exists", field="case.project.project_id"),
-        ],
-        must_not=[Q("term", **{"case.project.project_id": ""})],
-    )
-
-    # Top-level must clauses
-    must_clauses = [
-        Q(
-            "nested",
-            path="case",
-            ignore_unmapped=True,
-            query=Q("bool", must=[case_id_filter]),
-        ),
-        Q("terms", **{"is_cancer_gene_census": ["true"]}),
-        Q("term", symbol="kras"),
-    ]
-
-    # Should clauses: scoring nested + match_all with 0 boost
-    should_clauses = [
-        Q(
+    case_filter = Q(
+        "nested",
+        path="case",
+        query=Q(
             "bool",
-            must=[
+            filter=[
+                Q("terms", **{"case.case_id": case_ids}),
                 Q(
                     "nested",
-                    path="case",
-                    score_mode="sum",
-                    query=Q(
-                        "constant_score",
-                        boost=1.0,
-                        filter=matching_case_filter,
-                    ),
-                )
+                    path="case.ssm",
+                    query=Q("match_all"),
+                ),
             ],
         ),
-        Q("bool", boost=0, must=[Q("match_all")]),
-    ]
-
-    query = Q("bool", must=must_clauses, should=should_clauses)
-
-    s = (
-        Search()
-        .query(query)
-        .source(["symbol", "name", "biotype", "gene_id", "is_cancer_gene_census"])
-        .extra(
-            from_=0,
-            size=1,
-            track_scores=True,
-            track_total_hits=True,
-        )
     )
 
-    # Aggregation: nested > filter > terms + cardinality
+    s = s.filter(case_filter)
+    # add the gene filters
+    for f in gene_es_filters:
+        s = s.filter(f)
+    for f in ssm_es_filters:
+        s = s.filter(f)
     s.aggs.bucket("cases", "nested", path="case").bucket(
-        "matching_cases", "filter", filter=matching_case_filter
-    ).metric("case_ids", "terms", field="case.case_id", size=10000).metric(
-        "case_count", "cardinality", field="case.case_id"
+        "filtered",
+        "filter",
+        filter=Q(
+            "bool",
+            filter=[
+                Q("terms", **{"case.case_id": case_ids}),
+                Q(
+                    "nested",
+                    path="case.ssm",
+                    query=Q("match_all"),
+                ),
+            ],
+        ),
+    ).bucket(
+        "case_ids",
+        "terms",
+        field="case.case_id",
+        size=10000,
     )
 
-    return s
+    s = s.source([])
+    s = s.extra(size=0)
+
+    response = s.execute()
+
+    buckets = response.aggregations.cases.filtered.case_ids.buckets
+
+    return [bucket.key for bucket in buckets]

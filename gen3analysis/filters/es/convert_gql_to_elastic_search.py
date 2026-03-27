@@ -52,11 +52,11 @@ def convert_gql_to_elastic_search(
 
     if is_gql_equal(fltr):
         field, value = next(iter(fltr.equal_op.items()))
-        q = Q("term", **{field: value}, boost=boost)
+        q = Q("term", **{field: value})
 
     if is_gql_not_equal(fltr):
         field, value = next(iter(fltr.not_equal_op.items()))
-        q = Q("bool", must_not=Q("term", **{field: value}, boost=boost))
+        q = Q("bool", must_not=Q("term", **{field: value}))
 
     if is_gql_greater_than(fltr):
         field, value = next(iter(fltr.greater_than_op.items()))

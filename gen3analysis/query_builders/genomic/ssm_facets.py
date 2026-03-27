@@ -167,7 +167,7 @@ def build_ssm_consequence_aggregation(
     # Initialize the search object
     s = Search(using=get_es(), index=settings.ES_SSM_CENTRIC_INDEX)
 
-    # Set size to 0 since we only want aggregations
+    # Set the size to 0 since we only want aggregations
     s = s.extra(size=0)
 
     # Build the nested query for occurrence (case filtering)
@@ -182,9 +182,13 @@ def build_ssm_consequence_aggregation(
     consequence_must_clauses = []
     if filters is not None and len(filters) > 0:
         # TODO Fix hardcoded path
-        consequence_query = filters[0]  # all of these are nested
-        consequence_must_clauses = consequence_query.query.to_dict()["bool"]["must"]
-        query_list.append(consequence_query)
+        # test if filter has a member named "path"
+        for consequence_query in filters:
+            if hasattr(consequence_query, "path"):
+                consequence_must_clauses = consequence_query.query.to_dict()["bool"][
+                    "must"
+                ]
+                query_list.append(consequence_query)
 
     # Build aggregations
     # We use a global aggregation approach similar to GDC

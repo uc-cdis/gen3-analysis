@@ -9,7 +9,6 @@ from gen3analysis.filters.gen3GQLFilters import get_gql_filter_contents, GQLFilt
 from gen3analysis.gen3.es_client import get_es
 from gen3analysis.query_builders.genomic.queries import (
     query_case_ids,
-    build_ssm_caseids_query,
 )
 from gen3analysis.query_builders.genomic.ssm import build_ssm_query
 from gen3analysis.query_builders.utils.combine_nested import (

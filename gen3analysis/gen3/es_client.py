@@ -34,6 +34,7 @@ def get_nested_registry() -> dict:
         settings.ES_FILE_INDEX,
     ]
     es = get_es()
+    logger.info(f"Building registry for: {INDEX_LIST} {es.info()}")
     registry = {}
     for index in INDEX_LIST:
         logger.info(f"Building registry for: {index}")

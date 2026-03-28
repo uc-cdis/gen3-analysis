@@ -58,7 +58,10 @@ class CoreSettings(BaseSettings):
     MOCK_AUTH: Optional[bool] = False
 
     # Elasticsearch settings
-    GEN3_ES_ENDPOINT: Optional[str] = "http://localhost:9200"
+    GEN3_ES_ENDPOINT: Optional[str] = (
+        f"http://{os.environ.get('GEN3_ELASTICSEARCH_MASTER_SERVICE_HOST', 'localhost')}:"
+        f"{os.environ.get('GEN3_ELASTICSEARCH_MASTER_SERVICE_PORT', '9200')}"
+    )
     ES_PIT_KEEP_ALIVE: Optional[str] = "1m"
     ES_ENABLED: Optional[bool] = False
 

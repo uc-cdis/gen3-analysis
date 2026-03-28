@@ -468,6 +468,31 @@ components:
           title: Size
       title: FilesRequest
       type: object
+    GeneCaseIdsRequest:
+      properties:
+        cohort_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Case filter (optional)
+          title: Cohort Filter
+        gene_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: Gene filters
+          title: Gene Filter
+        ssm_filter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          description: SSM filters
+          title: Ssm Filter
+      title: GeneCaseIdsRequest
+      type: object
     GeneDetail:
       description: "Detail about a single gene expression data availability.\n\nAttributes:\n\
         \    gene_id: ENSEMBL gene ID\n    has_gene_expression_values: Whether expression\
@@ -1674,6 +1699,30 @@ paths:
       summary: Get gene expression values
       tags:
       - Gene Expression
+  /genomic/gene_cases:
+    post:
+      operationId: gene_cases_genomic_gene_cases_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneCaseIdsRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Gene Cases
+      tags:
+      - Genomic
   /genomic/gene_facets:
     post:
       operationId: gene_facets_genomic_gene_facets_post

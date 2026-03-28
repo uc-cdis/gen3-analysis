@@ -7,7 +7,10 @@ from gen3analysis.filters.es.convert_gql_to_elastic_search import (
 )
 from gen3analysis.filters.gen3GQLFilters import get_gql_filter_contents, GQLFilter
 from gen3analysis.gen3.es_client import get_es
-from gen3analysis.query_builders.genomic.queries import query_case_ids
+from gen3analysis.query_builders.genomic.queries import (
+    query_case_ids,
+)
+from gen3analysis.query_builders.genomic.ssm import build_ssm_query
 from gen3analysis.query_builders.utils.combine_nested import (
     combine_nested_queries_simple,
 )

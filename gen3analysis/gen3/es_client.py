@@ -6,18 +6,6 @@ from gen3analysis.settings import settings, logger
 
 hosts = [h.strip() for h in settings.GEN3_ES_ENDPOINT.split(",") if h.strip()]
 
-INDEX_LIST = [
-    settings.ES_GENE_CENTRIC_INDEX,
-    settings.ES_PROJECT_INDEX,
-    settings.ES_SSM_CENTRIC_INDEX,
-    settings.ES_SSM_OCCURRENCE_INDEX,
-    settings.ES_CNV_CENTRIC_INDEX,
-    settings.ES_CNV_OCCURRENCE_INDEX,
-    settings.ES_CASE_CENTRIC_INDEX,
-    settings.ES_CASE_INDEX,
-    settings.ES_FILE_INDEX,
-]
-
 
 @lru_cache
 def get_es() -> Elasticsearch:
@@ -34,7 +22,19 @@ def get_es() -> Elasticsearch:
 
 @lru_cache
 def get_nested_registry() -> dict:
+    INDEX_LIST = [
+        settings.ES_GENE_CENTRIC_INDEX,
+        settings.ES_PROJECT_INDEX,
+        settings.ES_SSM_CENTRIC_INDEX,
+        settings.ES_SSM_OCCURRENCE_INDEX,
+        settings.ES_CNV_CENTRIC_INDEX,
+        settings.ES_CNV_OCCURRENCE_INDEX,
+        settings.ES_CASE_CENTRIC_INDEX,
+        settings.ES_CASE_INDEX,
+        settings.ES_FILE_INDEX,
+    ]
     es = get_es()
+    logger.info(f"Building registry for: {INDEX_LIST} {es.info()}")
     registry = {}
     for index in INDEX_LIST:
         logger.info(f"Building registry for: {index}")

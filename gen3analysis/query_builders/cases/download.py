@@ -1,5 +1,8 @@
 from typing import Dict, Optional, List, Any
 from glom import glom
+
+from gen3analysis.filters.gen3GQLFilters import parse_gql_filter
+from gen3analysis.query_builders.genomic.queries import query_case_ids
 from gen3analysis.settings import logger
 
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
@@ -20,24 +23,8 @@ async def download_query(
 ):
     try:
 
-        # NOTE: Eventually have to switch this query to the download API or ES when number of cases > 10K
-        cohort_query = f"""query objectIds ($cohort_filters: JSON) {{
-                {case_index}(first:{settings.MAX_CASES}, filter:$cohort_filters) {{
-                              {dot_notation_to_graphql(cohort_item_field)}
-                  }}
-        }}"""
-
-        data = await gen3_graphql_client.execute(
-            access_token=access_token,
-            query=cohort_query,
-            variables={"cohort_filters": cohort_filter},
-        )
-
-        if (data.get("data") is None) or (data.get("data").get(case_index) is None):
-            return {"hits": [], "total": 0}
-        case_ids = [
-            glom(x, cohort_item_field) for x in glom(data, f"data.{case_index}")
-        ]
+        cohort_filter_gql = parse_gql_filter(cohort_filter)
+        case_ids = query_case_ids(cohort_filter_gql)
 
         # build a filter containing the cohort ids and merge with the other filters
         ids = case_ids

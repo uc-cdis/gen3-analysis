@@ -13,40 +13,69 @@ from starlette.responses import JSONResponse
 from gen3analysis.auth import Gen3SdkAuth
 from gen3analysis.gen3.es_client import get_nested_registry
 from gen3analysis.gen3.guppyQuery import GuppyGQLClient
-from gen3analysis.routes.basic import basic_router
-from gen3analysis.routes.cases import cases
-from gen3analysis.routes.cohorts import cohorts
-from gen3analysis.routes.compare import compare
-from gen3analysis.routes.files import files
-from gen3analysis.routes.gene_expression import gene_expression
-from gen3analysis.routes.genomic import genomic
-from gen3analysis.routes.ssm_occurrence import ssms_occurrence
-from gen3analysis.routes.ssms import ssms
-from gen3analysis.routes.cnv import cnv
-from gen3analysis.routes.cnv_occurrence import cnv_occurrence
-from gen3analysis.routes.survival import survival
 from gen3analysis.settings import settings, logger
 
 route_aggregator = APIRouter()
 
+# Map route names to their module paths (import_path, router_name, prefix, tags)
+ALL_ROUTE_DEFINITIONS = {
+    "basic": ("gen3analysis.routes.basic", "basic_router", "", ["Basic"]),
+    "compare": ("gen3analysis.routes.compare", "compare", "/compare", ["Compare"]),
+    "survival": ("gen3analysis.routes.survival", "survival", "/survival", ["Survival"]),
+    "cohorts": ("gen3analysis.routes.cohorts", "cohorts", "/cohorts", ["Cohorts"]),
+    "genomic": ("gen3analysis.routes.genomic", "genomic", "/genomic", ["Genomic"]),
+    "cases": ("gen3analysis.routes.cases", "cases", "/cases", ["Cases"]),
+    "files": ("gen3analysis.routes.files", "files", "/files", ["Files"]),
+    "ssms": ("gen3analysis.routes.ssms", "ssms", "/ssms", ["SSMS"]),
+    "ssms_occurrence": (
+        "gen3analysis.routes.ssm_occurrence",
+        "ssms_occurrence",
+        "/ssms_occurrence",
+        ["SSMS Occurrence"],
+    ),
+    "gene_expression": (
+        "gen3analysis.routes.gene_expression",
+        "gene_expression",
+        "/gene_expression",
+        ["Gene Expression"],
+    ),
+    "cnv": ("gen3analysis.routes.cnv", "cnv", "/cnv", ["CNV"]),
+    "cnv_occurrence": (
+        "gen3analysis.routes.cnv_occurrence",
+        "cnv_occurrence",
+        "/cnv_occurrence",
+        ["CNV Occurrence"],
+    ),
+}
 
-route_definitions = [
-    (basic_router, "", ["Basic"]),
-    (compare, "/compare", ["Compare"]),
-    (survival, "/survival", ["Survival"]),
-    (cohorts, "/cohorts", ["Cohorts"]),
-    (genomic, "/genomic", ["Genomic"]),
-    (cases, "/cases", ["Cases"]),
-    (files, "/files", ["Files"]),
-    (ssms, "/ssms", ["SSMS"]),
-    (ssms_occurrence, "/ssms_occurrence", ["SSMS Occurrence"]),
-    (gene_expression, "/gene_expression", ["Gene Expression"]),
-    (cnv, "/cnv", ["CNV"]),
-    (cnv_occurrence, "/cnv_occurrence", ["CNV Occurrence"]),
-]
+# Get enabled routes from environment variable
+# Format: comma-separated list like "basic,compare,survival"
+# If not set or "all", enable all routes
+enabled_routes_env = (
+    settings.ENABLED_ROUTES if hasattr(settings, "ENABLED_ROUTES") else None
+)
+if not enabled_routes_env:
+    import os
 
-for router, prefix, tags in route_definitions:
-    route_aggregator.include_router(router, prefix=prefix, tags=tags)
+    enabled_routes_env = os.environ.get("ENABLED_ROUTES", "all")
+
+if enabled_routes_env == "all":
+    enabled_routes = list(ALL_ROUTE_DEFINITIONS.keys())
+else:
+    enabled_routes = [r.strip() for r in enabled_routes_env.split(",") if r.strip()]
+
+# Include only enabled routes - import dynamically to avoid importing disabled routes
+for route_name in enabled_routes:
+    if route_name in ALL_ROUTE_DEFINITIONS:
+        import importlib
+
+        module_path, router_name, prefix, tags = ALL_ROUTE_DEFINITIONS[route_name]
+        module = importlib.import_module(module_path)
+        router = getattr(module, router_name)
+        route_aggregator.include_router(router, prefix=prefix, tags=tags)
+        logger.info(f"Enabled route: {route_name}")
+    else:
+        logger.warning(f"Unknown route requested: {route_name}")
 
 
 @asynccontextmanager
@@ -73,8 +102,8 @@ async def lifespan(app: FastAPI):
     guppy_client = GuppyGQLClient(
         graphql_url=f"{guppy_url}/graphql", csrf_token_url=revproxy_url
     )
-
-    get_nested_registry()
+    if settings.ES_ENABLED:
+        get_nested_registry()
 
     app.state.guppy_client = guppy_client
     app.state.gen3_sdk_auth = None
@@ -89,7 +118,7 @@ async def lifespan(app: FastAPI):
     )
 
     # Initialize gene expression data store
-    if settings.GENE_EXPRESSION_ENABLED:
+    if settings.ENABLED_ROUTES and "gene_expression" in settings.ENABLED_ROUTES:
         from gen3analysis.gene_expression.data_store import GeneExpressionDataStore
 
         try:
@@ -112,7 +141,7 @@ async def lifespan(app: FastAPI):
                 )
         except Exception as e:
             logger.error("Failed to initialize gene expression data store: %s", e)
-            raise
+            # Don't fail the app startup if gene expression data store initialization fails'
 
     yield
 

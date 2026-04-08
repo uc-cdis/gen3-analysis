@@ -68,13 +68,6 @@ class CoreSettings(BaseSettings):
     # Documentation
     DOCS_ROOT: Optional[str] = "/"
 
-    # Top genes configuration
-    TOP_GENES_INDEX: Optional[str] = "ssm_occurrence_centric"
-    TOP_GENES_GENE_ID_FIELD: Optional[str] = "gene.gene_id"
-    TOP_GENES_CASE_NESTED_PATH: Optional[str] = "occurrence.case"
-    TOP_GENES_CASE_ID_FIELD: Optional[str] = "occurrence.case.case_id"
-    TOP_GENES_PROJECT_FIELD: Optional[str] = "occurrence.case.project.project_id"
-
     # GraphQL settings
     GRAPHQL_ENABLED: Optional[bool] = True
 
@@ -85,9 +78,47 @@ class CoreSettings(BaseSettings):
         None  # e.g. "redis://localhost:6379"; disables in-process cache when set
     )
 
+    # The case index is used to "join" other indices
+    ADD_INDEX_PREFIX: Optional[bool] = True
+    CASE_CENTRIC_INDEX: Optional[str] = "case_centric"
+    CASE_CENTRIC_AGGREGATION_INDEX: Optional[str] = "case_centric"
+
+    @classmethod
+    def compute_gql_index(cls, index: str, add_prefix: bool = True) -> str:
+        if add_prefix:
+            return f"{snake_to_pascal(index)}_{index}"
+        return index
+
+    @classmethod
+    def compute_gql_agg_index(cls, index: str, add_prefix: bool = True) -> str:
+        if add_prefix:
+            return f"{snake_to_pascal(index)}__aggregation"
+        return "_aggregation"
+
+    @computed_field
+    @property
+    def case_centric_gql(self) -> str:
+        return CoreSettings.compute_gql_index(
+            self.CASE_CENTRIC_INDEX, self.ADD_INDEX_PREFIX
+        )
+
+    @computed_field
+    @property
+    def case_centric_agg_gql(self) -> str:
+        return CoreSettings.compute_gql_agg_index(
+            self.CASE_CENTRIC_INDEX, self.ADD_INDEX_PREFIX
+        )
+
 
 class GDCGenomicSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
+
+    # Top genes configuration
+    TOP_GENES_INDEX: Optional[str] = "ssm_occurrence_centric"
+    TOP_GENES_GENE_ID_FIELD: Optional[str] = "gene.gene_id"
+    TOP_GENES_CASE_NESTED_PATH: Optional[str] = "occurrence.case"
+    TOP_GENES_CASE_ID_FIELD: Optional[str] = "occurrence.case.case_id"
+    TOP_GENES_PROJECT_FIELD: Optional[str] = "occurrence.case.project.project_id"
 
     ES_VERIFY_SSL: Optional[bool] = False
     ES_CA_CERT: Optional[str] = None
@@ -117,107 +148,85 @@ class GDCGenomicSettings(BaseSettings):
     ES_CNV_CENTRIC_INDEX: Optional[str] = "cnv_centric"
     ES_CNV_OCCURRENCE_INDEX: Optional[str] = "cnv_occurrence_centric"
 
-    @classmethod
-    def compute_gql_index(cls, index: str) -> str:
-        return f"{snake_to_pascal(index)}_{index}"
-
-    @classmethod
-    def compute_gql_agg_index(cls, index: str) -> str:
-        return f"{snake_to_pascal(index)}__aggregation"
-
     @computed_field
     @property
     def case_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.CASE_INDEX)
+        return CoreSettings.compute_gql_index(self.CASE_INDEX)
 
     @computed_field
     @property
     def case_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(self.CASE_INDEX)
+        return CoreSettings.compute_gql_agg_index(self.CASE_INDEX)
 
     @computed_field
     @property
     def file_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.FILE_INDEX)
+        return CoreSettings.compute_gql_index(self.FILE_INDEX)
 
     @computed_field
     @property
     def file_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(self.FILE_INDEX)
+        return CoreSettings.compute_gql_agg_index(self.FILE_INDEX)
 
     @computed_field
     @property
     def project_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.PROJECT_INDEX)
+        return CoreSettings.compute_gql_index(self.PROJECT_INDEX)
 
     @computed_field
     @property
     def project_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(self.PROJECT_INDEX)
+        return CoreSettings.compute_gql_agg_index(self.PROJECT_INDEX)
 
     @computed_field
     @property
     def gene_centric_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.GENE_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_index(self.GENE_CENTRIC_INDEX)
 
     @computed_field
     @property
     def gene_centric_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(self.GENE_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_agg_index(self.GENE_CENTRIC_INDEX)
 
     @computed_field
     @property
     def ssm_centric_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.SSM_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_index(self.SSM_CENTRIC_INDEX)
 
     @computed_field
     @property
     def ssm_centric_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(self.SSM_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_agg_index(self.SSM_CENTRIC_INDEX)
 
     @computed_field
     @property
     def ssm_occurrence_centric_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.SSM_OCCURRENCE_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_index(self.SSM_OCCURRENCE_CENTRIC_INDEX)
 
     @computed_field
     @property
     def ssm_occurrence_centric_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(
-            self.SSM_OCCURRENCE_CENTRIC_INDEX
-        )
+        return CoreSettings.compute_gql_agg_index(self.SSM_OCCURRENCE_CENTRIC_INDEX)
 
     @computed_field
     @property
     def cnv_centric_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.CNV_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_index(self.CNV_CENTRIC_INDEX)
 
     @computed_field
     @property
     def cnv_centric_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(self.CNV_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_agg_index(self.CNV_CENTRIC_INDEX)
 
     @computed_field
     @property
     def cnv_occurrence_centric_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.CNV_OCCURRENCE_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_index(self.CNV_OCCURRENCE_CENTRIC_INDEX)
 
     @computed_field
     @property
     def cnv_occurrence_centric_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(
-            self.CNV_OCCURRENCE_CENTRIC_INDEX
-        )
-
-    @computed_field
-    @property
-    def case_centric_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_index(self.CASE_CENTRIC_INDEX)
-
-    @computed_field
-    @property
-    def case_centric_agg_gql(self) -> str:
-        return GDCGenomicSettings.compute_gql_agg_index(self.CASE_CENTRIC_INDEX)
+        return CoreSettings.compute_gql_agg_index(self.CNV_OCCURRENCE_CENTRIC_INDEX)
 
 
 class GeneExpressionSettings(BaseSettings):

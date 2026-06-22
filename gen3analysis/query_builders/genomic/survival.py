@@ -25,6 +25,12 @@ def build_gene_survival_query(
     ]
 
     symbol_query = Q("term", gene__symbol={"value": genomic_id, "boost": 0})
+    gene_has_ssm = Q(
+        "nested",
+        path="gene.ssm",
+        ignore_unmapped=True,
+        query=Q("bool", must=[Q("exists", field="gene.ssm.ssm_id")]),
+    )
     if mode == "ssm":
         symbol_query = Q(
             "nested",
@@ -44,7 +50,7 @@ def build_gene_survival_query(
                 ignore_unmapped=True,
                 query=Q(
                     "bool",
-                    must=[symbol_query],
+                    must=[symbol_query, gene_has_ssm],
                 ),
             )
         )
@@ -116,7 +122,7 @@ def build_gene_survival_query(
                 ignore_unmapped=True,
                 query=Q(
                     "bool",
-                    must=[symbol_query],
+                    must=[symbol_query, gene_has_ssm],
                 ),
             )
         ]
@@ -143,12 +149,6 @@ def genomic_survival_comparison_query(
             genomic_filter_contents, genomic_id, False, case_ids, mode
         )
     )
-
-    # with open(f"./logs/{mode}_survival_query_excluded.json", "w") as f:
-    #     f.write(json.dumps(excluded_query.to_dict(), indent=2))
-    #
-    # with open(f"./logs/{mode}_survival_query_included.json", "w") as f:
-    #     f.write(json.dumps(included_query.to_dict(), indent=2))
 
     included_results = included_query.execute()
     excluded_results = excluded_query.execute()

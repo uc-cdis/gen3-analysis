@@ -1,5 +1,7 @@
 ARG AZLINUX_BASE_VERSION=master
-FROM quay.io/cdis/python-nginx-al:${AZLINUX_BASE_VERSION} AS base
+
+# Base stage with python-build-base
+FROM quay.io/cdis/amazonlinux-base:3.13-pythonnginx AS base
 
 ENV appname=gen3analysis
 

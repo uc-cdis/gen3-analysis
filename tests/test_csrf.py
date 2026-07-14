@@ -1,11 +1,31 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 from fastapi import HTTPException
 
-from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache
+from gen3analysis.gen3.csrfTokenCache import CSRFTokenCache, CachedToken
+
+
+class TestCachedToken:
+    def test_is_expired_returns_true_when_past_expiry(self):
+        token = CachedToken(
+            token="abc", expires_at=datetime.utcnow() - timedelta(seconds=1)
+        )
+        assert token.is_expired() is True
+
+    def test_is_expired_returns_true_when_exactly_at_expiry(self):
+        # implementation uses >=, so "now == expires_at" counts as expired
+        now = datetime.utcnow()
+        token = CachedToken(token="abc", expires_at=now)
+        assert token.is_expired() is True
+
+    def test_is_expired_returns_false_when_in_future(self):
+        token = CachedToken(
+            token="abc", expires_at=datetime.utcnow() + timedelta(hours=1)
+        )
+        assert token.is_expired() is False
 
 
 @pytest.mark.asyncio

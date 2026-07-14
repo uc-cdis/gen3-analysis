@@ -1,5 +1,7 @@
 ARG AZLINUX_BASE_VERSION=master
-FROM quay.io/cdis/python-nginx-al:${AZLINUX_BASE_VERSION} AS base
+
+# Base stage with python-build-base
+FROM quay.io/cdis/amazonlinux-base:3.13-pythonnginx AS base
 
 ENV appname=gen3analysis
 
@@ -26,6 +28,8 @@ RUN poetry install --without dev --no-interaction
 FROM base
 
 COPY --from=builder /${appname} /${appname}
+
+USER root
 
 RUN dnf -y install vim
 
